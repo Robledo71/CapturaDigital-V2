@@ -1,7 +1,6 @@
 'use server'
 
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import { getSession } from '@/back/services/session'
 import { updateUsuario } from '@/back/services/userService'
@@ -11,7 +10,7 @@ export type UpdateUserState = {
     nombreCompleto?: string[]
     codigoEmpleado?: string[]
     puesto?: string[]
-    planta?: string[]
+    plantaId?: string[]
     rol?: string[]
     correo?: string[]
     general?: string[]
@@ -24,7 +23,10 @@ const UpdateUserSchema = z.object({
   nombreCompleto: z.string().min(1, 'El nombre completo es requerido').trim(),
   codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
   puesto: z.string().min(1, 'El puesto es requerido').trim(),
-  planta: z.string().min(1, 'La planta es requerida').trim(),
+  plantaId: z.coerce
+    .number({ error: 'Selecciona una planta' })
+    .int()
+    .positive('Selecciona una planta'),
   rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider'], {
     error: 'Rol no válido',
   }),
@@ -39,17 +41,21 @@ export async function updateUser(
   if (!session || session.rol !== 'admin') {
     return { errors: { general: ['No autorizado'] } }
   }
+  const accessToken = session.accessToken
 
-  const id = String(formData.get('id') ?? '').trim()
-  if (!id) {
+  const idRaw = parseInt(String(formData.get('id') ?? '').trim(), 10)
+  if (isNaN(idRaw) || idRaw <= 0) {
     return { errors: { general: ['ID de usuario requerido'] } }
   }
+  const id = idRaw
+
+  const plantaIdRaw = parseInt(String(formData.get('plantaId') ?? ''), 10)
 
   const raw = {
     nombreCompleto: String(formData.get('nombreCompleto') ?? '').trim(),
     codigoEmpleado: String(formData.get('codigoEmpleado') ?? '').trim(),
     puesto: String(formData.get('puesto') ?? '').trim(),
-    planta: String(formData.get('planta') ?? '').trim(),
+    plantaId: isNaN(plantaIdRaw) ? '' : plantaIdRaw,
     rol: String(formData.get('rol') ?? '').trim(),
     correo: String(formData.get('correo') ?? '').trim(),
   }
@@ -60,7 +66,7 @@ export async function updateUser(
   }
 
   try {
-    const result = await updateUsuario({ id, ...validated.data })
+    const result = await updateUsuario({ id, ...validated.data }, accessToken)
 
     if (!result.ok) {
       if (result.reason === 'duplicate_codigo') {
@@ -74,20 +80,7 @@ export async function updateUser(
     }
 
     return { success: true, usuario: result.usuario }
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2002'
-    ) {
-      const target = err.meta?.target as string[] | undefined
-      if (target?.includes('codigo_empleado')) {
-        return { errors: { codigoEmpleado: ['Este código ya está registrado'] } }
-      }
-      if (target?.includes('correo')) {
-        return { errors: { correo: ['Este correo ya está registrado'] } }
-      }
-      return { errors: { general: ['Ya existe un usuario con esos datos'] } }
-    }
+  } catch {
     return { errors: { general: ['Error inesperado al actualizar el usuario'] } }
   }
 }

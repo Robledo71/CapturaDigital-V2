@@ -1,4 +1,4 @@
-﻿'server-only'
+'server-only'
 
 import { prisma } from '@/back/db/prisma'
 
@@ -20,11 +20,11 @@ export type AdminDashboardStats = {
 }
 
 export type AdminRecentUsuario = {
-  id: string
+  id: number
   nombreCompleto: string
   codigoEmpleado: string
   rol: string
-  planta: string
+  plant: { name: string } | null
   isActive: boolean
 }
 
@@ -36,16 +36,11 @@ export type AdminDashboardData = {
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export async function getAdminDashboardData(): Promise<AdminDashboardData> {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
   const [
     usuariosActivos,
     desgloseRol,
-    totalClientes,
     plantasActivas,
     tabletsStats,
-    reportesPendientes,
     recentUsuarios,
   ] = await Promise.all([
     // Total usuarios activos
@@ -58,28 +53,13 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       _count: { _all: true },
     }),
 
-    // Total clientes
-    prisma.client.count(),
-
-    // Plantas que tienen al menos una orden abierta
-    prisma.plant.count({
-      where: {
-        orders: { some: { status: 'abierta' } },
-      },
-    }),
+    // Plantas registradas
+    prisma.plant.count(),
 
     // Tablets agrupadas por estado
     prisma.tablet.groupBy({
       by: ['status'],
       _count: { _all: true },
-    }),
-
-    // Reportes diarios pendientes de hoy en adelante
-    prisma.dailyReport.count({
-      where: {
-        status: 'pending',
-        reportDate: { gte: today },
-      },
     }),
 
     // Ultimos 10 usuarios creados
@@ -91,7 +71,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
         nombreCompleto: true,
         codigoEmpleado: true,
         rol: true,
-        planta: true,
+        plant: { select: { name: true } },
         isActive: true,
       },
     }),
@@ -115,10 +95,10 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
 
   const stats: AdminDashboardStats = {
     usuariosActivos,
-    totalClientes,
+    totalClientes: 0, // TODO Fase 4: Client model eliminado del esquema
     plantasActivas,
     tabletsRegistradas: tabletsTotal,
-    reportesPendientes,
+    reportesPendientes: 0, // TODO Fase 3: rehacer con nuevo esquema de DailyReport
     tabletsActivas,
     desglosePorRol: {
       admin: rolMap['admin'] ?? 0,
@@ -135,7 +115,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       nombreCompleto: u.nombreCompleto,
       codigoEmpleado: u.codigoEmpleado,
       rol: u.rol,
-      planta: u.planta,
+      plant: u.plant,
       isActive: u.isActive,
     })),
   }

@@ -8,9 +8,9 @@ interface TabletPageProps {
 }
 
 const STATUS_CONFIG = {
-  activa:        { label: 'Activa',        pill: 'bg-green-500/10 border border-green-500/20 text-green-400',  dot: 'bg-green-400'  },
-  inactiva:      { label: 'Inactiva',      pill: 'bg-slate-500/10 border border-slate-500/20 text-slate-400',  dot: 'bg-slate-500'  },
-  mantenimiento: { label: 'Mantenimiento', pill: 'bg-amber-500/10 border border-amber-500/20 text-amber-400',  dot: 'bg-amber-400'  },
+  activa:        { label: 'Activa',        pill: 'bg-green-100 border border-green-300 text-green-700 dark:bg-green-500/10 dark:border-green-500/20 dark:text-green-400',  dot: 'bg-green-600 dark:bg-green-400'  },
+  inactiva:      { label: 'Inactiva',      pill: 'bg-slate-100 border border-slate-300 text-slate-600 dark:bg-slate-500/10 dark:border-slate-500/20 dark:text-slate-400',  dot: 'bg-slate-500'  },
+  mantenimiento: { label: 'Mantenimiento', pill: 'bg-amber-100 border border-amber-300 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400',  dot: 'bg-amber-600 dark:bg-amber-400'  },
 } as const
 
 type Status = keyof typeof STATUS_CONFIG

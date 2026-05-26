@@ -35,13 +35,13 @@ interface ReportesPublicadosClientProps {
 function StatusBadge({ status }: { status: 'Pendiente' | 'Descargado' }) {
   if (status === 'Pendiente') {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400 border border-yellow-500/30">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-500/15 dark:text-yellow-400 dark:border-yellow-500/30">
         Pendiente
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/30">
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300 dark:bg-green-500/15 dark:text-green-400 dark:border-green-500/30">
       Descargado
     </span>
   )
@@ -258,7 +258,7 @@ export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClie
       </div>
 
       {/* Table card */}
-      <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0f2038] overflow-hidden">
+      <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">

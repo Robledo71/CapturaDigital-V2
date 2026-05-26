@@ -5,19 +5,22 @@ import { useFormStatus } from 'react-dom'
 import { X, Loader2 } from 'lucide-react'
 import { updateUser } from '@/app/actions/update-user'
 import type { UsuarioRow } from '@/shared/types/usuario'
+import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface EditarUsuarioModalProps {
   usuario: {
-    id: string
+    id: number | string
     nombre: string
     codigo: string
     puesto: string
-    planta: string
+    planta?: string
+    plantaId: number | null
     rol: string
     correo: string
   }
+  plantas: PlantaRow[]
   onClose: () => void
   onSuccess: (updated: UsuarioRow) => void
 }
@@ -26,7 +29,7 @@ interface FormValues {
   nombreCompleto: string
   codigoEmpleado: string
   puesto: string
-  planta: string
+  plantaId: string
   rol: string
   correo: string
 }
@@ -54,13 +57,13 @@ const inputCls =
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function EditarUsuarioModal({ usuario, onClose, onSuccess }: EditarUsuarioModalProps) {
+export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: EditarUsuarioModalProps) {
   const [state, dispatch] = useActionState(updateUser, undefined)
   const [values, setValues] = useState<FormValues>({
     nombreCompleto: usuario.nombre,
     codigoEmpleado: usuario.codigo,
     puesto: usuario.puesto,
-    planta: usuario.planta,
+    plantaId: usuario.plantaId !== null ? String(usuario.plantaId) : '',
     rol: usuario.rol,
     correo: usuario.correo,
   })
@@ -85,7 +88,7 @@ export function EditarUsuarioModal({ usuario, onClose, onSuccess }: EditarUsuari
       aria-labelledby="modal-editar-titulo"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
-      <div className="bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-lg mx-4">
+      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-lg mx-4">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-blue-200 dark:border-[#1a2d4d]">
@@ -184,21 +187,23 @@ export function EditarUsuarioModal({ usuario, onClose, onSuccess }: EditarUsuari
 
               {/* Planta */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="planta" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="plantaId" className="text-xs font-medium text-blue-600 dark:text-slate-400">
                   Planta
                 </label>
-                <input
-                  id="planta"
-                  name="planta"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="Ej. Silao 1"
-                  value={values.planta}
+                <select
+                  id="plantaId"
+                  name="plantaId"
+                  value={values.plantaId}
                   onChange={handleChange}
                   className={inputCls}
-                />
-                {state?.errors?.planta && (
-                  <p className="text-red-400 text-xs">{state.errors.planta[0]}</p>
+                >
+                  <option value="">Selecciona una planta</option>
+                  {plantas.map((p) => (
+                    <option key={p.id} value={String(p.id)}>{p.nombre}</option>
+                  ))}
+                </select>
+                {state?.errors?.plantaId && (
+                  <p className="text-red-400 text-xs">{state.errors.plantaId[0]}</p>
                 )}
               </div>
 

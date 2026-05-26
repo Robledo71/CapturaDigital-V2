@@ -1,7 +1,6 @@
 'use server'
 
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
 import type { TabletRow } from '@/shared/types/tablet'
 import { getSession } from '@/back/services/session'
 import { createTablet as serviceCreateTablet } from '@/back/services/tabletService'
@@ -10,6 +9,7 @@ export type CreateTabletState = {
   errors?: {
     modelo?: string[]
     serie?: string[]
+    codigotablet?: string[]
     alias?: string[]
     plantaId?: string[]
     notes?: string[]
@@ -22,6 +22,7 @@ export type CreateTabletState = {
 const CreateTabletSchema = z.object({
   modelo: z.string().min(1, 'El modelo es requerido').trim(),
   serie: z.string().min(1, 'El número de serie es requerido').trim(),
+  codigotablet: z.string().trim().optional(),
   alias: z.string().trim().optional(),
   notes: z.string().trim().optional(),
 })
@@ -34,6 +35,7 @@ export async function createTablet(
   if (!session || session.rol !== 'admin') {
     return { errors: { general: ['No autorizado'] } }
   }
+  const accessToken = session.accessToken
 
   const plantaIdRaw = String(formData.get('plantaId') ?? '').trim()
   const plantaId = plantaIdRaw !== '' ? parseInt(plantaIdRaw, 10) : undefined
@@ -45,6 +47,7 @@ export async function createTablet(
   const raw = {
     modelo: String(formData.get('modelo') ?? '').trim(),
     serie: String(formData.get('serie') ?? '').trim(),
+    codigotablet: String(formData.get('codigotablet') ?? '').trim() || undefined,
     alias: String(formData.get('alias') ?? '').trim() || undefined,
     notes: String(formData.get('notes') ?? '').trim() || undefined,
   }
@@ -55,26 +58,27 @@ export async function createTablet(
   }
 
   try {
-    const result = await serviceCreateTablet({
-      modelo: validated.data.modelo,
-      serie: validated.data.serie,
-      alias: validated.data.alias,
-      plantaId,
-      notes: validated.data.notes,
-    })
+    const result = await serviceCreateTablet(
+      {
+        modelo: validated.data.modelo,
+        serie: validated.data.serie,
+        codigotablet: validated.data.codigotablet,
+        alias: validated.data.alias,
+        plantaId,
+        notes: validated.data.notes,
+      },
+      accessToken,
+    )
 
     if (!result.ok) {
+      if (result.reason === 'duplicate_codigo') {
+        return { errors: { codigotablet: ['Este código ya está en uso por otra tablet'] } }
+      }
       return { errors: { serie: ['Este número de serie ya está registrado'] } }
     }
 
     return { success: true, tablet: result.tablet }
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2002'
-    ) {
-      return { errors: { serie: ['Este número de serie ya está registrado'] } }
-    }
+  } catch {
     return { errors: { general: ['Error inesperado al crear la tablet'] } }
   }
 }

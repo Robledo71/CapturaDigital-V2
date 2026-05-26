@@ -18,6 +18,7 @@ interface NuevoTabletModalProps {
 interface FormValues {
   modelo: string
   serie: string
+  codigotablet: string
   alias: string
   plantaId: string
   notes: string
@@ -26,6 +27,7 @@ interface FormValues {
 const EMPTY_VALUES: FormValues = {
   modelo: '',
   serie: '',
+  codigotablet: '',
   alias: '',
   plantaId: '',
   notes: '',
@@ -78,7 +80,7 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
       aria-labelledby="modal-nueva-tablet-titulo"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
-      <div className="bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-lg mx-4">
+      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-lg mx-4">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-blue-200 dark:border-[#1a2d4d]">
@@ -110,6 +112,27 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
             )}
 
             <div className="grid grid-cols-2 gap-4">
+
+              {/* Código tablet — col span 2 */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <label htmlFor="codigotablet-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                  Código de tablet
+                  <span className="text-slate-600 font-normal ml-1">(opcional — se genera automáticamente)</span>
+                </label>
+                <input
+                  id="codigotablet-tablet"
+                  name="codigotablet"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ej. CC1-1234 (dejar vacío para auto-generar)"
+                  value={values.codigotablet}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.codigotablet && (
+                  <p className="text-red-400 text-xs">{state.errors.codigotablet[0]}</p>
+                )}
+              </div>
 
               {/* Modelo */}
               <div className="flex flex-col gap-1">

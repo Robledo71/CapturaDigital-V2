@@ -8,12 +8,12 @@ interface TopBarProps {
 
 export function TopBar({ crumb }: TopBarProps) {
   return (
-    <header className="h-12 px-6 flex items-center justify-between flex-shrink-0 bg-white dark:bg-[#0c1829] border-b border-blue-200 dark:border-[#1a2d4d]">
+    <header className="h-12 px-6 flex items-center justify-between flex-shrink-0 bg-[#1e3a5f] dark:bg-[#0c1829] border-b border-blue-200 dark:border-[#1a2d4d]">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
         <Link
           href="/admin"
-          className="text-blue-600 dark:text-slate-400 hover:text-blue-950 dark:text-white transition-colors"
+          className="text-slate-200 dark:text-slate-400 hover:text-white dark:hover:text-white transition-colors"
         >
           Inicio
         </Link>

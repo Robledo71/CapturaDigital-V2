@@ -22,7 +22,7 @@ export default async function ReportesRoute({
   const page = Math.max(1, Number.isInteger(Number(pageParam)) ? Math.max(1, Number(pageParam)) : 1)
 
   const [{ rows: reportes, total }, unassignedCount] = await Promise.all([
-    getSupervisorReportes(session.userId, mode, page),
+    getSupervisorReportes(String(session.userId), mode, page),
     getUnassignedCount(),
   ])
 

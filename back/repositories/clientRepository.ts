@@ -1,31 +1,10 @@
+// TODO Fase 4: Client model eliminado del esquema. Funciones stubbeadas.
 import 'server-only'
-import { prisma } from '@/back/db/prisma'
-
-export async function findAllClients() {
-  return prisma.client.findMany({
-    include: {
-      _count: {
-        select: {
-          orders: { where: { status: 'abierta' } },
-        },
-      },
-    },
-    orderBy: { createdAt: 'asc' },
-  })
-}
-
-export async function findClientById(id: number) {
-  return prisma.client.findUnique({ where: { id } })
-}
 
 export type CreateClientData = {
   name: string
   address?: string
   requirePurchaseOrder: boolean
-}
-
-export async function createClient(data: CreateClientData) {
-  return prisma.client.create({ data })
 }
 
 export type UpdateClientData = {
@@ -34,6 +13,26 @@ export type UpdateClientData = {
   requirePurchaseOrder?: boolean
 }
 
-export async function updateClient(id: number, data: UpdateClientData) {
-  return prisma.client.update({ where: { id }, data })
+// Stub shape that matches what clientService expects
+type ClientStub = {
+  id: number
+  name: string
+  address: string | null
+  requirePurchaseOrder: boolean
+}
+
+export async function findAllClients(): Promise<ClientStub[]> {
+  return []
+}
+
+export async function findClientById(_id: number): Promise<ClientStub | null> {
+  return null
+}
+
+export async function createClient(_data: CreateClientData): Promise<ClientStub> {
+  throw new Error('Client model no existe en el esquema actual — Fase 4 pendiente')
+}
+
+export async function updateClient(_id: number, _data: UpdateClientData): Promise<ClientStub> {
+  throw new Error('Client model no existe en el esquema actual — Fase 4 pendiente')
 }

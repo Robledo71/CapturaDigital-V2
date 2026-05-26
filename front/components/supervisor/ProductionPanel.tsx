@@ -1,8 +1,8 @@
 import type { ProduccionItem } from '@/back/services/dashboardService'
 
 const STATUS_CLASSES: Record<ProduccionItem['status'], string> = {
-  Pendiente: 'bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 text-xs px-2 py-0.5 rounded-full',
-  Enviado: 'bg-blue-500/15 text-blue-400 border border-blue-500/30 text-xs px-2 py-0.5 rounded-full',
+  Pendiente: 'bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-500/15 dark:text-yellow-400 dark:border-yellow-500/30 text-xs px-2 py-0.5 rounded-full',
+  Enviado: 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/30 text-xs px-2 py-0.5 rounded-full',
 }
 
 interface ProductionPanelProps {
@@ -34,7 +34,7 @@ export function ProductionPanel({ items }: ProductionPanelProps) {
               {/* Top row */}
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-blue-700 flex items-center justify-center flex-shrink-0">
-                  <span className="text-blue-950 dark:text-white text-xs font-medium">{item.initials}</span>
+                  <span className="text-white dark:text-white text-xs font-medium">{item.initials}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-slate-900 dark:text-white text-sm leading-tight truncate">{item.operadores}</span>

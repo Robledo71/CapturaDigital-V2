@@ -28,6 +28,7 @@ export async function createPlanta(
   if (!session || session.rol !== 'admin') {
     return { errors: { general: ['No autorizado'] } }
   }
+  const accessToken = session.accessToken
 
   const raw = {
     nombre: String(formData.get('nombre') ?? '').trim(),
@@ -40,10 +41,13 @@ export async function createPlanta(
   }
 
   try {
-    const result = await serviceCreatePlanta({
-      nombre: validated.data.nombre,
-      direccion: validated.data.direccion,
-    })
+    const result = await serviceCreatePlanta(
+      {
+        nombre: validated.data.nombre,
+        direccion: validated.data.direccion,
+      },
+      accessToken,
+    )
 
     return { success: true, planta: result.planta }
   } catch {

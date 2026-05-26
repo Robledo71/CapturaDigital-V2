@@ -1,7 +1,6 @@
 'use server'
 
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
 import type { TabletRow } from '@/shared/types/tablet'
 import { getSession } from '@/back/services/session'
 import { updateTablet as serviceUpdateTablet } from '@/back/services/tabletService'
@@ -10,6 +9,7 @@ export type UpdateTabletState = {
   errors?: {
     modelo?: string[]
     serie?: string[]
+    codigotablet?: string[]
     alias?: string[]
     plantaId?: string[]
     notes?: string[]
@@ -23,6 +23,7 @@ export type UpdateTabletState = {
 const UpdateTabletSchema = z.object({
   modelo: z.string().min(1, 'El modelo es requerido').trim(),
   serie: z.string().min(1, 'El número de serie es requerido').trim(),
+  codigotablet: z.string().min(1, 'El código de tablet es requerido').trim().optional(),
   alias: z.string().trim().optional(),
   notes: z.string().trim().optional(),
   estado: z
@@ -40,6 +41,7 @@ export async function updateTablet(
   if (!session || session.rol !== 'admin') {
     return { errors: { general: ['No autorizado'] } }
   }
+  const accessToken = session.accessToken
 
   const id = parseInt(String(formData.get('id') ?? ''), 10)
   if (isNaN(id)) {
@@ -57,10 +59,12 @@ export async function updateTablet(
   const aliasRaw = String(formData.get('alias') ?? '').trim()
   const notesRaw = String(formData.get('notes') ?? '').trim()
   const estadoRaw = String(formData.get('estado') ?? '').trim()
+  const codigotabletRaw = String(formData.get('codigotablet') ?? '').trim()
 
   const raw = {
     modelo: String(formData.get('modelo') ?? '').trim(),
     serie: String(formData.get('serie') ?? '').trim(),
+    codigotablet: codigotabletRaw || undefined,
     alias: aliasRaw || undefined,
     notes: notesRaw || undefined,
     estado: estadoRaw || undefined,
@@ -72,31 +76,32 @@ export async function updateTablet(
   }
 
   try {
-    const result = await serviceUpdateTablet({
-      id,
-      modelo: validated.data.modelo,
-      serie: validated.data.serie,
-      alias: aliasRaw === '' ? null : validated.data.alias,
-      plantaId: plantaIdRaw === '' ? null : plantaId,
-      notes: notesRaw === '' ? null : validated.data.notes,
-      estado: validated.data.estado,
-    })
+    const result = await serviceUpdateTablet(
+      {
+        id,
+        modelo: validated.data.modelo,
+        serie: validated.data.serie,
+        codigotablet: validated.data.codigotablet,
+        alias: aliasRaw === '' ? null : validated.data.alias,
+        plantaId: plantaIdRaw === '' ? null : plantaId,
+        notes: notesRaw === '' ? null : validated.data.notes,
+        estado: validated.data.estado,
+      },
+      accessToken,
+    )
 
     if (!result.ok) {
       if (result.reason === 'duplicate_serie') {
         return { errors: { serie: ['Este número de serie ya está registrado'] } }
       }
+      if (result.reason === 'duplicate_codigo') {
+        return { errors: { codigotablet: ['Este código ya está en uso por otra tablet'] } }
+      }
       return { errors: { general: ['Tablet no encontrada'] } }
     }
 
     return { success: true, tablet: result.tablet }
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2002'
-    ) {
-      return { errors: { serie: ['Este número de serie ya está registrado'] } }
-    }
+  } catch {
     return { errors: { general: ['Error inesperado al actualizar la tablet'] } }
   }
 }

@@ -1,7 +1,6 @@
 'use server'
 
 import { z } from 'zod'
-import { Prisma } from '@prisma/client'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import { getSession } from '@/back/services/session'
 import { createUsuario } from '@/back/services/userService'
@@ -11,7 +10,7 @@ export type CreateUserState = {
     nombreCompleto?: string[]
     codigoEmpleado?: string[]
     puesto?: string[]
-    planta?: string[]
+    plantaId?: string[]
     rol?: string[]
     correo?: string[]
     contrasena?: string[]
@@ -27,7 +26,10 @@ const CreateUserSchema = z
     nombreCompleto: z.string().min(1, 'El nombre completo es requerido').trim(),
     codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
     puesto: z.string().min(1, 'El puesto es requerido').trim(),
-    planta: z.string().min(1, 'La planta es requerida').trim(),
+    plantaId: z.coerce
+      .number({ error: 'Selecciona una planta' })
+      .int()
+      .positive('Selecciona una planta'),
     rol: z.enum(['supervisor', 'capturacion', 'admin', 'lider'], {
       error: 'Rol no válido',
     }),
@@ -48,12 +50,15 @@ export async function createUser(
   if (!session || session.rol !== 'admin') {
     return { errors: { general: ['No autorizado'] } }
   }
+  const accessToken = session.accessToken
+
+  const plantaIdRaw = parseInt(String(formData.get('plantaId') ?? ''), 10)
 
   const raw = {
     nombreCompleto: String(formData.get('nombreCompleto') ?? '').trim(),
     codigoEmpleado: String(formData.get('codigoEmpleado') ?? '').trim(),
     puesto: String(formData.get('puesto') ?? '').trim(),
-    planta: String(formData.get('planta') ?? '').trim(),
+    plantaId: isNaN(plantaIdRaw) ? '' : plantaIdRaw,
     rol: String(formData.get('rol') ?? '').trim(),
     correo: String(formData.get('correo') ?? '').trim(),
     contrasena: String(formData.get('contrasena') ?? ''),
@@ -68,7 +73,7 @@ export async function createUser(
   const { confirmContrasena: _, ...serviceInput } = validated.data
 
   try {
-    const result = await createUsuario(serviceInput)
+    const result = await createUsuario(serviceInput, accessToken)
 
     if (!result.ok) {
       if (result.reason === 'duplicate_codigo') {
@@ -78,20 +83,7 @@ export async function createUser(
     }
 
     return { success: true, usuario: result.usuario }
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2002'
-    ) {
-      const target = err.meta?.target as string[] | undefined
-      if (target?.includes('codigo_empleado')) {
-        return { errors: { codigoEmpleado: ['Este código ya está registrado'] } }
-      }
-      if (target?.includes('correo')) {
-        return { errors: { correo: ['Este correo ya está registrado'] } }
-      }
-      return { errors: { general: ['Ya existe un usuario con esos datos'] } }
-    }
+  } catch {
     return { errors: { general: ['Error inesperado al crear el usuario'] } }
   }
 }

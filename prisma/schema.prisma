@@ -6,254 +6,228 @@ datasource db {
   provider = "postgresql"
 }
 
-model Client {
-  id                   Int       @id @default(autoincrement())
-  name                 String
-  address              String?
-  requirePurchaseOrder Boolean   @default(false) @map("require_purchase_order")
-  legacyId             BigInt?   @unique @map("legacy_id")
-  syncedAt             DateTime? @map("synced_at")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
-  orders               Order[]
+enum Rol {
+  supervisor
+  admin
+  lider
+  capturacion
 
-  @@map("clients")
-}
-
-model Plant {
-  id        Int       @id @default(autoincrement())
-  name      String
-  address   String?
-  legacyId  BigInt?   @unique @map("legacy_id")
-  syncedAt  DateTime? @map("synced_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  orders    Order[]
-  tablets   Tablet[]
-
-  @@map("plants")
-}
-
-model Tablet {
-  id                   Int                 @id @default(autoincrement())
-  model                String
-  serialNumber         String              @unique @map("serial_number")
-  alias                String?
-  status               String              @default("activa")
-  plantId              Int?                @map("plant_id")
-  currentInspectorName String?             @map("current_inspector_name")
-  inspectorAssignedAt  DateTime?           @map("inspector_assigned_at")
-  lastSeenAt           DateTime?           @map("last_seen_at")
-  notes                String?
-  createdAt            DateTime            @default(now()) @map("created_at")
-  updatedAt            DateTime            @updatedAt @map("updated_at")
-  sessions             InspectionSession[]
-  plant                Plant?              @relation(fields: [plantId], references: [id])
-
-  @@index([plantId], map: "idx_tablets_plant_id")
-  @@index([status], map: "idx_tablets_status")
-  @@index([lastSeenAt], map: "idx_tablets_last_seen_at")
-  @@map("tablets")
+  @@map("rol_enum")
 }
 
 model Usuario {
-  id                  String    @id @default(cuid())
+  id                  Int       @id @default(autoincrement())
   nombreCompleto      String    @map("nombre_completo")
   codigoEmpleado      String    @unique @map("codigo_empleado")
   puesto              String
-  planta              String
+  plantaId            Int?      @map("planta_id")
   rol                 Rol
-  contrasena          String    @map("contrasena")
-  correo              String    @unique
+  contrasena          String
+  correo              String
   isActive            Boolean   @default(true) @map("is_active")
   failedLoginAttempts Int       @default(0) @map("failed_login_attempts")
   lockedUntil         DateTime? @map("locked_until")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
-  supervisedOrders    Order[]   @relation("OrderSupervisor")
+  plant               Plant?    @relation(fields: [plantaId], references: [id])
+  refreshTokens       RefreshToken[]
+  resetTokens         PasswordResetToken[]
 
   @@map("usuarios")
 }
 
-model Order {
-  id                Int            @id @default(autoincrement())
-  consecutiveNumber String         @unique @map("consecutive_number")
-  status            String         @default("abierta") @map("status")
-  clientId          Int            @map("client_id")
-  plantId           Int            @map("plant_id")
-  supervisorId      String?        @map("supervisor_id")
-  partNumber        String?        @map("part_number")
-  partName          String?        @map("part_name")
-  serviceType       String?        @map("service_type")
-  legacyId          BigInt?        @unique @map("legacy_id")
-  legacyStatus      String?        @map("legacy_status")
-  syncedAt          DateTime?      @map("synced_at")
-  createdAt         DateTime       @default(now()) @map("created_at")
-  updatedAt         DateTime       @updatedAt @map("updated_at")
-  dailyReports      DailyReport[]
-  client            Client         @relation(fields: [clientId], references: [id])
-  plant             Plant          @relation(fields: [plantId], references: [id])
-  supervisor        Usuario?       @relation("OrderSupervisor", fields: [supervisorId], references: [id])
-  quotations        Quotation[]
-  weeklyReports     WeeklyReport[]
+model Region {
+  id           Int      @id @default(autoincrement())
+  name         String
+  codigoRegion String?  @unique @map("codigo_region") @db.VarChar
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  plants       Plant[]
 
-  @@index([clientId], map: "idx_orders_client_id")
-  @@index([plantId], map: "idx_orders_plant_id")
-  @@index([supervisorId], map: "idx_orders_supervisor_id")
-  @@index([status], map: "idx_orders_status")
+  @@map("regions")
+}
+
+model Plant {
+  id         Int         @id @default(autoincrement())
+  name       String
+  address    String?
+  regionId   Int?        @map("region_id")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  region     Region?     @relation(fields: [regionId], references: [id])
+  orders     Order[]
+  tablets    Tablet[]
+  usuarios   Usuario[]
+  orderItems OrderItem[]
+  quotations Quotation[]
+
+  @@map("plants")
+}
+
+model Tablet {
+  id                   Int       @id @default(autoincrement())
+  model                String
+  serialNumber         String    @unique @map("serial_number")
+  alias                String?
+  status               String
+  plantId              Int?      @map("plant_id")
+  currentInspectorName String?   @map("current_inspector_name")
+  inspectorAssignedAt  DateTime? @map("inspector_assigned_at")
+  lastSeenAt           DateTime? @map("last_seen_at")
+  codigoTablet         String    @unique @map("codigo_tablet")
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  plant                Plant?    @relation(fields: [plantId], references: [id])
+
+  @@map("tablets")
+}
+
+model Order {
+  id                  Int        @id
+  state               String?
+  consecutiveNumber   String?    @map("consecutive_number")
+  serviceTypeDetail   String?    @map("service_type_detail")
+  serviceTypeName     String?    @map("service_type_name")
+  piecesPerHour       Decimal?   @map("pieces_per_hour") @db.Decimal
+  authorizedHours     Decimal?   @map("authorized_hours") @db.Decimal
+  pricePerHour        Decimal?   @map("price_per_hour") @db.Decimal
+  language            String?
+  userName            String?    @map("user_name")
+  regionId            Int?       @map("region_id")
+  clientName          String?    @map("client_name")
+  clientContactName   String?    @map("client_contact_name")
+  clientContactEmail  String?    @map("client_contact_email")
+  plantId             Int?       @map("plant_id")
+  createdAt           DateTime?  @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime?  @map("updated_at") @db.Timestamptz(6)
+  plant               Plant?     @relation(fields: [plantId], references: [id])
+  quotations          Quotation[]
+
   @@map("orders")
 }
 
 model Quotation {
-  id                Int           @id @default(autoincrement())
-  orderId           Int           @map("order_id")
-  consecutiveNumber String        @unique @map("consecutive_number")
-  status            String        @default("pendiente") @map("status")
-  subtotal          Decimal       @default(0.0) @map("subtotal") @db.Decimal(12, 2)
-  total             Decimal       @default(0.0) @map("total") @db.Decimal(12, 2)
-  legacyId          BigInt?       @unique @map("legacy_id")
-  syncedAt          DateTime?     @map("synced_at")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  dailyReports      DailyReport[]
-  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id                     Int         @id
+  consecutiveNumber      String?     @map("consecutive_number")
+  clientName             String?     @map("client_name")
+  clientEmail            String?     @map("client_email")
+  status                 String?
+  purchaseOrderNumber    String?     @map("purchase_order_number")
+  contactEmails          String?     @map("contact_emails")
+  orderUserName          String?     @map("order_user_name")
+  orderConsecutiveNumber String?     @map("order_consecutive_number")
+  regionId               Int?        @map("region_id")
+  plantId                Int?        @map("plant_id")
+  orderId                Int         @map("order_id")
+  createdAt              DateTime?   @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime?   @map("updated_at") @db.Timestamptz(6)
+  order                  Order       @relation(fields: [orderId], references: [id])
+  plant                  Plant?      @relation(fields: [plantId], references: [id])
+  items                  OrderItem[]
 
-  @@index([orderId], map: "idx_quotations_order_id")
   @@map("quotations")
 }
 
-model WeeklyReport {
-  id                Int           @id @default(autoincrement())
-  orderId           Int           @map("order_id")
-  consecutiveNumber String        @unique @map("consecutive_number")
-  weekNumber        Int           @map("week_number")
-  year              Int
-  status            String        @default("generado") @map("status")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-  dailyReports      DailyReport[]
-  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+model OrderItem {
+  id               Int       @id @default(autoincrement())
+  quotationId      Int       @map("quotation_id")
+  inventory        Decimal?  @db.Decimal
+  inventoryDone    Decimal?  @map("inventory_done") @db.Decimal
+  partNumber       String?   @map("part_number") @db.VarChar
+  partName         String?   @map("part_name") @db.VarChar
+  incidents        String?
+  plantId          Int?      @map("plant_id")
+  createdAt        DateTime? @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime? @map("updated_at") @db.Timestamptz(6)
+  quotation        Quotation @relation(fields: [quotationId], references: [id])
+  plant            Plant?    @relation(fields: [plantId], references: [id])
+  sessions         InspectionSession[]
+  dailyReports     DailyReport[]
 
-  @@unique([orderId, weekNumber, year], name: "uq_weekly_reports_order_week_year")
-  @@index([orderId], map: "idx_weekly_reports_order_id")
-  @@map("weekly_reports")
-}
-
-model DailyReport {
-  id                Int                 @id @default(autoincrement())
-  orderId           Int                 @map("order_id")
-  quotationId       Int?                @map("quotation_id")
-  weeklyReportId    Int?                @map("weekly_report_id")
-  consecutiveNumber String              @unique @map("consecutive_number")
-  reportDate        DateTime            @map("report_date") @db.Date
-  status            String              @default("pending") @map("status")
-  totalInspected    Decimal             @default(0.0) @map("total_inspected") @db.Decimal(12, 2)
-  totalOk           Decimal             @default(0.0) @map("total_ok") @db.Decimal(12, 2)
-  totalNg           Decimal             @default(0.0) @map("total_ng") @db.Decimal(12, 2)
-  totalScrap        Decimal             @default(0.0) @map("total_scrap") @db.Decimal(12, 2)
-  totalRecovered    Decimal             @default(0.0) @map("total_recovered") @db.Decimal(12, 2)
-  observations      String?
-  source            String              @default("v2") @map("source")
-  legacyId          BigInt?             @unique @map("legacy_id")
-  legacyStatus      String?             @map("legacy_status")
-  legacyCsvTable    Json?               @map("legacy_csv_table")
-  syncedAt          DateTime?           @map("synced_at")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  sampleSize        Int?                @default(0) @map("sample_size")
-  sampleNg          Int?                @default(0) @map("sample_ng")
-  sampleApproved    Boolean?            @default(true) @map("sample_approved")
-  sampledAt         DateTime?           @map("sampled_at")
-  signedAt          DateTime?           @map("signed_at")
-  publishedAt       DateTime?           @map("published_at")
-  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  quotation         Quotation?          @relation(fields: [quotationId], references: [id])
-  weeklyReport      WeeklyReport?       @relation(fields: [weeklyReportId], references: [id])
-  sessions          InspectionSession[]
-
-  // Uniqueness is enforced via a partial unique index (source = 'v2' only),
-  // declared in raw migration SQL. Legacy daily_reports legitimately have
-  // multiple rows per (order, date) — confirmed in probe: up to 37 in one day.
-  @@index([orderId], map: "idx_daily_reports_order_id")
-  @@index([reportDate], map: "idx_daily_reports_report_date")
-  @@index([orderId, reportDate], map: "idx_daily_reports_order_id_report_date")
-  @@index([status], map: "idx_daily_reports_status")
-  @@index([source], map: "idx_daily_reports_source")
-  @@map("daily_reports")
+  @@map("order_items")
 }
 
 model InspectionSession {
-  id            Int              @id @default(autoincrement())
-  dailyReportId Int              @map("daily_report_id")
-  shift         Int?
-  status        String           @default("in_progress") @map("status")
-  inspectorName String?          @map("inspector_name")
-  startedAt     DateTime?        @map("started_at")
-  finishedAt    DateTime?        @map("finished_at")
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
-  operadores    String?
-  tabletId      Int              @map("tablet_id")
-  items         InspectionItem[]
-  dailyReport   DailyReport      @relation(fields: [dailyReportId], references: [id], onDelete: Cascade)
-  tablet        Tablet           @relation(fields: [tabletId], references: [id])
+  id          Int       @id @default(autoincrement()) @map("id_session")
+  supervisorId String   @map("id_supervisor")
+  tabletId    String    @map("id_tablet")
+  orderItemId Int       @map("id_order_item")
+  status      String
+  fechaInicio DateTime? @map("fecha_inicio")
+  fechaFin    DateTime? @map("fecha_fin")
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
 
-  @@unique([dailyReportId, tabletId], name: "uq_inspection_sessions_report_tablet")
-  @@index([dailyReportId], map: "idx_inspection_sessions_daily_report_id")
-  @@index([tabletId], map: "idx_inspection_sessions_tablet_id")
-  @@index([status], map: "idx_inspection_sessions_status")
   @@map("inspection_sessions")
 }
 
-model InspectionItem {
-  id          Int               @id @default(autoincrement())
-  sessionId   Int               @map("session_id")
-  description String?
-  inspected   Decimal           @default(0.0) @db.Decimal(12, 2)
-  ok          Decimal           @default(0.0) @db.Decimal(12, 2)
-  ng          Decimal           @default(0.0) @db.Decimal(12, 2)
-  scrap       Decimal           @default(0.0) @db.Decimal(12, 2)
-  recovered   Decimal           @default(0.0) @db.Decimal(12, 2)
-  incidents   Json              @default("{}")
-  lote        String?
-  series      String?
-  otro        String?
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
-  session     InspectionSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+model DailyReport {
+  id            Int                  @id @default(autoincrement())
+  orderItemId   Int                  @map("order_item_id")
+  shift         String?
+  reportDate    DateTime             @map("report_date") @db.Date
+  createdAt     DateTime?            @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime?            @map("updated_at") @db.Timestamptz(6)
+  orderItem     OrderItem            @relation(fields: [orderItemId], references: [id])
+  items         DailyReportItem[]
+  operators     DailyReportOperator[]
 
-  @@index([sessionId], map: "idx_inspection_items_session_id")
-  @@map("inspection_items")
+  @@map("daily_reports")
 }
 
-enum Rol {
-  supervisor
-  capturacion
-  inspector
-  admin
-  lider
+model DailyReportItem {
+  id              Int                    @id @default(autoincrement())
+  dailyReportId   Int                    @map("daily_report_id")
+  totalPieces     Int?                   @map("total_pieces")
+  okPieces        Int?                   @map("ok_pieces")
+  ngPieces        Int?                   @map("ng_pieces")
+  scrapPieces     Int?                   @map("scrap_pieces")
+  recoveredPieces Int?                   @map("recovered_pieces")
+  dailyReport     DailyReport            @relation(fields: [dailyReportId], references: [id])
+  incidents       DailyReportIncident[]
+
+  @@map("daily_report_items")
 }
 
-model SyncState {
-  entity               String    @id
-  lastSuccessfulSyncAt DateTime? @map("last_successful_sync_at")
-  lastAttemptAt        DateTime? @map("last_attempt_at")
-  lastError            String?   @map("last_error")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+model DailyReportOperator {
+  id            Int         @id @default(autoincrement())
+  dailyReportId Int         @map("daily_report_id")
+  operatorName  String?     @map("operator_name") @db.VarChar
+  dailyReport   DailyReport @relation(fields: [dailyReportId], references: [id])
 
-  @@map("sync_state")
+  @@map("daily_report_operators")
 }
 
-model SyncRun {
-  id          Int       @id @default(autoincrement())
-  startedAt   DateTime  @default(now()) @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  status      String
-  stats       Json      @default("{}")
-  error       String?
-  triggeredBy String    @default("cron") @map("triggered_by")
+model DailyReportIncident {
+  id               Int             @id @default(autoincrement())
+  dailyReportItemId Int            @map("daily_report_item_id")
+  incidentName     String?         @map("incident_name") @db.VarChar
+  affectedPieces   Int?            @map("affected_pieces")
+  dailyReportItem  DailyReportItem @relation(fields: [dailyReportItemId], references: [id])
 
-  @@index([startedAt(sort: Desc)], map: "idx_sync_runs_started_at")
-  @@index([status], map: "idx_sync_runs_status")
-  @@map("sync_runs")
+  @@map("daily_report_incidents")
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      Usuario   @relation(fields: [userId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      Usuario   @relation(fields: [userId], references: [id])
+
+  @@map("password_reset_tokens")
 }

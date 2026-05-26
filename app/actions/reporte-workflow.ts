@@ -52,7 +52,7 @@ export async function registerSamplingAction(
 
   const result = await registerSamplingDecision({
     consecutiveNumber,
-    supervisorId: session.userId,
+    supervisorId: String(session.userId),
     decision,
     defectsByItem: parseDefects(formData),
     notes,
@@ -89,7 +89,7 @@ export async function signReporteAction(
   const consecutiveNumber = String(formData.get('consecutiveNumber') ?? '').trim()
   if (!consecutiveNumber) return { error: 'Reporte requerido' }
 
-  const result = await signReporte(consecutiveNumber, session.userId)
+  const result = await signReporte(consecutiveNumber, String(session.userId))
 
   if (!result.ok) {
     return {
@@ -119,7 +119,7 @@ export async function publishReporteAction(
   const consecutiveNumber = String(formData.get('consecutiveNumber') ?? '').trim()
   if (!consecutiveNumber) return { error: 'Reporte requerido' }
 
-  const result = await publishReporte(consecutiveNumber, session.userId)
+  const result = await publishReporte(consecutiveNumber, String(session.userId))
 
   if (!result.ok) {
     return {

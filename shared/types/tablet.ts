@@ -1,5 +1,6 @@
 export type TabletRow = {
   id: number
+  codigotablet: string
   alias: string | null
   modelo: string
   serie: string

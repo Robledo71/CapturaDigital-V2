@@ -19,6 +19,7 @@ interface EditarTabletModalProps {
 interface FormValues {
   modelo: string
   serie: string
+  codigotablet: string
   alias: string
   plantaId: string
   notes: string
@@ -53,6 +54,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
   const [values, setValues] = useState<FormValues>({
     modelo: tablet.modelo,
     serie: tablet.serie,
+    codigotablet: tablet.codigotablet,
     alias: tablet.alias ?? '',
     plantaId: tablet.plantaId !== null ? String(tablet.plantaId) : '',
     notes: tablet.notes ?? '',
@@ -113,6 +115,26 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
             )}
 
             <div className="grid grid-cols-2 gap-4">
+
+              {/* Código tablet — col span 2 */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <label htmlFor="codigotablet-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                  Código de tablet
+                </label>
+                <input
+                  id="codigotablet-edit-tablet"
+                  name="codigotablet"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ej. CC1-1234"
+                  value={values.codigotablet}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.codigotablet && (
+                  <p className="text-red-400 text-xs">{state.errors.codigotablet[0]}</p>
+                )}
+              </div>
 
               {/* Modelo */}
               <div className="flex flex-col gap-1">

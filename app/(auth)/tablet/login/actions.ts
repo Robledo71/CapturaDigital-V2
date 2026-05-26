@@ -2,7 +2,6 @@
 
 import { redirect } from 'next/navigation'
 import { TabletLoginSchema } from '@/shared/schemas/auth'
-import { loginUsuario } from '@/back/services/authService'
 import { createSession } from '@/back/services/session'
 
 export type LoginState = {
@@ -34,18 +33,51 @@ export async function loginTabletUser(
     return { errors: validated.error.flatten().fieldErrors }
   }
 
-  const result = await loginUsuario(validated.data.identifier, validated.data.password)
+  let rol: string
+  let userId: number
+  let codigoEmpleado: string
+  let nombreCompleto: string
+  let accessToken: string
+  let refreshToken: string
 
-  if (!result.ok) {
-    return { errors: { general: [ERROR_MESSAGES[result.reason] ?? 'Error al iniciar sesión.'] } }
+  try {
+    const res = await fetch(`${process.env.QSYNC_API_URL}/qb_sync/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-App-Token': process.env.X_APP_TOKEN ?? '',
+      },
+      body: JSON.stringify({
+        codigoEmpleado: validated.data.identifier,
+        contrasena: validated.data.password,
+      }),
+    })
+
+    const body = await res.json().catch(() => ({}))
+
+    if (!res.ok || body.success === false) {
+      const reason = body?.reason ?? 'general'
+      return { errors: { general: [ERROR_MESSAGES[reason] ?? 'Credenciales incorrectas.'] } }
+    }
+
+    rol = body.data.user.rol
+    userId = Number(body.data.user.id)
+    codigoEmpleado = validated.data.identifier
+    nombreCompleto = body.data.user.nombreCompleto ?? ''
+    accessToken = body.data.accessToken
+    refreshToken = body.data.refreshToken
+  } catch {
+    return { errors: { general: ['No se pudo conectar con el servidor. Intenta nuevamente.'] } }
   }
 
   await createSession({
-    userId: result.userId,
-    rol: result.rol,
-    codigoEmpleado: result.codigoEmpleado,
-    nombreCompleto: result.nombreCompleto,
+    userId,
+    rol: rol as 'admin' | 'supervisor' | 'capturacion' | 'lider',
+    codigoEmpleado,
+    nombreCompleto,
+    accessToken,
+    refreshToken,
   })
 
-  redirect(result.rol === 'supervisor' ? '/supervisor' : '/capturacion')
+  redirect(rol === 'supervisor' || rol === 'lider' ? '/supervisor' : rol === 'admin' ? '/admin' : '/capturacion')
 }

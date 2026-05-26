@@ -132,7 +132,7 @@ export function MisDescargasClient() {
 
       {/* Empty state — not yet hydrated */}
       {records === null && (
-        <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0f2038] overflow-hidden">
+        <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
@@ -169,7 +169,7 @@ export function MisDescargasClient() {
       {/* Table — hydrated and has records */}
       {records !== null && records.length > 0 && (
         <>
-          <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0f2038] overflow-hidden">
+          <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">

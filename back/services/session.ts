@@ -3,14 +3,19 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
 export type JWTPayload = {
-  userId: string
+  userId: number
   rol: 'admin' | 'supervisor' | 'capturacion' | 'lider'
   codigoEmpleado: string
   nombreCompleto: string
+  accessToken: string
+  refreshToken: string
   expiresAt: string
 }
 
-const secret = new TextEncoder().encode(process.env.SESSION_SECRET!)
+if (!process.env.SESSION_SECRET) {
+  throw new Error('SESSION_SECRET env var is not set — cannot start the session module')
+}
+const secret = new TextEncoder().encode(process.env.SESSION_SECRET)
 const COOKIE = 'session'
 const EXPIRY = '8h'
 

@@ -1,71 +1,20 @@
-import type { PrismaClient } from '@prisma/client';
+// TODO Fase 4: sync deshabilitado — SyncState y SyncRun eliminados del esquema.
 
 export type SyncEntity =
   | 'clients'
   | 'plants'
   | 'orders'
   | 'quotations'
-  | 'daily_reports';
-
-export async function getLastSuccessfulSyncAt(
-  prisma: PrismaClient,
-  entity: SyncEntity
-): Promise<Date | null> {
-  const state = await prisma.syncState.findUnique({
-    where: { entity },
-    select: { lastSuccessfulSyncAt: true },
-  });
-  return state?.lastSuccessfulSyncAt ?? null;
-}
-
-export async function markSyncAttempt(
-  prisma: PrismaClient,
-  entity: SyncEntity,
-  attemptAt: Date
-): Promise<void> {
-  await prisma.syncState.upsert({
-    where: { entity },
-    create: { entity, lastAttemptAt: attemptAt },
-    update: { lastAttemptAt: attemptAt, lastError: null },
-  });
-}
-
-export async function markSyncSuccess(
-  prisma: PrismaClient,
-  entity: SyncEntity,
-  successAt: Date
-): Promise<void> {
-  await prisma.syncState.upsert({
-    where: { entity },
-    create: {
-      entity,
-      lastSuccessfulSyncAt: successAt,
-      lastAttemptAt: successAt,
-    },
-    update: { lastSuccessfulSyncAt: successAt, lastError: null },
-  });
-}
-
-export async function markSyncFailure(
-  prisma: PrismaClient,
-  entity: SyncEntity,
-  error: string
-): Promise<void> {
-  await prisma.syncState.upsert({
-    where: { entity },
-    create: { entity, lastAttemptAt: new Date(), lastError: error },
-    update: { lastAttemptAt: new Date(), lastError: error },
-  });
-}
+  | 'daily_reports'
 
 export type EntityStats = {
-  pulled: number;
-  upserted: number;
-  skipped: number;
-  errors: number;
-};
+  pulled: number
+  upserted: number
+  skipped: number
+  errors: number
+}
 
-export type SyncRunStats = Record<SyncEntity, EntityStats>;
+export type SyncRunStats = Record<SyncEntity, EntityStats>
 
 export function newRunStats(): SyncRunStats {
   return {
@@ -74,30 +23,24 @@ export function newRunStats(): SyncRunStats {
     orders: { pulled: 0, upserted: 0, skipped: 0, errors: 0 },
     quotations: { pulled: 0, upserted: 0, skipped: 0, errors: 0 },
     daily_reports: { pulled: 0, upserted: 0, skipped: 0, errors: 0 },
-  };
+  }
 }
 
-export async function recordSyncRun(
-  prisma: PrismaClient,
-  args: {
-    startedAt: Date;
-    completedAt: Date;
-    status: 'ok' | 'partial' | 'failed';
-    stats: SyncRunStats;
-    error?: string;
-    triggeredBy?: string;
-  }
-): Promise<number> {
-  const run = await prisma.syncRun.create({
-    data: {
-      startedAt: args.startedAt,
-      completedAt: args.completedAt,
-      status: args.status,
-      stats: args.stats as unknown as object,
-      error: args.error,
-      triggeredBy: args.triggeredBy ?? 'cron',
-    },
-    select: { id: true },
-  });
-  return run.id;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getLastSuccessfulSyncAt(_prisma: any, _entity: SyncEntity): Promise<Date | null> {
+  return null
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function markSyncAttempt(_prisma: any, _entity: SyncEntity, _attemptAt: Date): Promise<void> {}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function markSyncSuccess(_prisma: any, _entity: SyncEntity, _successAt: Date): Promise<void> {}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function markSyncFailure(_prisma: any, _entity: SyncEntity, _error: string): Promise<void> {}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function recordSyncRun(_prisma: any, _args: any): Promise<number> {
+  return 0
 }

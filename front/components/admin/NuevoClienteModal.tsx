@@ -72,7 +72,7 @@ export function NuevoClienteModal({ onClose, onSuccess }: NuevoClienteModalProps
       aria-labelledby="modal-nuevo-cliente-titulo"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
-      <div className="bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-md mx-4">
+      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-md mx-4">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-blue-200 dark:border-[#1a2d4d]">

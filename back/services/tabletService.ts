@@ -1,17 +1,12 @@
 import 'server-only'
-import { Prisma } from '@prisma/client'
+import { prisma } from '@/back/db/prisma'
 import type { TabletRow } from '@/shared/types/tablet'
-import {
-  findAllTablets,
-  findTabletById,
-  findTabletBySerial,
-  createTablet as repoCreateTablet,
-  updateTablet as repoUpdateTablet,
-} from '@/back/repositories/tabletRepository'
 
-type DbTabletWithPlant = Awaited<ReturnType<typeof findAllTablets>>[number]
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
-function formatUltimaActividad(lastSeenAt: Date | null): string {
+export function formatUltimaActividad(lastSeenAt: Date | null): string {
   if (!lastSeenAt) return 'Nunca'
 
   const diffSeconds = Math.floor((Date.now() - lastSeenAt.getTime()) / 1000)
@@ -22,31 +17,81 @@ function formatUltimaActividad(lastSeenAt: Date | null): string {
   return `hace ${Math.floor(diffSeconds / 86400)} días`
 }
 
-const formatRelativeTime = formatUltimaActividad
+function buildPlantPrefix(plantName: string): string {
+  const words = plantName.trim().split(/\s+/).slice(0, 3)
+  const raw = words.join('').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  return raw.slice(0, 12) || 'GEN'
+}
 
-function mapToRow(dbTablet: DbTabletWithPlant): TabletRow {
+function generateCodigoTablet(plantPrefix?: string): string {
+  const prefix = plantPrefix ?? 'GEN'
+  const digits = String(Math.floor(1000 + Math.random() * 9000))
+  return `${prefix}-${digits}`
+}
+
+function apiHeaders(accessToken: string): Record<string, string> {
   return {
-    id: dbTablet.id,
-    alias: dbTablet.alias ?? null,
-    modelo: dbTablet.model,
-    serie: dbTablet.serialNumber,
-    plantaId: dbTablet.plantId,
-    plantaNombre: dbTablet.plant?.name ?? null,
-    inspector: dbTablet.currentInspectorName ?? null,
-    estado: dbTablet.status,
-    ultimaActividad: formatUltimaActividad(dbTablet.lastSeenAt),
-    notes: dbTablet.notes ?? null,
+    'Content-Type': 'application/json',
+    'X-App-Token': process.env.X_APP_TOKEN ?? '',
+    'Authorization': `Bearer ${accessToken}`,
   }
 }
 
-export async function getAllTablets(): Promise<TabletRow[]> {
-  const rows = await findAllTablets()
-  return rows.map(mapToRow)
+function baseUrl(): string {
+  return (process.env.QSYNC_API_URL ?? '').replace(/\/$/, '')
 }
+
+// ---------------------------------------------------------------------------
+// External API shape — handles snake_case and camelCase responses
+// ---------------------------------------------------------------------------
+
+type ExternalTablet = {
+  id?: number
+  codigoTablet?: string
+  codigo_tablet?: string
+  alias?: string
+  model?: string
+  serialNumber?: string
+  serial_number?: string
+  plantId?: number | null
+  plant_id?: number | null
+  plantName?: string | null
+  plant_name?: string | null
+  status?: string
+  lastSeenAt?: string | null
+  last_seen_at?: string | null
+  currentInspectorName?: string | null
+  current_inspector_name?: string | null
+  notes?: string | null
+}
+
+function mapExternalTablet(t: ExternalTablet): TabletRow {
+  const lastSeenRaw = t.lastSeenAt ?? t.last_seen_at ?? null
+  const lastSeenDate = lastSeenRaw ? new Date(lastSeenRaw) : null
+
+  return {
+    id: t.id ?? 0,
+    codigotablet: t.codigoTablet ?? t.codigo_tablet ?? '',
+    alias: t.alias ?? null,
+    modelo: t.model ?? '',
+    serie: t.serialNumber ?? t.serial_number ?? '',
+    plantaId: t.plantId ?? t.plant_id ?? null,
+    plantaNombre: t.plantName ?? t.plant_name ?? null,
+    inspector: t.currentInspectorName ?? t.current_inspector_name ?? null,
+    estado: t.status ?? 'inactiva',
+    ultimaActividad: formatUltimaActividad(lastSeenDate),
+    notes: t.notes ?? null,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export type CreateTabletInput = {
   modelo: string
   serie: string
+  codigotablet?: string
   alias?: string
   plantaId?: number
   notes?: string
@@ -54,55 +99,13 @@ export type CreateTabletInput = {
 
 export type CreateTabletResult =
   | { ok: true; tablet: TabletRow }
-  | { ok: false; reason: 'duplicate_serie' }
-
-export async function createTablet(
-  input: CreateTabletInput,
-): Promise<CreateTabletResult> {
-  try {
-    const dbTablet = await repoCreateTablet({
-      model: input.modelo,
-      serialNumber: input.serie,
-      alias: input.alias,
-      plantId: input.plantaId,
-      notes: input.notes,
-    })
-
-    // Re-fetch with plant relation for a consistent shape
-    const all = await findAllTablets()
-    const withPlant = all.find((t) => t.id === dbTablet.id)
-
-    const tablet: TabletRow = withPlant
-      ? mapToRow(withPlant)
-      : {
-          id: dbTablet.id,
-          alias: dbTablet.alias ?? null,
-          modelo: dbTablet.model,
-          serie: dbTablet.serialNumber,
-          plantaId: dbTablet.plantId,
-          plantaNombre: null,
-          inspector: dbTablet.currentInspectorName ?? null,
-          estado: dbTablet.status,
-          ultimaActividad: formatUltimaActividad(dbTablet.lastSeenAt),
-          notes: dbTablet.notes ?? null,
-        }
-
-    return { ok: true, tablet }
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2002'
-    ) {
-      return { ok: false, reason: 'duplicate_serie' }
-    }
-    throw err
-  }
-}
+  | { ok: false; reason: 'duplicate_serie' | 'duplicate_codigo' }
 
 export type UpdateTabletInput = {
   id: number
   modelo: string
   serie: string
+  codigotablet?: string
   alias?: string | null
   plantaId?: number | null
   notes?: string | null
@@ -111,57 +114,146 @@ export type UpdateTabletInput = {
 
 export type UpdateTabletResult =
   | { ok: true; tablet: TabletRow }
-  | { ok: false; reason: 'not_found' | 'duplicate_serie' }
+  | { ok: false; reason: 'not_found' | 'duplicate_serie' | 'duplicate_codigo' }
+
+// ---------------------------------------------------------------------------
+// Admin CRUD — external API
+// ---------------------------------------------------------------------------
+
+export async function getAllTablets(accessToken: string): Promise<TabletRow[]> {
+  const res = await fetch(`${baseUrl()}/qb_sync/tablets`, {
+    headers: apiHeaders(accessToken),
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    throw new Error(`getAllTablets: API responded ${res.status}`)
+  }
+
+  const body = await res.json()
+  const data: ExternalTablet[] = Array.isArray(body.data) ? body.data : []
+  return data.map(mapExternalTablet)
+}
+
+export async function createTablet(
+  input: CreateTabletInput,
+  accessToken: string,
+): Promise<CreateTabletResult> {
+  // Determine codigo_tablet: use provided value, or generate a prefixed one.
+  // Plant name for prefix is looked up from the external tablets list if available,
+  // but for generation we just use a safe random code and rely on the API to
+  // reject a duplicate (extremely unlikely with 4-digit suffix).
+  let codigoTablet = input.codigotablet?.trim() ?? ''
+  if (!codigoTablet) {
+    // Derive prefix from plantaId name if possible — we use a best-effort local
+    // approach since we no longer have direct DB access here.
+    let prefix = 'GEN'
+    if (input.plantaId) {
+      try {
+        // Re-use the external tablets endpoint to find any tablet in this plant
+        // and extract its prefix, falling back to 'GEN'.
+        const listRes = await fetch(`${baseUrl()}/qb_sync/tablets`, {
+          headers: apiHeaders(accessToken),
+          cache: 'no-store',
+        })
+        if (listRes.ok) {
+          const listBody = await listRes.json()
+          const tablets: ExternalTablet[] = Array.isArray(listBody.data) ? listBody.data : []
+          const sample = tablets.find(
+            (t) => (t.plantId ?? t.plant_id) === input.plantaId,
+          )
+          const plantName = sample?.plantName ?? sample?.plant_name
+          if (plantName) {
+            prefix = buildPlantPrefix(plantName)
+          }
+        }
+      } catch {
+        // Prefix stays 'GEN' on any fetch failure
+      }
+    }
+    codigoTablet = generateCodigoTablet(prefix)
+  }
+
+  const res = await fetch(`${baseUrl()}/qb_sync/tablets`, {
+    method: 'POST',
+    headers: apiHeaders(accessToken),
+    body: JSON.stringify({
+      model: input.modelo,
+      serial_number: input.serie,
+      codigo_tablet: codigoTablet,
+      alias: input.alias,
+      planta_id: input.plantaId,
+      notes: input.notes,
+    }),
+  })
+
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    const message: string = body?.message ?? body?.error ?? ''
+    if (/codigo|code/i.test(message)) {
+      return { ok: false, reason: 'duplicate_codigo' }
+    }
+    return { ok: false, reason: 'duplicate_serie' }
+  }
+
+  if (!res.ok) {
+    throw new Error(`createTablet: API responded ${res.status}`)
+  }
+
+  const body = await res.json()
+  const raw: ExternalTablet = body.data ?? body.tablet ?? body
+  return { ok: true, tablet: mapExternalTablet(raw) }
+}
 
 export async function updateTablet(
   input: UpdateTabletInput,
+  accessToken: string,
 ): Promise<UpdateTabletResult> {
-  const existing = await findTabletById(input.id)
-  if (!existing) {
+  const codigotablet = input.codigotablet?.trim()
+  if (!codigotablet) {
     return { ok: false, reason: 'not_found' }
   }
 
-  try {
-    await repoUpdateTablet(input.id, {
-      model: input.modelo,
-      serialNumber: input.serie,
-      alias: input.alias,
-      plantId: input.plantaId,
-      notes: input.notes,
-      status: input.estado,
-    })
+  const res = await fetch(
+    `${baseUrl()}/qb_sync/tablets/${encodeURIComponent(codigotablet)}`,
+    {
+      method: 'PUT',
+      headers: apiHeaders(accessToken),
+      body: JSON.stringify({
+        model: input.modelo,
+        alias: input.alias,
+        status: input.estado,
+        plant_id: input.plantaId,
+        notes: input.notes,
+      }),
+    },
+  )
 
-    // Re-fetch with plant relation to return consistent shape
-    const all = await findAllTablets()
-    const updated = all.find((t) => t.id === input.id)
-
-    if (!updated) {
-      return { ok: false, reason: 'not_found' }
-    }
-
-    return { ok: true, tablet: mapToRow(updated) }
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2025'
-    ) {
-      return { ok: false, reason: 'not_found' }
-    }
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2002'
-    ) {
-      return { ok: false, reason: 'duplicate_serie' }
-    }
-    throw err
+  if (res.status === 404) {
+    return { ok: false, reason: 'not_found' }
   }
+
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    const message: string = body?.message ?? body?.error ?? ''
+    if (/codigo|code/i.test(message)) {
+      return { ok: false, reason: 'duplicate_codigo' }
+    }
+    return { ok: false, reason: 'duplicate_serie' }
+  }
+
+  if (!res.ok) {
+    throw new Error(`updateTablet: API responded ${res.status}`)
+  }
+
+  const body = await res.json()
+  const raw: ExternalTablet = body.data ?? body.tablet ?? body
+  return { ok: true, tablet: mapExternalTablet(raw) }
 }
 
 // ---------------------------------------------------------------------------
-// Supervisor view
+// Supervisor view — still uses Prisma (not migrated yet)
 // ---------------------------------------------------------------------------
-
-import { prisma } from '@/back/db/prisma'
 
 export type SupervisorTabletRow = {
   id: number
@@ -175,30 +267,15 @@ export type SupervisorTabletRow = {
   isOnline: boolean
 }
 
-export async function getSupervisorTablets(supervisorId: string): Promise<SupervisorTabletRow[]> {
-  // Obtener los plantIds de las órdenes del supervisor
-  const orderPlants = await prisma.order.findMany({
-    where: { supervisorId },
-    select: { plantId: true },
-    distinct: ['plantId'],
-  })
-  const plantIds = orderPlants.map((o) => o.plantId)
-
+export async function getSupervisorTablets(_supervisorId: string): Promise<SupervisorTabletRow[]> {
+  // TODO Fase 2: sessions relation removed from Tablet in new schema
   const tablets = await prisma.tablet.findMany({
-    where: plantIds.length > 0 ? { plantId: { in: plantIds } } : {},
-    include: {
-      plant: true,
-      sessions: {
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      },
-    },
+    include: { plant: true },
     orderBy: [{ alias: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
   })
 
   return tablets.map((t) => {
-    const lastSession = t.sessions[0]
-    const lastInspector = t.currentInspectorName ?? lastSession?.operadores ?? null
+    const lastInspector = t.currentInspectorName ?? null
     const isOnline =
       t.lastSeenAt != null &&
       Date.now() - new Date(t.lastSeenAt).getTime() < 10 * 60 * 1000
@@ -211,7 +288,7 @@ export async function getSupervisorTablets(supervisorId: string): Promise<Superv
       status: t.status as 'activa' | 'inactiva' | 'mantenimiento',
       plantName: t.plant?.name ?? null,
       lastInspector,
-      lastUsedAt: t.lastSeenAt ? formatRelativeTime(t.lastSeenAt) : null,
+      lastUsedAt: t.lastSeenAt ? formatUltimaActividad(t.lastSeenAt) : null,
       isOnline,
     }
   })

@@ -36,29 +36,29 @@ const ESTATUS_CONFIG: Record<
   { dot: string; text: string; pill: string }
 > = {
   Pendiente: {
-    dot: 'bg-yellow-400',
-    text: 'text-yellow-300',
-    pill: 'bg-yellow-500/10 border border-yellow-500/20',
+    dot: 'bg-yellow-600 dark:bg-yellow-400',
+    text: 'text-yellow-700 dark:text-yellow-300',
+    pill: 'bg-yellow-100 border border-yellow-300 dark:bg-yellow-500/10 dark:border-yellow-500/20',
   },
   Enviado: {
-    dot: 'bg-blue-400',
-    text: 'text-blue-300',
-    pill: 'bg-blue-500/10 border border-blue-500/20',
+    dot: 'bg-blue-600 dark:bg-blue-400',
+    text: 'text-blue-700 dark:text-blue-300',
+    pill: 'bg-blue-100 border border-blue-300 dark:bg-blue-500/10 dark:border-blue-500/20',
   },
   'En muestreo': {
-    dot: 'bg-violet-400',
-    text: 'text-violet-300',
-    pill: 'bg-violet-500/10 border border-violet-500/20',
+    dot: 'bg-violet-600 dark:bg-violet-400',
+    text: 'text-violet-700 dark:text-violet-300',
+    pill: 'bg-violet-100 border border-violet-300 dark:bg-violet-500/10 dark:border-violet-500/20',
   },
   Firmado: {
-    dot: 'bg-slate-400',
+    dot: 'bg-slate-500 dark:bg-slate-400',
     text: 'text-slate-600 dark:text-slate-300',
-    pill: 'bg-slate-500/10 border border-slate-500/20',
+    pill: 'bg-slate-100 border border-slate-300 dark:bg-slate-500/10 dark:border-slate-500/20',
   },
   Publicado: {
-    dot: 'bg-green-400',
-    text: 'text-green-300',
-    pill: 'bg-green-500/10 border border-green-500/20',
+    dot: 'bg-green-600 dark:bg-green-400',
+    text: 'text-green-700 dark:text-green-300',
+    pill: 'bg-green-100 border border-green-300 dark:bg-green-500/10 dark:border-green-500/20',
   },
 }
 
@@ -353,11 +353,11 @@ export function ReportesPage({ initialReportes, mode, unassignedCount, page, tot
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829]">
+        <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829]">
           <div className="overflow-x-auto overflow-y-hidden">
             <table className="w-full text-sm" aria-label="Tabla de reportes de inspección">
               <thead>
-                <tr className="border-b border-blue-200 dark:border-[#1a2d4d] bg-blue-50 dark:bg-transparent">
+                <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
                   <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap">
                     ID
                   </th>

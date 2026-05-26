@@ -25,16 +25,16 @@ function AdminStatCard({ label, value, subtitle, dotColor, icon }: AdminStatCard
     red:    'bg-red-400',
   }
   return (
-    <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-5 flex flex-col gap-3">
+    <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClasses[dotColor]}`} aria-hidden="true" />
-          <span className="text-xs text-blue-600 dark:text-slate-400">{label}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
         </div>
         <span className="text-slate-600" aria-hidden="true">{icon}</span>
       </div>
-      <p className="text-3xl font-bold text-blue-950 dark:text-white leading-none">{value}</p>
-      <p className="text-xs text-blue-600 dark:text-slate-400">{subtitle}</p>
+      <p className="text-3xl font-bold text-slate-900 dark:text-white leading-none">{value}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
     </div>
   )
 }
@@ -49,10 +49,10 @@ function QuickAction({ label, href, icon }: QuickActionProps) {
   return (
     <Link
       href={href}
-      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors p-6 text-center"
+      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors p-6 text-center"
     >
-      <span className="text-blue-600 dark:text-slate-400">{icon}</span>
-      <span className="text-sm text-blue-700 dark:text-slate-300 font-medium">{label}</span>
+      <span className="text-slate-500 dark:text-slate-400">{icon}</span>
+      <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{label}</span>
     </Link>
   )
 }
@@ -60,27 +60,27 @@ function QuickAction({ label, href, icon }: QuickActionProps) {
 function RolBadge({ rol }: { rol: UserRol }) {
   if (rol === 'admin') {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20">
         Administrador
       </span>
     )
   }
   if (rol === 'supervisor') {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20">
         Supervisor
       </span>
     )
   }
   if (rol === 'lider') {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-500/10 dark:text-yellow-300 dark:border-yellow-500/20">
         Líder
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-500/10 text-violet-300 border border-violet-500/20">
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 border border-violet-300 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20">
       Capturación
     </span>
   )
@@ -89,14 +89,14 @@ function RolBadge({ rol }: { rol: UserRol }) {
 function EstadoBadge({ isActive }: { isActive: boolean }) {
   if (isActive) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-300">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" aria-hidden="true" />
         Activo
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-blue-600 dark:text-slate-400">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400">
       <span className="w-1.5 h-1.5 rounded-full bg-slate-500" aria-hidden="true" />
       Inactivo
     </span>
@@ -143,8 +143,8 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-blue-950 dark:text-white">Bienvenido, Administrador</h1>
-          <p className="text-sm text-blue-600 dark:text-slate-400 mt-0.5">Sistema de administración · Quality Bolca</p>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Bienvenido, Administrador</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Sistema de administración · Quality Bolca</p>
         </div>
         <p className="text-sm text-slate-500 whitespace-nowrap capitalize">{today}</p>
       </div>
@@ -197,7 +197,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
 
       {/* Quick actions */}
       <section aria-labelledby="acciones-heading">
-        <h2 id="acciones-heading" className="text-sm font-semibold text-blue-600 dark:text-slate-400 uppercase tracking-wider mb-3">
+        <h2 id="acciones-heading" className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
           Acciones rápidas
         </h2>
         <div className="grid grid-cols-4 gap-4">
@@ -227,7 +227,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
       {/* Recent users table */}
       <section aria-labelledby="usuarios-heading">
         <div className="flex items-center justify-between mb-3">
-          <h2 id="usuarios-heading" className="text-sm font-semibold text-blue-600 dark:text-slate-400 uppercase tracking-wider">
+          <h2 id="usuarios-heading" className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Usuarios recientes
           </h2>
           <Link
@@ -238,7 +238,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
           </Link>
         </div>
 
-        <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] overflow-hidden">
+        <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" aria-label="Usuarios recientes">
               <thead>
@@ -273,21 +273,21 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0" aria-hidden="true">
-                            <span className="text-blue-950 dark:text-white text-xs font-bold">
+                            <span className="text-white text-xs font-bold">
                               {user.nombreCompleto.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                             </span>
                           </div>
-                          <span className="text-slate-200 font-medium">{user.nombreCompleto}</span>
+                          <span className="text-slate-900 dark:text-slate-200 font-medium">{user.nombreCompleto}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-mono text-blue-600 dark:text-slate-400 text-xs whitespace-nowrap">
+                      <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
                         {user.codigoEmpleado}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <RolBadge rol={user.rol as UserRol} />
                       </td>
-                      <td className="px-4 py-3 text-blue-600 dark:text-slate-400 text-sm whitespace-nowrap">
-                        {user.planta}
+                      <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">
+                        {user.plant?.name ?? '—'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <EstadoBadge isActive={user.isActive} />

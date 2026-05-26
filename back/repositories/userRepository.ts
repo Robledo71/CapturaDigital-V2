@@ -7,22 +7,25 @@ export async function findByCodigoEmpleado(codigoEmpleado: string) {
 }
 
 export async function findByCorreo(correo: string) {
-  return prisma.usuario.findUnique({ where: { correo } })
+  return prisma.usuario.findFirst({ where: { correo } })
 }
 
-export async function findById(id: string) {
+export async function findById(id: number) {
   return prisma.usuario.findUnique({ where: { id } })
 }
 
 export async function findAllUsuarios() {
-  return prisma.usuario.findMany({ orderBy: { createdAt: 'asc' } })
+  return prisma.usuario.findMany({
+    include: { plant: { select: { name: true } } },
+    orderBy: { createdAt: 'asc' },
+  })
 }
 
 export type CreateUsuarioData = {
   nombreCompleto: string
   codigoEmpleado: string
   puesto: string
-  planta: string
+  plantaId?: number | null
   rol: 'supervisor' | 'capturacion' | 'admin' | 'lider'
   contrasena: string
   correo: string
@@ -34,7 +37,7 @@ export async function createUsuario(data: CreateUsuarioData) {
       nombreCompleto: data.nombreCompleto,
       codigoEmpleado: data.codigoEmpleado,
       puesto: data.puesto,
-      planta: data.planta,
+      plantaId: data.plantaId ?? null,
       rol: data.rol as Rol,
       contrasena: data.contrasena,
       correo: data.correo,
@@ -46,12 +49,12 @@ export type UpdateUsuarioData = {
   nombreCompleto?: string
   codigoEmpleado?: string
   puesto?: string
-  planta?: string
+  plantaId?: number | null
   rol?: 'admin' | 'supervisor' | 'capturacion' | 'lider'
   correo?: string
 }
 
-export async function updateUsuario(id: string, data: UpdateUsuarioData) {
+export async function updateUsuario(id: number, data: UpdateUsuarioData) {
   return prisma.usuario.update({
     where: { id },
     data: {
@@ -61,21 +64,21 @@ export async function updateUsuario(id: string, data: UpdateUsuarioData) {
   })
 }
 
-export async function incrementFailedAttempts(id: string) {
+export async function incrementFailedAttempts(id: number) {
   return prisma.usuario.update({
     where: { id },
     data: { failedLoginAttempts: { increment: 1 } },
   })
 }
 
-export async function lockAccount(id: string, until: Date) {
+export async function lockAccount(id: number, until: Date) {
   return prisma.usuario.update({
     where: { id },
     data: { lockedUntil: until, failedLoginAttempts: 0 },
   })
 }
 
-export async function resetFailedAttempts(id: string) {
+export async function resetFailedAttempts(id: number) {
   return prisma.usuario.update({
     where: { id },
     data: { failedLoginAttempts: 0, lockedUntil: null },
@@ -83,11 +86,12 @@ export async function resetFailedAttempts(id: string) {
 }
 
 export type UsuarioRow = {
-  id: string
+  id: number
   nombreCompleto: string
   codigoEmpleado: string
   puesto: string
-  planta: string
+  plantaId: number | null
+  plant: { name: string } | null
   rol: string
   correo: string
   isActive: boolean
@@ -106,7 +110,8 @@ export async function findUsuariosPaginated(
         nombreCompleto: true,
         codigoEmpleado: true,
         puesto: true,
-        planta: true,
+        plantaId: true,
+        plant: { select: { name: true } },
         rol: true,
         correo: true,
         isActive: true,

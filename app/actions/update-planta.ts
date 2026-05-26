@@ -28,6 +28,7 @@ export async function updatePlanta(
   if (!session || session.rol !== 'admin') {
     return { errors: { general: ['No autorizado'] } }
   }
+  const accessToken = session.accessToken
 
   const id = parseInt(String(formData.get('id') ?? ''), 10)
   if (isNaN(id)) {
@@ -47,11 +48,14 @@ export async function updatePlanta(
   }
 
   try {
-    const result = await serviceUpdatePlanta({
-      id,
-      nombre: validated.data.nombre,
-      direccion: direccionRaw === '' ? null : validated.data.direccion,
-    })
+    const result = await serviceUpdatePlanta(
+      {
+        id,
+        nombre: validated.data.nombre,
+        direccion: direccionRaw === '' ? null : validated.data.direccion,
+      },
+      accessToken,
+    )
 
     if (!result.ok) {
       return { errors: { general: ['Planta no encontrada'] } }

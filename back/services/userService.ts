@@ -1,23 +1,16 @@
-'server-only'
+import 'server-only'
 
-import bcrypt from 'bcryptjs'
-import { Prisma } from '@prisma/client'
 import type { UsuarioRow } from '@/shared/types/usuario'
-import {
-  findByCodigoEmpleado,
-  findByCorreo,
-  findById,
-  findAllUsuarios,
-  findUsuariosPaginated,
-  createUsuario as repoCreateUsuario,
-  updateUsuario as repoUpdateUsuario,
-} from '@/back/repositories/userRepository'
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export type CreateUsuarioInput = {
   nombreCompleto: string
   codigoEmpleado: string
   puesto: string
-  planta: string
+  plantaId: number | null
   rol: 'supervisor' | 'capturacion' | 'admin' | 'lider'
   correo: string
   contrasena: string
@@ -27,75 +20,12 @@ export type CreateUsuarioResult =
   | { ok: true; usuario: UsuarioRow }
   | { ok: false; reason: 'duplicate_codigo' | 'duplicate_correo' }
 
-function mapToRow(dbUser: {
-  id: string
-  nombreCompleto: string
-  codigoEmpleado: string
-  puesto: string
-  planta: string
-  rol: string
-  correo: string
-  isActive: boolean
-}): UsuarioRow {
-  return {
-    id: dbUser.id,
-    nombreCompleto: dbUser.nombreCompleto,
-    codigoEmpleado: dbUser.codigoEmpleado,
-    puesto: dbUser.puesto,
-    planta: dbUser.planta,
-    rol: dbUser.rol as UsuarioRow['rol'],
-    correo: dbUser.correo,
-    isActive: dbUser.isActive,
-  }
-}
-
-export async function createUsuario(
-  input: CreateUsuarioInput,
-): Promise<CreateUsuarioResult> {
-  const existingCodigo = await findByCodigoEmpleado(input.codigoEmpleado)
-  if (existingCodigo) {
-    return { ok: false, reason: 'duplicate_codigo' }
-  }
-
-  const existingCorreo = await findByCorreo(input.correo)
-  if (existingCorreo) {
-    return { ok: false, reason: 'duplicate_correo' }
-  }
-
-  const hashedPassword = await bcrypt.hash(input.contrasena, 10)
-
-  const dbUser = await repoCreateUsuario({
-    nombreCompleto: input.nombreCompleto,
-    codigoEmpleado: input.codigoEmpleado,
-    puesto: input.puesto,
-    planta: input.planta,
-    rol: input.rol,
-    contrasena: hashedPassword,
-    correo: input.correo,
-  })
-
-  return { ok: true, usuario: mapToRow(dbUser) }
-}
-
-export async function getAllUsuarios(): Promise<UsuarioRow[]> {
-  const rows = await findAllUsuarios()
-  return rows.map(mapToRow)
-}
-
-export async function getUsuariosPaginated(
-  page: number,
-  pageSize: number,
-): Promise<{ data: UsuarioRow[]; total: number }> {
-  const { data, total } = await findUsuariosPaginated(page, pageSize)
-  return { data: data.map(mapToRow), total }
-}
-
 export type UpdateUsuarioInput = {
-  id: string
+  id: number
   nombreCompleto: string
   codigoEmpleado: string
   puesto: string
-  planta: string
+  plantaId: number | null
   rol: 'admin' | 'supervisor' | 'capturacion' | 'lider'
   correo: string
 }
@@ -104,49 +34,144 @@ export type UpdateUsuarioResult =
   | { ok: true; usuario: UsuarioRow }
   | { ok: false; reason: 'duplicate_codigo' | 'duplicate_correo' | 'not_found' }
 
+// ---------------------------------------------------------------------------
+// External API shape — handles snake_case and camelCase responses
+// ---------------------------------------------------------------------------
+
+type ExternalUser = {
+  id?: number
+  nombre_completo?: string
+  nombreCompleto?: string
+  codigo_empleado?: string
+  codigoEmpleado?: string
+  puesto?: string
+  planta_id?: number | null
+  plantaId?: number | null
+  planta_nombre?: string | null
+  plantaNombre?: string | null
+  rol?: string
+  correo?: string
+  is_active?: boolean
+  isActive?: boolean
+}
+
+function mapExternalUser(u: ExternalUser): UsuarioRow {
+  return {
+    id: u.id ?? 0,
+    nombreCompleto: u.nombre_completo ?? u.nombreCompleto ?? '',
+    codigoEmpleado: u.codigo_empleado ?? u.codigoEmpleado ?? '',
+    puesto: u.puesto ?? '',
+    plantaId: u.planta_id ?? u.plantaId ?? null,
+    plantaNombre: u.planta_nombre ?? u.plantaNombre ?? null,
+    rol: (u.rol ?? 'capturacion') as UsuarioRow['rol'],
+    correo: u.correo ?? '',
+    isActive: u.is_active ?? u.isActive ?? true,
+  }
+}
+
+function apiHeaders(accessToken: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'X-App-Token': process.env.X_APP_TOKEN ?? '',
+    'Authorization': `Bearer ${accessToken}`,
+  }
+}
+
+function baseUrl(): string {
+  return (process.env.QSYNC_API_URL ?? '').replace(/\/$/, '')
+}
+
+// ---------------------------------------------------------------------------
+// Service functions
+// ---------------------------------------------------------------------------
+
+export async function getAllUsuarios(accessToken: string): Promise<UsuarioRow[]> {
+  const res = await fetch(`${baseUrl()}/qb_sync/users`, {
+    headers: apiHeaders(accessToken),
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    throw new Error(`getAllUsuarios: API responded ${res.status}`)
+  }
+
+  const body = await res.json()
+  const data: ExternalUser[] = Array.isArray(body.data) ? body.data : []
+  return data.map(mapExternalUser)
+}
+
+export async function createUsuario(
+  input: CreateUsuarioInput,
+  accessToken: string,
+): Promise<CreateUsuarioResult> {
+  const res = await fetch(`${baseUrl()}/qb_sync/users`, {
+    method: 'POST',
+    headers: apiHeaders(accessToken),
+    body: JSON.stringify({
+      nombre_completo: input.nombreCompleto,
+      codigo_empleado: input.codigoEmpleado,
+      puesto: input.puesto,
+      planta_id: input.plantaId,
+      rol: input.rol,
+      correo: input.correo,
+      contrasena: input.contrasena,
+    }),
+  })
+
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    const message: string = body?.message ?? body?.error ?? ''
+    if (/correo|email/i.test(message)) {
+      return { ok: false, reason: 'duplicate_correo' }
+    }
+    return { ok: false, reason: 'duplicate_codigo' }
+  }
+
+  if (!res.ok) {
+    throw new Error(`createUsuario: API responded ${res.status}`)
+  }
+
+  const body = await res.json()
+  const raw: ExternalUser = body.data ?? body.usuario ?? body
+  return { ok: true, usuario: mapExternalUser(raw) }
+}
+
 export async function updateUsuario(
   input: UpdateUsuarioInput,
+  accessToken: string,
 ): Promise<UpdateUsuarioResult> {
-  // Verify the user exists
-  const existing = await findById(input.id)
-  if (!existing) {
+  const res = await fetch(
+    `${baseUrl()}/qb_sync/users/${encodeURIComponent(input.codigoEmpleado)}`,
+    {
+      method: 'PUT',
+      headers: apiHeaders(accessToken),
+      body: JSON.stringify({
+        nombre_completo: input.nombreCompleto,
+        puesto: input.puesto,
+        planta_id: input.plantaId,
+        rol: input.rol,
+      }),
+    },
+  )
+
+  if (res.status === 404) {
     return { ok: false, reason: 'not_found' }
   }
 
-  // If codigoEmpleado is changing, verify it is not taken by another user
-  if (input.codigoEmpleado !== existing.codigoEmpleado) {
-    const conflictCodigo = await findByCodigoEmpleado(input.codigoEmpleado)
-    if (conflictCodigo) {
-      return { ok: false, reason: 'duplicate_codigo' }
-    }
-  }
-
-  // If correo is changing, verify it is not taken by another user
-  if (input.correo !== existing.correo) {
-    const conflictCorreo = await findByCorreo(input.correo)
-    if (conflictCorreo) {
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({}))
+    const message: string = body?.message ?? body?.error ?? ''
+    if (/correo|email/i.test(message)) {
       return { ok: false, reason: 'duplicate_correo' }
     }
+    return { ok: false, reason: 'duplicate_codigo' }
   }
 
-  try {
-    const updated = await repoUpdateUsuario(input.id, {
-      nombreCompleto: input.nombreCompleto,
-      codigoEmpleado: input.codigoEmpleado,
-      puesto: input.puesto,
-      planta: input.planta,
-      rol: input.rol,
-      correo: input.correo,
-    })
-
-    return { ok: true, usuario: mapToRow(updated) }
-  } catch (err) {
-    if (
-      err instanceof Prisma.PrismaClientKnownRequestError &&
-      err.code === 'P2025'
-    ) {
-      return { ok: false, reason: 'not_found' }
-    }
-    throw err
+  if (!res.ok) {
+    throw new Error(`updateUsuario: API responded ${res.status}`)
   }
+
+  const body = await res.json()
+  const raw: ExternalUser = body.data ?? body.usuario ?? body
+  return { ok: true, usuario: mapExternalUser(raw) }
 }

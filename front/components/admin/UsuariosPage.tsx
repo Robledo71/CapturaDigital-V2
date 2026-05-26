@@ -6,6 +6,7 @@ import { Search, Plus, Pencil, Power, AlertTriangle } from 'lucide-react'
 import { NuevoUsuarioModal } from './NuevoUsuarioModal'
 import { EditarUsuarioModal } from './EditarUsuarioModal'
 import type { UsuarioRow } from '@/shared/types/usuario'
+import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,12 +14,13 @@ type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider'
 type UserEstado = 'activo' | 'inactivo'
 
 interface Usuario {
-  id: string
+  id: number
   nombre: string
   codigo: string
   puesto: string
   rol: UserRol
-  planta: string
+  plantaId: number | null
+  plantaNombre: string | null
   estado: UserEstado
   correo: string
 }
@@ -38,7 +40,8 @@ interface ConfirmTarget {
 
 interface UsuariosPageProps {
   initialUsuarios: UsuarioRow[]
-  currentUserId: string
+  plantas: PlantaRow[]
+  currentUserId: string | number
   total: number
   page: number
   pageSize: number
@@ -53,7 +56,8 @@ function mapRow(u: UsuarioRow): Usuario {
     codigo: u.codigoEmpleado,
     puesto: u.puesto,
     rol: u.rol as UserRol,
-    planta: u.planta,
+    plantaId: u.plantaId ?? null,
+    plantaNombre: u.plantaNombre ?? null,
     estado: u.isActive ? 'activo' : 'inactivo',
     correo: u.correo,
   }
@@ -64,10 +68,11 @@ function mapRow(u: UsuarioRow): Usuario {
 function canToggle(
   user: Usuario,
   usuarios: Usuario[],
-  currentUserId: string,
+  currentUserId: string | number,
 ): { allowed: boolean; reason?: string } {
   // Rule 1: an admin cannot deactivate their own account
-  if (user.id === currentUserId) {
+  // eslint-disable-next-line eqeqeq
+  if (user.id == currentUserId) {
     return { allowed: false, reason: 'No puedes desactivar tu propia cuenta' }
   }
   // Rule 2: the last active admin cannot be deactivated
@@ -90,27 +95,27 @@ function canToggle(
 function RolBadge({ rol }: { rol: UserRol }) {
   if (rol === 'admin') {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20">
         Administrador
       </span>
     )
   }
   if (rol === 'supervisor') {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20">
         Supervisor
       </span>
     )
   }
   if (rol === 'lider') {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-500/10 dark:text-yellow-300 dark:border-yellow-500/20">
         Líder
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-500/10 text-violet-300 border border-violet-500/20">
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 border border-violet-300 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20">
       Capturación
     </span>
   )
@@ -119,14 +124,14 @@ function RolBadge({ rol }: { rol: UserRol }) {
 function EstadoBadge({ estado }: { estado: UserEstado }) {
   if (estado === 'activo') {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-300">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" aria-hidden="true" />
         Activo
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-blue-600 dark:text-slate-400">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400">
       <span className="w-1.5 h-1.5 rounded-full bg-slate-500" aria-hidden="true" />
       Inactivo
     </span>
@@ -150,19 +155,19 @@ function ConfirmModal({
       aria-labelledby="modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
     >
-      <div className="bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
+      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={18} className="text-amber-400" aria-hidden="true" />
           </div>
           <div>
-            <h3 id="modal-title" className="text-blue-950 dark:text-white font-semibold text-sm">
+            <h3 id="modal-title" className="text-slate-900 dark:text-white font-semibold text-sm">
               {isDeactivate ? 'Desactivar usuario' : 'Activar usuario'}
             </h3>
-            <p className="text-blue-600 dark:text-slate-400 text-xs mt-0.5">{target.user.nombre}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">{target.user.nombre}</p>
           </div>
         </div>
-        <p className="text-blue-700 dark:text-slate-300 text-sm mb-6">
+        <p className="text-slate-700 dark:text-slate-300 text-sm mb-6">
           {isDeactivate
             ? `¿Desactivar a ${target.user.nombre}? No podrá iniciar sesión. Esta acción puede revertirse.`
             : `¿Activar a ${target.user.nombre}? Podrá iniciar sesión nuevamente.`}
@@ -171,7 +176,7 @@ function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-blue-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+            className="px-4 py-2 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
           >
             Cancelar
           </button>
@@ -180,8 +185,8 @@ function ConfirmModal({
             onClick={onConfirm}
             className={`px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
               isDeactivate
-                ? 'bg-red-500/80 hover:bg-red-500 text-blue-950 dark:text-white'
-                : 'bg-green-600/80 hover:bg-green-600 text-blue-950 dark:text-white'
+                ? 'bg-red-500/80 hover:bg-red-500 text-white'
+                : 'bg-green-600/80 hover:bg-green-600 text-white'
             }`}
           >
             {isDeactivate ? 'Sí, desactivar' : 'Sí, activar'}
@@ -194,7 +199,7 @@ function ConfirmModal({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function UsuariosPage({ initialUsuarios, currentUserId, total, page, pageSize }: UsuariosPageProps) {
+export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, page, pageSize }: UsuariosPageProps) {
   const router = useRouter()
   const [usuarios, setUsuarios] = useState<Usuario[]>(() => initialUsuarios.map(mapRow))
   const [activeTab, setActiveTab] = useState<TabKey>('todos')
@@ -280,7 +285,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
       !q ||
       u.nombre.toLowerCase().includes(q) ||
       u.codigo.toLowerCase().includes(q) ||
-      u.planta.toLowerCase().includes(q)
+      (u.plantaNombre?.toLowerCase().includes(q) ?? false)
     return matchTab && matchSearch
   })
 
@@ -298,6 +303,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
       {/* Modal de creación de usuario */}
       {showNuevoModal && (
         <NuevoUsuarioModal
+          plantas={plantas}
           onClose={() => setShowNuevoModal(false)}
           onSuccess={onUserCreated}
         />
@@ -307,6 +313,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
       {editTarget && (
         <EditarUsuarioModal
           usuario={editTarget}
+          plantas={plantas}
           onClose={() => setEditTarget(null)}
           onSuccess={onUserUpdated}
         />
@@ -320,7 +327,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-[#0c1829] border border-green-500/30 rounded-xl px-5 py-3.5 shadow-2xl transition-all"
         >
           <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" aria-hidden="true" />
-          <p className="text-sm text-slate-200">{toast.message}</p>
+          <p className="text-sm text-slate-700 dark:text-slate-200">{toast.message}</p>
         </div>
       )}
 
@@ -330,8 +337,8 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
           {/* Page header */}
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-blue-950 dark:text-white">Gestión de usuarios</h1>
-              <p className="text-sm text-blue-600 dark:text-slate-400 mt-0.5">
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gestión de usuarios</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 {usuarios.length} usuarios registrados
               </p>
             </div>
@@ -349,14 +356,14 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   aria-label="Buscar usuarios"
-                  className="pl-9 pr-4 py-2 text-sm rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 w-52 transition-colors"
+                  className="pl-9 pr-4 py-2 text-sm rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-800 dark:text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 w-52 transition-colors"
                 />
               </div>
               {/* Add button */}
               <button
                 type="button"
                 onClick={() => setShowNuevoModal(true)}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-blue-950 dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
               >
                 <Plus size={15} />
                 Nuevo usuario
@@ -381,16 +388,16 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
                   onClick={() => setActiveTab(tab.key)}
                   className={`px-4 py-2.5 text-sm font-medium transition-colors relative whitespace-nowrap ${
                     isActive
-                      ? 'text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-500'
-                      : 'text-blue-600 dark:text-slate-400 hover:text-blue-950 dark:text-white'
+                      ? 'text-slate-900 dark:text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-500'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {tab.label}
                   <span
                     className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${
                       isActive
-                        ? 'bg-blue-500/20 text-blue-300'
-                        : 'bg-slate-700/60 text-blue-600 dark:text-slate-400'
+                        ? 'bg-slate-100 dark:bg-blue-500/20 text-slate-700 dark:text-blue-300'
+                        : 'bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400'
                     }`}
                   >
                     {tab.count}
@@ -401,7 +408,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${page} de usuarios`}>
+          <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${page} de usuarios`}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Tabla de usuarios">
                 <thead>
@@ -447,24 +454,24 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
                                 className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0"
                                 aria-hidden="true"
                               >
-                                <span className="text-blue-950 dark:text-white text-xs font-bold">
+                                <span className="text-white text-xs font-bold">
                                   {user.nombre.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                                 </span>
                               </div>
-                              <span className="text-slate-200 font-medium">{user.nombre}</span>
+                              <span className="text-slate-900 dark:text-slate-200 font-medium">{user.nombre}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 font-mono text-blue-600 dark:text-slate-400 text-xs whitespace-nowrap">
+                          <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
                             {user.codigo}
                           </td>
-                          <td className="px-4 py-3 text-blue-600 dark:text-slate-400 text-sm whitespace-nowrap">
+                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">
                             {user.puesto}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <RolBadge rol={user.rol} />
                           </td>
-                          <td className="px-4 py-3 text-blue-600 dark:text-slate-400 text-sm whitespace-nowrap">
-                            {user.planta}
+                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">
+                            {user.plantaNombre ?? '—'}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <EstadoBadge estado={user.estado} />
@@ -475,7 +482,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
                                 type="button"
                                 aria-label={`Editar ${user.nombre}`}
                                 onClick={() => setEditTarget(user)}
-                                className="p-1.5 rounded text-slate-500 hover:text-blue-950 dark:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+                                className="p-1.5 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
                               >
                                 <Pencil size={14} />
                               </button>
@@ -491,7 +498,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
                                 onClick={() => requestToggle(user)}
                                 className={`p-1.5 rounded transition-colors ${
                                   toggle.allowed
-                                    ? 'text-slate-500 hover:text-blue-950 dark:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d]'
+                                    ? 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d]'
                                     : 'text-slate-700 cursor-not-allowed'
                                 }`}
                               >
@@ -511,13 +518,13 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
           {/* Pagination */}
           {total > pageSize && (
             <div className="flex items-center justify-between gap-4 pt-1">
-              <p className="text-xs text-blue-600 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Mostrando{' '}
-                <span className="font-medium text-blue-950 dark:text-white">
+                <span className="font-medium text-slate-900 dark:text-white">
                   {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)}
                 </span>{' '}
                 de{' '}
-                <span className="font-medium text-blue-950 dark:text-white">{total}</span>{' '}
+                <span className="font-medium text-slate-900 dark:text-white">{total}</span>{' '}
                 registros
               </p>
               <div className="flex items-center gap-2">
@@ -526,11 +533,11 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
                   disabled={page <= 1}
                   onClick={() => router.push(`?page=${page - 1}`)}
                   aria-label="Página anterior"
-                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-blue-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Anterior
                 </button>
-                <span className="text-xs text-blue-600 dark:text-slate-400 tabular-nums">
+                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                   {page} / {Math.ceil(total / pageSize)}
                 </span>
                 <button
@@ -538,7 +545,7 @@ export function UsuariosPage({ initialUsuarios, currentUserId, total, page, page
                   disabled={page >= Math.ceil(total / pageSize)}
                   onClick={() => router.push(`?page=${page + 1}`)}
                   aria-label="Página siguiente"
-                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-blue-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Siguiente
                 </button>

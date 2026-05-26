@@ -11,7 +11,7 @@ const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 15
 
 export type LoginResult =
-  | { ok: true; userId: string; rol: 'admin' | 'supervisor' | 'capturacion' | 'lider'; codigoEmpleado: string; nombreCompleto: string }
+  | { ok: true; userId: number; rol: 'admin' | 'supervisor' | 'capturacion' | 'lider'; codigoEmpleado: string; nombreCompleto: string }
   | { ok: false; reason: 'not_found' | 'wrong_password' | 'locked' | 'inactive' }
 
 export async function loginUsuario(

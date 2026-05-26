@@ -2,6 +2,7 @@ import { TopBar } from '@/front/components/admin/TopBar'
 import { TabletsPage } from '@/front/components/admin/TabletsPage'
 import { getAllTablets } from '@/back/services/tabletService'
 import { getAllPlantas } from '@/back/services/plantService'
+import { getSession } from '@/back/services/session'
 
 const PAGE_SIZE = 20
 
@@ -13,7 +14,13 @@ export default async function Page({ searchParams }: PageProps) {
   const { page: pageParam } = await searchParams
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
 
-  const [allTablets, plantas] = await Promise.all([getAllTablets(), getAllPlantas()])
+  const session = await getSession()
+  const accessToken = session?.accessToken ?? ''
+
+  const [allTablets, plantas] = await Promise.all([
+    getAllTablets(accessToken),
+    getAllPlantas(accessToken),
+  ])
   const total = allTablets.length
   const start = (page - 1) * PAGE_SIZE
   const tablets = allTablets.slice(start, start + PAGE_SIZE)

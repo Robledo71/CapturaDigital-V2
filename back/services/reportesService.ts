@@ -1,6 +1,5 @@
-'server-only'
-
-import { prisma } from '@/back/db/prisma'
+// TODO Fase 3: rehacer con daily_report_items y nuevo esquema. Funciones stubbeadas.
+import 'server-only'
 
 export type ReporteEstatus = 'Pendiente' | 'Enviado' | 'En muestreo' | 'Firmado' | 'Publicado'
 
@@ -25,83 +24,31 @@ export type ReportesResult = {
 
 export const PAGE_SIZE = 20
 
-const STATUS_MAP: Record<string, ReporteEstatus> = {
-  pending: 'Pendiente',
-  submitted: 'Enviado',
-  sampling: 'En muestreo',
-  signed: 'Firmado',
-  published: 'Publicado',
-}
-
-const SHIFT_MAP: Record<number, string> = {
-  1: 'Turno 1',
-  2: 'Turno 2',
-}
-
 export async function getUnassignedCount(): Promise<number> {
-  return prisma.dailyReport.count({
-    where: { order: { is: { supervisorId: null } } },
-  })
+  return 0
 }
 
 export async function getSupervisorReportes(
-  supervisorId: string,
-  mode: 'assigned' | 'unassigned' = 'assigned',
-  page: number = 1,
+  _supervisorId: string,
+  _mode: 'assigned' | 'unassigned' = 'assigned',
+  _page: number = 1,
 ): Promise<ReportesResult> {
-  const where =
-    mode === 'unassigned'
-      ? { order: { is: { supervisorId: null } } }
-      : { order: { is: { supervisorId } } }
-
-  const skip = (page - 1) * PAGE_SIZE
-
-  const [reports, total] = await Promise.all([
-    prisma.dailyReport.findMany({
-      where,
-      include: {
-        order: { include: { client: true, plant: true } },
-        quotation: true,
-        sessions: {
-          include: { items: true },
-          orderBy: { shift: 'asc' },
-          take: 1,
-        },
-      },
-      orderBy: { reportDate: 'desc' },
-      skip,
-      take: PAGE_SIZE,
-    }),
-    prisma.dailyReport.count({ where }),
-  ])
-
-  const rows = reports.map((r) => {
-    const firstSession = r.sessions[0]
-    const totalInspected = Number(r.totalInspected)
-    const totalNg = Number(r.totalNg)
-
-    const piezas =
-      totalInspected > 0 ? Number(r.totalInspected).toLocaleString('es-MX') : '—'
-
-    const pctNG =
-      totalInspected > 0
-        ? ((totalNg / totalInspected) * 100).toFixed(2) + '%'
-        : '—'
-
-    return {
-      id: r.consecutiveNumber,
-      orderId: r.order.id,
-      cliente: r.order.client.name,
-      planta: r.order.plant.name,
-      cotizacion: r.quotation?.consecutiveNumber ?? r.order.consecutiveNumber,
-      parte: r.order.partNumber ?? '—',
-      inspector: firstSession?.operadores ?? '—',
-      turno: firstSession?.shift != null ? (SHIFT_MAP[firstSession.shift] ?? '—') : '—',
-      estatus: STATUS_MAP[r.status] ?? 'Pendiente',
-      piezas,
-      pctNG,
-    }
-  })
-
-  return { rows, total }
+  return { rows: [], total: 0 }
 }
+
+// Re-export types used by reporte workflow
+export type SamplingDecisionInput = {
+  consecutiveNumber: string
+  supervisorId: string
+  decision: 'approve' | 'reject'
+  defectsByItem: Record<number, number>
+  notes?: string
+}
+
+export type SamplingDecisionResult =
+  | { ok: true; status: 'sampling' | 'pending' }
+  | { ok: false; reason: 'not_found' | 'invalid_status' | 'no_sampling_items' | 'rule_failed' | 'notes_required' }
+
+export type ReportStatusTransitionResult =
+  | { ok: true; status: 'signed' | 'published' }
+  | { ok: false; reason: 'not_found' | 'invalid_status' }

@@ -12,6 +12,7 @@ import type { PlantaRow } from '@/shared/types/planta'
 
 interface Tablet {
   id: number
+  codigotablet: string
   alias: string | null
   modelo: string
   serie: string
@@ -44,6 +45,7 @@ interface TabConfig {
 function mapRow(t: TabletRow): Tablet {
   return {
     id: t.id,
+    codigotablet: t.codigotablet,
     alias: t.alias,
     modelo: t.modelo,
     serie: t.serie,
@@ -61,30 +63,30 @@ function mapRow(t: TabletRow): Tablet {
 function EstadoBadge({ estado }: { estado: string }) {
   if (estado === 'activa') {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-300">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-400" aria-hidden="true" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-green-600 dark:bg-green-400" aria-hidden="true" />
         Activa
       </span>
     )
   }
   if (estado === 'offline') {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-300">
-        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" aria-hidden="true" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-500/10 dark:text-yellow-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-yellow-600 dark:bg-yellow-400" aria-hidden="true" />
         Offline
       </span>
     )
   }
   if (estado === 'mantenimiento') {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-300">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" aria-hidden="true" />
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400" aria-hidden="true" />
         Mantenimiento
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-slate-500 dark:text-slate-400">
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400">
       <span className="w-1.5 h-1.5 rounded-full bg-slate-500" aria-hidden="true" />
       Inactiva
     </span>
@@ -186,6 +188,7 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
     const q = search.toLowerCase()
     const matchSearch =
       !q ||
+      t.codigotablet.toLowerCase().includes(q) ||
       (t.alias ?? '').toLowerCase().includes(q) ||
       t.modelo.toLowerCase().includes(q) ||
       t.serie.toLowerCase().includes(q) ||
@@ -304,11 +307,14 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${page} de tablets`}>
+          <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${page} de tablets`}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Tabla de tablets">
                 <thead>
                   <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                      Código
+                    </th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                       Alias
                     </th>
@@ -338,13 +344,16 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                 <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-slate-500 text-sm">
+                      <td colSpan={9} className="px-4 py-12 text-center text-slate-500 text-sm">
                         No se encontraron tablets con los filtros actuales.
                       </td>
                     </tr>
                   ) : (
                     filtered.map((tablet) => (
                       <tr key={String(tablet.id)} className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors">
+                        <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400 text-xs font-semibold whitespace-nowrap">
+                          {tablet.codigotablet}
+                        </td>
                         <td className="px-4 py-3">
                           <span className="text-slate-900 dark:text-slate-200 font-medium">
                             {tablet.alias ?? (
@@ -422,7 +431,7 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                   disabled={page <= 1}
                   onClick={() => router.push(`?page=${page - 1}`)}
                   aria-label="Página anterior"
-                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-blue-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Anterior
                 </button>
@@ -434,7 +443,7 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                   disabled={page >= Math.ceil(total / pageSize)}
                   onClick={() => router.push(`?page=${page + 1}`)}
                   aria-label="Página siguiente"
-                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-blue-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Siguiente
                 </button>

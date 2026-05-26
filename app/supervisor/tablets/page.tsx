@@ -12,7 +12,7 @@ export const metadata = {
 export default async function TabletsRoute() {
     const session = await getSession()
     if (!session) redirect('/')
-    const tablets = await getSupervisorTablets(session.userId)
+    const tablets = await getSupervisorTablets(String(session.userId))
 
     return (
         <div className="flex flex-col flex-1 overflow-hidden">

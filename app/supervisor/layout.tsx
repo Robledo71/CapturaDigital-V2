@@ -8,7 +8,7 @@ export default async function SupervisorLayout({
   children: React.ReactNode
 }) {
   const session = await getSession()
-  if (!session || !session.nombreCompleto) redirect('/')
+  if (!session || (session.rol !== 'supervisor' && session.rol !== 'admin')) redirect('/')
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100 dark:bg-[#070e1a]">
