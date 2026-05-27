@@ -157,6 +157,89 @@ type ExternalTablet = {
   plant_name?: string
 }
 
+export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | null> {
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      plant: { select: { id: true, name: true } },
+      quotations: {
+        include: {
+          items: {
+            include: {
+              sessions: {
+                where: { status: { not: 'finalizado' } },
+                orderBy: { id: 'desc' },
+                take: 1,
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!order) return null
+
+  const codigosTablet = new Set<string>()
+  for (const quotation of order.quotations) {
+    for (const item of quotation.items) {
+      const session = item.sessions[0]
+      if (session?.tabletId) codigosTablet.add(session.tabletId)
+    }
+  }
+
+  const tablets = codigosTablet.size > 0
+    ? await prisma.tablet.findMany({
+        where: { codigoTablet: { in: Array.from(codigosTablet) } },
+        select: { id: true, alias: true, codigoTablet: true },
+      })
+    : []
+
+  const tabletByCode = new Map(tablets.map((t) => [t.codigoTablet, t]))
+
+  const allItems: OrderItemWorkload[] = order.quotations.flatMap((quotation) =>
+    quotation.items.map((item) => {
+      const activeSession = item.sessions[0] ?? null
+      const tabletRecord = activeSession ? tabletByCode.get(activeSession.tabletId) : null
+
+      return {
+        id: item.id,
+        partNumber: item.partNumber ?? '—',
+        partName: item.partName ?? '—',
+        status: deriveItemStatus(activeSession?.status ?? null),
+        inventario: item.inventory ? Number(item.inventory) : 0,
+        inventarioTerminado: item.inventoryDone ? Number(item.inventoryDone) : 0,
+        assignedAt: activeSession?.fechaInicio ?? null,
+        assignedTablet: tabletRecord
+          ? { id: tabletRecord.id, alias: tabletRecord.alias ?? tabletRecord.codigoTablet }
+          : null,
+        quotationConsecutive: quotation.consecutiveNumber,
+      }
+    }),
+  )
+
+  const firstItem = allItems[0]
+
+  return {
+    id: order.id,
+    consecutiveNumber: order.consecutiveNumber,
+    clientName: order.clientName,
+    plantName: order.plant?.name ?? '—',
+    plantId: order.plant?.id ?? null,
+    partNumber: firstItem?.partNumber ?? '—',
+    partName: firstItem?.partName ?? '—',
+    serviceType: order.serviceTypeName ?? order.serviceTypeDetail ?? '—',
+    orderStatus: order.state ?? 'abierta',
+    quotations: order.quotations.map((q) => ({
+      id: q.id,
+      consecutiveNumber: q.consecutiveNumber,
+      status: q.status,
+      total: 0,
+    })),
+    items: allItems,
+  }
+}
+
 export async function getAvailableTablets(accessToken: string): Promise<TabletOption[]> {
   // 1. Fetch all tablets from the external companion API
   let externalTablets: ExternalTablet[] = []
@@ -170,8 +253,11 @@ export async function getAvailableTablets(accessToken: string): Promise<TabletOp
     if (res.ok) {
       const body = await res.json().catch(() => ({}))
       externalTablets = Array.isArray(body.data) ? body.data : []
+    } else {
+      console.error(`[getAvailableTablets] API returned ${res.status}: ${res.statusText}`)
     }
-  } catch {
+  } catch (err) {
+    console.error('[getAvailableTablets] Network error fetching tablets:', err)
     return []
   }
 
@@ -186,7 +272,7 @@ export async function getAvailableTablets(accessToken: string): Promise<TabletOp
   return externalTablets
     .filter((t) => {
       const codigo = t.codigoTablet ?? t.codigo_tablet ?? ''
-      return codigo !== '' && !busyTabletCodes.has(codigo)
+      return codigo !== '' && t.status === 'activa' && !busyTabletCodes.has(codigo)
     })
     .map((t) => ({
       id: t.id ?? 0,

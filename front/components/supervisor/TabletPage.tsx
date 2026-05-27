@@ -70,26 +70,8 @@ function TabletCard({ tablet }: TabletCardProps) {
       {/* Card footer — meta rows */}
       <div className="px-4 py-3 flex flex-col gap-2">
         {/* Last inspector */}
-        <div className="flex items-center gap-2 text-sm">
-          <User size={13} className="text-slate-400 dark:text-slate-500 shrink-0" aria-hidden="true" />
-          <span className="text-slate-400 dark:text-slate-500 w-36 shrink-0">Último inspector</span>
-          {tablet.lastInspector ? (
-            <span className="text-slate-700 dark:text-slate-300">{tablet.lastInspector}</span>
-          ) : (
-            <span className="text-slate-400 dark:text-slate-600 italic">Sin uso registrado</span>
-          )}
-        </div>
 
         {/* Last activity */}
-        <div className="flex items-center gap-2 text-sm">
-          <Clock size={13} className="text-slate-400 dark:text-slate-500 shrink-0" aria-hidden="true" />
-          <span className="text-slate-400 dark:text-slate-500 w-36 shrink-0">Última actividad</span>
-          {tablet.lastUsedAt ? (
-            <span className="text-slate-700 dark:text-slate-300">{tablet.lastUsedAt}</span>
-          ) : (
-            <span className="text-slate-400 dark:text-slate-600 italic">Sin actividad</span>
-          )}
-        </div>
 
         {/* Plant — only when present */}
         {tablet.plantName && (

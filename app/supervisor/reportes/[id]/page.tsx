@@ -18,7 +18,7 @@ export default async function ReporteDetallePageRoute({
   if (!session) redirect('/login')
 
   const { id } = await params
-  const reporte = await getReporteDetalle(id, String(session.userId))
+  const reporte = await getReporteDetalle(id, session.accessToken)
 
   if (!reporte) notFound()
 

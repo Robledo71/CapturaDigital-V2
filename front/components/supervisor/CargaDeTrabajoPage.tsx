@@ -13,6 +13,10 @@ import {
   assignOrderItemAction,
   type AssignOrderItemState,
 } from '@/app/actions/assign-order-item'
+import {
+  releaseOrderItemAction,
+  type ReleaseOrderItemState,
+} from '@/app/actions/release-order-item'
 import { SearchCotizacionModal } from './SearchCotizacionModal'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -131,15 +135,25 @@ function AssignSubmitButton() {
 // ─── Assign Item Modal ────────────────────────────────────────────────────────
 
 interface AssignItemModalProps {
+  /** Prisma DB id of the OrderItem, or 0 if the item is not yet persisted (came from QB search). */
   orderItemId: number
+  /** Full item data — needed to embed hidden QB fields when orderItemId === 0. */
+  item: OrderItemWorkload
+  /** Parent order — needed to embed hidden QB order/quotation fields when orderItemId === 0. */
+  order: OrderWorkload
   tablets: TabletOption[]
   state: AssignOrderItemState
   action: (formData: FormData) => void
   onClose: () => void
 }
 
-function AssignItemModal({ orderItemId, tablets, state, action, onClose }: AssignItemModalProps) {
+function AssignItemModal({ orderItemId, item, order, tablets, state, action, onClose }: AssignItemModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
+  // When the item has not been persisted yet (id === 0), we need to find which
+  // quotation this item belongs to from the parent order's quotation list.
+  const parentQuotation = order.quotations.find(
+    (q) => q.consecutiveNumber === item.quotationConsecutive
+  ) ?? order.quotations[0]
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
@@ -167,6 +181,41 @@ function AssignItemModal({ orderItemId, tablets, state, action, onClose }: Assig
         className="w-full max-w-sm overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] shadow-2xl"
       >
         <input type="hidden" name="orderItemId" value={String(orderItemId)} />
+
+        {/* When the item is not yet in DB (id=0), embed raw QB data so the
+            server action can persist Order → Quotation → OrderItem first. */}
+        {orderItemId === 0 && (
+          <>
+            {/* Order fields */}
+            <input type="hidden" name="qb_order_id" value={String(order.id)} />
+            <input type="hidden" name="qb_order_consecutive" value={order.consecutiveNumber ?? ''} />
+            <input type="hidden" name="qb_order_state" value={order.orderStatus ?? ''} />
+            <input type="hidden" name="qb_order_client_name" value={order.clientName ?? ''} />
+            <input type="hidden" name="qb_order_client_contact_name" value="" />
+            <input type="hidden" name="qb_order_client_contact_email" value="" />
+            <input type="hidden" name="qb_order_service_type_name" value={order.serviceType ?? ''} />
+            <input type="hidden" name="qb_order_service_type_detail" value="" />
+            <input type="hidden" name="qb_order_pieces_per_hour" value="" />
+            <input type="hidden" name="qb_order_authorized_hours" value="" />
+            <input type="hidden" name="qb_order_price_per_hour" value="" />
+            <input type="hidden" name="qb_order_language" value="" />
+            <input type="hidden" name="qb_order_user_name" value="" />
+            <input type="hidden" name="qb_order_plant_name" value={order.plantName ?? ''} />
+            {/* Quotation fields */}
+            <input type="hidden" name="qb_quotation_id" value={String(parentQuotation?.id ?? '')} />
+            <input type="hidden" name="qb_quotation_consecutive" value={item.quotationConsecutive ?? ''} />
+            <input type="hidden" name="qb_quotation_client_name" value="" />
+            <input type="hidden" name="qb_quotation_client_email" value="" />
+            <input type="hidden" name="qb_quotation_status" value={parentQuotation?.status ?? ''} />
+            <input type="hidden" name="qb_quotation_plant_name" value={order.plantName ?? ''} />
+            {/* OrderItem fields */}
+            <input type="hidden" name="qb_item_part_number" value={item.partNumber === '—' ? '' : item.partNumber} />
+            <input type="hidden" name="qb_item_part_name" value={item.partName === '—' ? '' : item.partName} />
+            <input type="hidden" name="qb_item_inventory" value={String(item.inventario)} />
+            <input type="hidden" name="qb_item_inventory_done" value={String(item.inventarioTerminado)} />
+            <input type="hidden" name="qb_item_plant_name" value={order.plantName ?? ''} />
+          </>
+        )}
 
         <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
           <h3 id="sub-modal-titulo" className="text-sm font-semibold text-white">
@@ -225,17 +274,117 @@ function AssignItemModal({ orderItemId, tablets, state, action, onClose }: Assig
   )
 }
 
+// ─── Release Item Modal ───────────────────────────────────────────────────────
+
+interface ReleaseItemModalProps {
+  orderItemId: number
+  partNumber: string
+  state: ReleaseOrderItemState
+  action: (formData: FormData) => void
+  onClose: () => void
+}
+
+function ReleaseSubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+      {pending ? 'Liberando...' : 'Confirmar'}
+    </button>
+  )
+}
+
+function ReleaseItemModal({ orderItemId, partNumber, state, action, onClose }: ReleaseItemModalProps) {
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose()
+  }
+
+  return (
+    <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="release-modal-titulo"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      onClick={handleOverlayClick}
+    >
+      <form
+        action={action}
+        className="w-full max-w-sm overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] shadow-2xl"
+      >
+        <input type="hidden" name="orderItemId" value={String(orderItemId)} />
+
+        <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
+          <h3 id="release-modal-titulo" className="text-sm font-semibold text-white">
+            Liberar tablet
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+            aria-label="Cerrar"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 px-5 py-5">
+          <p className="text-sm text-slate-300">
+            ¿Liberar la tablet asignada al item{' '}
+            <span className="font-mono font-medium text-white">{partNumber}</span>?
+          </p>
+          <p className="text-xs text-slate-500">
+            La tablet volverá a estar disponible para nuevas asignaciones.
+          </p>
+
+          {state && !state.ok && (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {state.error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-slate-300 hover:bg-white/10"
+          >
+            Cancelar
+          </button>
+          <ReleaseSubmitButton />
+        </div>
+      </form>
+    </div>
+  )
+}
+
 // ─── Order Item Row ───────────────────────────────────────────────────────────
 
 interface OrderItemRowProps {
   item: OrderItemWorkload
-  onAssign: (itemId: number) => void
+  /** Called with the full item object so the assign modal can embed QB hidden fields when item.id === 0. */
+  onAssign: (item: OrderItemWorkload) => void
+  onRelease: (itemId: number) => void
 }
 
-function OrderItemRow({ item, onAssign }: OrderItemRowProps) {
-  const canReassign =
-    item.assignedTablet !== null && item.status !== 'in_progress'
+function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
   const canAssign = item.status === 'pending' && item.assignedTablet === null
+  const canRelease = item.status === 'assigned'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a2d4d] px-4 py-3 last:border-b-0">
@@ -268,20 +417,20 @@ function OrderItemRow({ item, onAssign }: OrderItemRowProps) {
         {canAssign && (
           <button
             type="button"
-            onClick={() => onAssign(item.id)}
+            onClick={() => onAssign(item)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
           >
             Asignar tablet
           </button>
         )}
 
-        {canReassign && (
+        {canRelease && (
           <button
             type="button"
-            onClick={() => onAssign(item.id)}
-            className="inline-flex items-center rounded-lg border border-slate-500/30 px-2.5 py-1 text-xs text-slate-500 transition-colors hover:border-slate-400 hover:text-slate-300"
+            onClick={() => onRelease(item.id)}
+            className="inline-flex items-center rounded-lg border border-red-500/30 px-2.5 py-1 text-xs text-red-400 transition-colors hover:border-red-400 hover:bg-red-500/10"
           >
-            Reasignar
+            Liberar
           </button>
         )}
       </div>
@@ -300,15 +449,25 @@ interface OrderDetailModalProps {
 function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
   const router = useRouter()
   const overlayRef = useRef<HTMLDivElement>(null)
-  const [assignItemId, setAssignItemId] = useState<number | null>(null)
+  // Store the full item object so AssignItemModal can embed QB hidden fields when item.id === 0
+  const [assignItem, setAssignItem] = useState<OrderItemWorkload | null>(null)
+  const [releaseItemId, setReleaseItemId] = useState<number | null>(null)
   const [assignState, assignAction] = useActionState(assignOrderItemAction, undefined)
+  const [releaseState, releaseAction] = useActionState(releaseOrderItemAction, undefined)
 
   useEffect(() => {
     if (assignState?.ok === true) {
-      setAssignItemId(null)
+      setAssignItem(null)
       router.refresh()
     }
   }, [assignState, router])
+
+  useEffect(() => {
+    if (releaseState?.ok === true) {
+      setReleaseItemId(null)
+      router.refresh()
+    }
+  }, [releaseState, router])
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -319,14 +478,14 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && assignItemId === null) onClose()
+      if (e.key === 'Escape' && assignItem === null && releaseItemId === null) onClose()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose, assignItemId])
+  }, [onClose, assignItem, releaseItemId])
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current && assignItemId === null) onClose()
+    if (e.target === overlayRef.current && assignItem === null && releaseItemId === null) onClose()
   }
 
   return (
@@ -429,11 +588,13 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                 <p className="text-sm text-slate-600">Sin items registrados</p>
               ) : (
                 <div className="overflow-hidden rounded-lg border border-[#1a2d4d] bg-[#0a1628]">
-                  {order.items.map((item) => (
+                  {order.items.map((item, idx) => (
                     <OrderItemRow
-                      key={item.id}
+                      // Use idx as part of key when id is 0 (items from QB search not yet persisted)
+                      key={item.id !== 0 ? item.id : `pending-${idx}`}
                       item={item}
-                      onAssign={setAssignItemId}
+                      onAssign={setAssignItem}
+                      onRelease={setReleaseItemId}
                     />
                   ))}
                 </div>
@@ -443,13 +604,25 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
         </div>
       </div>
 
-      {assignItemId !== null && (
+      {assignItem !== null && (
         <AssignItemModal
-          orderItemId={assignItemId}
+          orderItemId={assignItem.id}
+          item={assignItem}
+          order={order}
           tablets={tablets}
           state={assignState}
           action={assignAction}
-          onClose={() => setAssignItemId(null)}
+          onClose={() => setAssignItem(null)}
+        />
+      )}
+
+      {releaseItemId !== null && (
+        <ReleaseItemModal
+          orderItemId={releaseItemId}
+          partNumber={order.items.find((i) => i.id === releaseItemId)?.partNumber ?? '—'}
+          state={releaseState}
+          action={releaseAction}
+          onClose={() => setReleaseItemId(null)}
         />
       )}
     </>
@@ -627,13 +800,14 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
   const router = useRouter()
   const [selectedOrder, setSelectedOrder] = useState<OrderWorkload | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
-  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false })
 
+  // Sync selectedOrder when server data refreshes after assign/release
   useEffect(() => {
-    if (!toast.visible) return
-    const t = setTimeout(() => setToast((prev) => ({ ...prev, visible: false })), 4000)
-    return () => clearTimeout(t)
-  }, [toast.visible])
+    if (selectedOrder === null) return
+    const updated = orders.find((o) => o.id === selectedOrder.id)
+    if (updated) setSelectedOrder(updated)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders])
 
   const totalPending = orders.reduce(
     (sum, order) => sum + countPendingUnassigned(order),
@@ -690,27 +864,14 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
       {searchModalOpen && (
         <SearchCotizacionModal
           onClose={() => setSearchModalOpen(false)}
-          onSuccess={({ cotizaciones, items, orden }) => {
+          onOrderFound={(order) => {
             setSearchModalOpen(false)
-            setToast({
-              message: `Orden ${orden}: ${cotizaciones} cotización${cotizaciones !== 1 ? 'es' : ''}, ${items} item${items !== 1 ? 's' : ''} importado${items !== 1 ? 's' : ''}`,
-              visible: true,
-            })
+            setSelectedOrder(order)
             router.refresh()
           }}
         />
       )}
 
-      {toast.visible && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-green-500/30 bg-white px-5 py-3.5 shadow-2xl dark:bg-[#0c1829]"
-        >
-          <span className="h-2 w-2 flex-shrink-0 rounded-full bg-green-400" aria-hidden="true" />
-          <p className="text-sm text-slate-700 dark:text-slate-200">{toast.message}</p>
-        </div>
-      )}
     </div>
   )
 }

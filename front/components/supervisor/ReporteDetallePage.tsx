@@ -298,11 +298,13 @@ function EditItemSubmitButton() {
 
 function EditItemModal({
   item,
+  reportId,
   state,
   action,
   onClose,
 }: {
   item: InspectionItemRow
+  reportId: number
   state: UpdateInspectionItemState
   action: (formData: FormData) => void
   onClose: () => void
@@ -341,6 +343,7 @@ function EditItemModal({
         action={action}
         className="w-full max-w-md overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] text-slate-100 shadow-2xl"
       >
+        <input type="hidden" name="reportId" value={String(reportId)} />
         <input type="hidden" name="itemId" value={String(item.id)} />
         <input type="hidden" name="scrap" value={String(computedScrap)} />
         <input type="hidden" name="incidents" value={incidentsJson} />
@@ -538,7 +541,7 @@ function SamplingModal({
         action={action}
         className="w-full max-w-[640px] overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] text-slate-100 shadow-2xl"
       >
-        <input type="hidden" name="consecutiveNumber" value={reporte.consecutiveNumber} />
+        <input type="hidden" name="reportId" value={String(reporte.reportId)} />
 
         <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
           <h2 className="text-sm font-semibold text-white">Registrar muestreo de liberacion</h2>
@@ -693,6 +696,7 @@ function ConfirmWorkflowModal({
   confirmLabel,
   confirmClass,
   consecutiveNumber,
+  reportId,
   action,
   state,
   onClose,
@@ -702,6 +706,7 @@ function ConfirmWorkflowModal({
   confirmLabel: string
   confirmClass: string
   consecutiveNumber: string
+  reportId: number
   action: (formData: FormData) => void
   state: WorkflowActionState
   onClose: () => void
@@ -718,7 +723,7 @@ function ConfirmWorkflowModal({
         action={action}
         className="w-full max-w-sm overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] text-slate-100 shadow-2xl"
       >
-        <input type="hidden" name="consecutiveNumber" value={consecutiveNumber} />
+        <input type="hidden" name="reportId" value={String(reportId)} />
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
@@ -753,6 +758,15 @@ function ConfirmWorkflowModal({
   )
 }
 
+// Next.js serializa los props Server→Client como JSON, convirtiendo Date → string ISO.
+// Este helper rehidrata los campos Date antes de usarlos en el componente.
+function toDate(v: Date | string | null): Date | null {
+  if (v === null || v === undefined) return null
+  if (v instanceof Date) return v
+  const d = new Date(v as string)
+  return isNaN(d.getTime()) ? null : d
+}
+
 export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
   const [samplingOpen, setSamplingOpen] = useState(false)
   const [defectsByItem, setDefectsByItem] = useState<Record<number, string>>({})
@@ -772,9 +786,9 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
   const router = useRouter()
 
   const {
+    reportId,
     consecutiveNumber,
     status,
-    createdAt,
     cliente,
     planta,
     cotizacion,
@@ -791,18 +805,21 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
     operadores,
     turno,
     tabletAlias,
-    sessionCreatedAt,
-    sessionFinishedAt,
     supervisorName,
     sampleSize,
     sampleNg,
     sampleApproved,
-    sampledAt,
-    signedAt,
-    publishedAt,
     isLegacy,
     legacyCsvTable,
   } = reporte
+
+  // Rehidratar campos Date que Next.js convirtió a string ISO durante la serialización Server→Client
+  const createdAt = toDate(reporte.createdAt)!
+  const sessionCreatedAt = toDate(reporte.sessionCreatedAt)
+  const sessionFinishedAt = toDate(reporte.sessionFinishedAt)
+  const sampledAt = toDate(reporte.sampledAt)
+  const signedAt = toDate(reporte.signedAt)
+  const publishedAt = toDate(reporte.publishedAt)
 
   const realTotals = useMemo(() => {
     if (isLegacy) {
@@ -1092,7 +1109,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
           <InspectionItemsTable
             items={inspectionItems}
             totals={realTotals}
-            onEditItem={isCaptured && !isSigned ? setEditItem : undefined}
+            onEditItem={status === 'submitted' ? setEditItem : undefined}
           />
         )}
       </div>
@@ -1114,6 +1131,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
       {editItem && (
         <EditItemModal
           item={editItem}
+          reportId={reportId}
           state={editItemState}
           action={editItemAction}
           onClose={() => setEditItem(null)}
@@ -1127,6 +1145,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
           confirmLabel="Firmar"
           confirmClass="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
           consecutiveNumber={consecutiveNumber}
+          reportId={reportId}
           action={signAction}
           state={signState}
           onClose={() => setShowSignConfirm(false)}
@@ -1140,6 +1159,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
           confirmLabel="Publicar"
           confirmClass="inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
           consecutiveNumber={consecutiveNumber}
+          reportId={reportId}
           action={publishAction}
           state={publishState}
           onClose={() => setShowPublishConfirm(false)}

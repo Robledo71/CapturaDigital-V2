@@ -13,8 +13,8 @@ export type WorkflowActionState = {
   error?: string
 }
 
-function getReportePath(consecutiveNumber: string) {
-  return `/supervisor/reportes/${encodeURIComponent(consecutiveNumber)}`
+function getReportePath(reportId: number) {
+  return `/supervisor/reportes/${reportId}`
 }
 
 function parseDefects(formData: FormData): Record<number, number> {
@@ -41,18 +41,19 @@ export async function registerSamplingAction(
     return { error: 'No autorizado' }
   }
 
-  const consecutiveNumber = String(formData.get('consecutiveNumber') ?? '').trim()
+  const reportId = parseInt(String(formData.get('reportId') ?? ''), 10)
+  if (isNaN(reportId)) return { error: 'Reporte requerido' }
+
   const decision = String(formData.get('decision') ?? '')
   const notes = String(formData.get('notes') ?? '').trim()
 
-  if (!consecutiveNumber) return { error: 'Reporte requerido' }
   if (decision !== 'approve' && decision !== 'reject') {
     return { error: 'Decisión de muestreo inválida' }
   }
 
   const result = await registerSamplingDecision({
-    consecutiveNumber,
-    supervisorId: String(session.userId),
+    reportId,
+    accessToken: session.accessToken,
     decision,
     defectsByItem: parseDefects(formData),
     notes,
@@ -72,7 +73,7 @@ export async function registerSamplingAction(
 
   revalidatePath('/supervisor')
   revalidatePath('/supervisor/reportes')
-  revalidatePath(getReportePath(consecutiveNumber))
+  revalidatePath(getReportePath(reportId))
 
   return { ok: true }
 }
@@ -86,10 +87,10 @@ export async function signReporteAction(
     return { error: 'No autorizado' }
   }
 
-  const consecutiveNumber = String(formData.get('consecutiveNumber') ?? '').trim()
-  if (!consecutiveNumber) return { error: 'Reporte requerido' }
+  const reportId = parseInt(String(formData.get('reportId') ?? ''), 10)
+  if (isNaN(reportId)) return { error: 'Reporte requerido' }
 
-  const result = await signReporte(consecutiveNumber, String(session.userId))
+  const result = await signReporte(reportId, session.accessToken)
 
   if (!result.ok) {
     return {
@@ -102,7 +103,7 @@ export async function signReporteAction(
 
   revalidatePath('/supervisor')
   revalidatePath('/supervisor/reportes')
-  revalidatePath(getReportePath(consecutiveNumber))
+  revalidatePath(getReportePath(reportId))
 
   return { ok: true }
 }
@@ -116,10 +117,10 @@ export async function publishReporteAction(
     return { error: 'No autorizado' }
   }
 
-  const consecutiveNumber = String(formData.get('consecutiveNumber') ?? '').trim()
-  if (!consecutiveNumber) return { error: 'Reporte requerido' }
+  const reportId = parseInt(String(formData.get('reportId') ?? ''), 10)
+  if (isNaN(reportId)) return { error: 'Reporte requerido' }
 
-  const result = await publishReporte(consecutiveNumber, String(session.userId))
+  const result = await publishReporte(reportId, session.accessToken)
 
   if (!result.ok) {
     return {
@@ -132,7 +133,7 @@ export async function publishReporteAction(
 
   revalidatePath('/supervisor')
   revalidatePath('/supervisor/reportes')
-  revalidatePath(getReportePath(consecutiveNumber))
+  revalidatePath(getReportePath(reportId))
 
   return { ok: true }
 }

@@ -7,12 +7,13 @@ import {
   importCotizacionAction,
   type ImportCotizacionState,
 } from '@/app/actions/import-cotizacion'
+import type { OrderWorkload } from '@/back/services/cargaDeTrabajoService'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   onClose: () => void
-  onSuccess: (info: { cotizaciones: number; items: number; orden: string }) => void
+  onOrderFound: (order: OrderWorkload) => void
 }
 
 // ─── Submit button ────────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ function SearchSubmitButton() {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
-export function SearchCotizacionModal({ onClose, onSuccess }: Props) {
+export function SearchCotizacionModal({ onClose, onOrderFound }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [state, action, pending] = useActionState<ImportCotizacionState, FormData>(
     importCotizacionAction,
@@ -60,9 +61,9 @@ export function SearchCotizacionModal({ onClose, onSuccess }: Props) {
   // Propagate success upward
   useEffect(() => {
     if (state?.ok === true) {
-      onSuccess({ cotizaciones: state.cotizaciones, items: state.items, orden: state.orden })
+      onOrderFound(state.order)
     }
-  }, [state, onSuccess])
+  }, [state, onOrderFound])
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current && !pending) onClose()
