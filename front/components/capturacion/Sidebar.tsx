@@ -8,6 +8,7 @@ import {
   FileText,
   Download,
   ChevronDown,
+  Lock,
 } from 'lucide-react'
 
 interface NavItem {
@@ -30,11 +31,39 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         href: '/capturacion/descargas',
         icon: <Download size={16} />,
       },
+      {
+        label: 'Desbloquear Cotización',
+        href: '/capturacion/desbloquear',
+        icon: <Lock size={16} />,
+      }
     ],
   },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  user: {
+    nombreCompleto: string
+    rol: string
+  }
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('')
+}
+
+const ROL_LABEL: Record<string, string> = {
+  admin:       'Acceso total',
+  supervisor:  'Supervisor',
+  lider:       'Líder',
+  capturacion: 'Capturación',
+}
+
+export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const [dropdownOpen, setDropdownOpen] = useState(false)
 
@@ -94,12 +123,12 @@ export function Sidebar() {
         >
           {/* Avatar */}
           <div className="w-8 h-8 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-bold">DR</span>
+            <span className="text-white text-xs font-bold">{getInitials(user.nombreCompleto)}</span>
           </div>
           {/* Info */}
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-white dark:text-white text-sm font-medium leading-tight truncate">Diana Reyes</p>
-            <p className="text-blue-300 dark:text-slate-400 text-xs leading-tight mt-0.5 truncate">Capturación</p>
+            <p className="text-white dark:text-white text-sm font-medium leading-tight truncate">{user.nombreCompleto}</p>
+            <p className="text-blue-300 dark:text-slate-400 text-xs leading-tight mt-0.5 truncate">{ROL_LABEL[user.rol] ?? user.rol}</p>
           </div>
           <ChevronDown
             size={14}

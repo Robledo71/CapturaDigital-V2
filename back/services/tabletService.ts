@@ -221,8 +221,9 @@ export async function updateTablet(
       headers: apiHeaders(accessToken),
       body: JSON.stringify({
         model: input.modelo,
+        serial_number: input.serie,
         alias: input.alias,
-        status: input.estado,
+        status: input.estado === 'mantenimiento' ? 'en_mantenimiento' : input.estado,
         plant_id: input.plantaId,
         notes: input.notes,
       }),

@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { searchOrder, searchCotizaciones, type QBOrderData, type QBCotizacion, type QBOrderItem } from '@/back/services/qb-api'
 import { type OrderWorkload, type OrderItemWorkload, type QuotationSummary } from '@/back/services/cargaDeTrabajoService'
+import { prisma } from '@/back/db/prisma'
 
 const Schema = z.object({
   orden: z.string().min(1, 'El número de orden es requerido').trim(),
@@ -61,6 +62,7 @@ function buildOrderWorkloadFromQB(
       assignedAt: null,
       assignedTablet: null,
       quotationConsecutive: cotizacion.consecutive_number ?? null,
+      hasSubmittedReport: false,
     }))
   )
 
@@ -69,6 +71,10 @@ function buildOrderWorkloadFromQB(
     consecutiveNumber: cotizacion.consecutive_number ?? null,
     status: cotizacion.status ?? null,
     total: 0,
+    clientEmail: cotizacion.client_email ?? null,
+    purchaseOrderNumber: cotizacion.purchase_order_number ?? null,
+    contactEmails: cotizacion.contact_emails ?? null,
+    orderUserName: cotizacion.order_user_name ?? null,
   }))
 
   const firstItem = items[0]
@@ -82,7 +88,16 @@ function buildOrderWorkloadFromQB(
     partNumber: firstItem?.partNumber ?? '—',
     partName: firstItem?.partName ?? '—',
     serviceType: qbOrder.service_type_name ?? qbOrder.service_type_detail ?? '—',
-    orderStatus: qbOrder.state ?? 'abierta',
+    orderStatus: qbOrder.state ?? 'open',
+    regionName: qbOrder.region_name ?? null,
+    serviceTypeDetail: qbOrder.service_type_detail ?? null,
+    piecesPerHour: qbOrder.pieces_per_hour !== '' && qbOrder.pieces_per_hour !== null ? Number(qbOrder.pieces_per_hour) : null,
+    authorizedHours: qbOrder.authorized_hours !== '' && qbOrder.authorized_hours !== null ? Number(qbOrder.authorized_hours) : null,
+    pricePerHour: qbOrder.price_per_hour !== '' && qbOrder.price_per_hour !== null ? Number(qbOrder.price_per_hour) : null,
+    language: qbOrder.language ?? null,
+    userName: qbOrder.user_name ?? null,
+    clientContactName: qbOrder.client_contact_name ?? null,
+    clientContactEmail: qbOrder.client_contact_email ?? null,
     quotations,
     items,
   }
@@ -107,7 +122,20 @@ export async function importCotizacionAction(
     return { ok: false, error: ERROR_MESSAGES['not_found'] }
   }
 
-  // --- Step 2: query QB API for the associated cotizaciones — no DB writes ---
+  // --- Step 1b: block re-import if order already exists in DB ---
+  const orderId = Number(orderResult.data.id)
+  const existsInDb = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: { id: true },
+  })
+  if (existsInDb) {
+    return {
+      ok: false,
+      error: 'Esta orden ya fue importada. Búscala directamente en la tabla de carga de trabajo.',
+    }
+  }
+
+  // --- Step 2: query QB API for the associated cotizaciones --- no DB writes ---
   const cotizacionesResult = await searchCotizaciones(validated.data.orden)
   if (!cotizacionesResult.ok) {
     return { ok: false, error: ERROR_MESSAGES[cotizacionesResult.error] ?? 'Error al consultar cotizaciones en QB.' }

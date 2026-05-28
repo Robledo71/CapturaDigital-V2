@@ -21,11 +21,20 @@ export async function updateInspectionItemAction(
   const itemId   = parseInt(String(formData.get('itemId')   ?? ''), 10)
   if (isNaN(reportId) || isNaN(itemId)) return { ok: false, error: 'Datos inválidos' }
 
-  const ok_pieces        = Math.max(0, parseInt(String(formData.get('ok')        ?? '0'), 10))
-  const ng_pieces        = Math.max(0, parseInt(String(formData.get('ng')        ?? '0'), 10))
-  const recovered_pieces = Math.max(0, parseInt(String(formData.get('recovered') ?? '0'), 10))
-  const scrap_pieces     = Math.max(0, parseInt(String(formData.get('scrap')     ?? '0'), 10))
-  const total_pieces     = ok_pieces + ng_pieces
+  function safeInt(key: string): number {
+    const n = parseInt(String(formData.get(key) ?? '0'), 10)
+    return isNaN(n) ? 0 : Math.max(0, n)
+  }
+
+  const ok_pieces  = safeInt('ok')
+  const ng_pieces  = safeInt('ng')
+  // recovered cannot exceed ng — clamp so DB never gets a semantically invalid state
+  const recovered_pieces = Math.min(ng_pieces, safeInt('recovered'))
+  const scrap_pieces     = Math.max(0, ng_pieces - recovered_pieces)
+  // Read total_pieces from the form (passed as a hidden field from item.inspected)
+  // so we never silently overwrite a batch count that differs from ok+ng.
+  const rawTotal = parseInt(String(formData.get('total') ?? ''), 10)
+  const total_pieces = isNaN(rawTotal) ? ok_pieces + ng_pieces : Math.max(ok_pieces + ng_pieces, rawTotal)
 
   let incidents: { incident_name: string; affected_pieces: number }[] = []
   try {

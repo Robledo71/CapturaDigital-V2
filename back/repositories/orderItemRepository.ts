@@ -18,7 +18,7 @@ export async function findItemById(id: number) {
               id: true,
               consecutiveNumber: true,
               state: true,
-              clientName: true,
+              client: { select: { name: true } },
               plant: { select: { name: true } },
             },
           },

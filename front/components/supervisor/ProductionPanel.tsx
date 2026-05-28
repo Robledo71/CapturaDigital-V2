@@ -39,6 +39,7 @@ export function ProductionPanel({ items }: ProductionPanelProps) {
                 <div className="flex-1 min-w-0">
                   <span className="text-slate-900 dark:text-white text-sm leading-tight truncate">{item.operadores}</span>
                   <span className="text-slate-500 text-xs ml-1.5">· {item.report}</span>
+                  <span className="text-slate-500 text-xs ml-1.5">· {item.tabletCode}</span>
                 </div>
                 <span className={STATUS_CLASSES[item.status]}>{item.status}</span>
               </div>

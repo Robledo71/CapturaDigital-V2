@@ -16,9 +16,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
   }
 
   const { id } = await params
-  const consecutiveNumber = decodeURIComponent(id)
+  const reportId = decodeURIComponent(id)
 
-  const data = await getReporteForExcel(consecutiveNumber)
+  const data = await getReporteForExcel(reportId, session.accessToken)
 
   if (!data) {
     return Response.json({ ok: false, error: 'NOT_FOUND' }, { status: 404 })
@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   return new Response(buffer.buffer as ArrayBuffer, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename="reporte-${consecutiveNumber}.xlsx"`,
+      'Content-Disposition': `attachment; filename="reporte-${reportId}.xlsx"`,
     },
   })
 }

@@ -1,9 +1,9 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Briefcase, ChevronLeft, ChevronRight, FileSearch, Loader2, TabletSmartphone, X } from 'lucide-react'
+import { Briefcase, ChevronLeft, ChevronRight, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
 import type {
   OrderWorkload,
   OrderItemWorkload,
@@ -17,6 +17,7 @@ import {
   releaseOrderItemAction,
   type ReleaseOrderItemState,
 } from '@/app/actions/release-order-item'
+import { uploadOrderDocumentAction } from '@/app/actions/upload-order-document'
 import { SearchCotizacionModal } from './SearchCotizacionModal'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -191,21 +192,24 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
             <input type="hidden" name="qb_order_consecutive" value={order.consecutiveNumber ?? ''} />
             <input type="hidden" name="qb_order_state" value={order.orderStatus ?? ''} />
             <input type="hidden" name="qb_order_client_name" value={order.clientName ?? ''} />
-            <input type="hidden" name="qb_order_client_contact_name" value="" />
-            <input type="hidden" name="qb_order_client_contact_email" value="" />
+            <input type="hidden" name="qb_order_client_contact_name" value={order.clientContactName ?? ''} />
+            <input type="hidden" name="qb_order_client_contact_email" value={order.clientContactEmail ?? ''} />
             <input type="hidden" name="qb_order_service_type_name" value={order.serviceType ?? ''} />
-            <input type="hidden" name="qb_order_service_type_detail" value="" />
-            <input type="hidden" name="qb_order_pieces_per_hour" value="" />
-            <input type="hidden" name="qb_order_authorized_hours" value="" />
-            <input type="hidden" name="qb_order_price_per_hour" value="" />
-            <input type="hidden" name="qb_order_language" value="" />
-            <input type="hidden" name="qb_order_user_name" value="" />
+            <input type="hidden" name="qb_order_region_name" value={order.regionName ?? ''} />
+            <input type="hidden" name="qb_order_service_type_detail" value={order.serviceTypeDetail ?? ''} />
+            <input type="hidden" name="qb_order_pieces_per_hour" value={order.piecesPerHour !== null && order.piecesPerHour !== undefined ? String(order.piecesPerHour) : ''} />
+            <input type="hidden" name="qb_order_authorized_hours" value={order.authorizedHours !== null && order.authorizedHours !== undefined ? String(order.authorizedHours) : ''} />
+            <input type="hidden" name="qb_order_price_per_hour" value={order.pricePerHour !== null && order.pricePerHour !== undefined ? String(order.pricePerHour) : ''} />
+            <input type="hidden" name="qb_order_language" value={order.language ?? ''} />
+            <input type="hidden" name="qb_order_user_name" value={order.userName ?? ''} />
             <input type="hidden" name="qb_order_plant_name" value={order.plantName ?? ''} />
             {/* Quotation fields */}
             <input type="hidden" name="qb_quotation_id" value={String(parentQuotation?.id ?? '')} />
             <input type="hidden" name="qb_quotation_consecutive" value={item.quotationConsecutive ?? ''} />
-            <input type="hidden" name="qb_quotation_client_name" value="" />
-            <input type="hidden" name="qb_quotation_client_email" value="" />
+            <input type="hidden" name="qb_quotation_client_email" value={parentQuotation?.clientEmail ?? ''} />
+            <input type="hidden" name="qb_quotation_purchase_order_number" value={parentQuotation?.purchaseOrderNumber ?? ''} />
+            <input type="hidden" name="qb_quotation_contact_emails" value={parentQuotation?.contactEmails ?? ''} />
+            <input type="hidden" name="qb_quotation_order_user_name" value={parentQuotation?.orderUserName ?? ''} />
             <input type="hidden" name="qb_quotation_status" value={parentQuotation?.status ?? ''} />
             <input type="hidden" name="qb_quotation_plant_name" value={order.plantName ?? ''} />
             {/* OrderItem fields */}
@@ -279,6 +283,8 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
 interface ReleaseItemModalProps {
   orderItemId: number
   partNumber: string
+  isInProgress?: boolean
+  hasSubmittedReport?: boolean
   state: ReleaseOrderItemState
   action: (formData: FormData) => void
   onClose: () => void
@@ -298,7 +304,7 @@ function ReleaseSubmitButton() {
   )
 }
 
-function ReleaseItemModal({ orderItemId, partNumber, state, action, onClose }: ReleaseItemModalProps) {
+function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedReport = false, state, action, onClose }: ReleaseItemModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -351,6 +357,18 @@ function ReleaseItemModal({ orderItemId, partNumber, state, action, onClose }: R
             La tablet volverá a estar disponible para nuevas asignaciones.
           </p>
 
+          {isInProgress && (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              Este ítem tiene una inspección en curso. Al liberar la tablet, la sesión activa será cancelada.
+            </p>
+          )}
+
+          {hasSubmittedReport && (
+            <p className="rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-300">
+              Este ítem tiene un reporte enviado. Al liberar la tablet, la sesión se cerrará y el reporte quedará disponible para revisión.
+            </p>
+          )}
+
           {state && !state.ok && (
             <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
               {state.error}
@@ -383,8 +401,8 @@ interface OrderItemRowProps {
 }
 
 function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
-  const canAssign = item.status === 'pending' && item.assignedTablet === null
-  const canRelease = item.status === 'assigned'
+  const canAssign = item.status === 'pending' && item.assignedTablet === null && !item.hasSubmittedReport
+  const canRelease = item.status === 'assigned' || item.status === 'in_progress'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a2d4d] px-4 py-3 last:border-b-0">
@@ -414,6 +432,10 @@ function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
           <span className="text-xs text-slate-600">Sin asignar</span>
         )}
 
+
+        {item.hasSubmittedReport && item.status !== 'completed' && (
+          <span className="text-xs text-amber-500">Reporte enviado</span>
+        )}
         {canAssign && (
           <button
             type="button"
@@ -454,6 +476,34 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
   const [releaseItemId, setReleaseItemId] = useState<number | null>(null)
   const [assignState, assignAction] = useActionState(assignOrderItemAction, undefined)
   const [releaseState, releaseAction] = useActionState(releaseOrderItemAction, undefined)
+  const [uploadState, uploadAction] = useActionState(uploadOrderDocumentAction, undefined)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const activeDocTypeRef = useRef<'hoe' | 'arranque-seguro' | null>(null)
+  const [uploadingDocType, setUploadingDocType] = useState<'hoe' | 'arranque-seguro' | null>(null)
+
+  useEffect(() => {
+    if (uploadState !== undefined) {
+      setUploadingDocType(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }, [uploadState])
+
+  function handleUploadClick(docType: 'hoe' | 'arranque-seguro') {
+    activeDocTypeRef.current = docType
+    fileInputRef.current?.click()
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const docType = activeDocTypeRef.current
+    if (!file || !docType) return
+    setUploadingDocType(docType)
+    const fd = new FormData()
+    fd.set('orderId', String(order.id))
+    fd.set('docType', docType)
+    fd.set('file', file)
+    uploadAction(fd)
+  }
 
   useEffect(() => {
     if (assignState?.ok === true) {
@@ -600,6 +650,63 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                 </div>
               )}
             </section>
+
+            {/* Sección 4 — Documentos */}
+            <section className="px-6 py-5">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Documentos
+              </h3>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={uploadingDocType !== null}
+                    onClick={() => handleUploadClick('hoe')}
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#31476f] px-3 py-2 text-sm text-slate-300 transition-colors hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {uploadingDocType === 'hoe' ? (
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Upload size={14} aria-hidden="true" />
+                    )}
+                    {uploadingDocType === 'hoe' ? 'Subiendo...' : 'Agregar HOE'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={uploadingDocType !== null}
+                    onClick={() => handleUploadClick('arranque-seguro')}
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#31476f] px-3 py-2 text-sm text-slate-300 transition-colors hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {uploadingDocType === 'arranque-seguro' ? (
+                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Upload size={14} aria-hidden="true" />
+                    )}
+                    {uploadingDocType === 'arranque-seguro' ? 'Subiendo...' : 'Agregar Arranque Seguro'}
+                  </button>
+                </div>
+
+                {uploadState && !uploadState.ok && (
+                  <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                    {uploadState.error}
+                  </p>
+                )}
+                {uploadState?.ok && (
+                  <p className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-300">
+                    Documento &quot;{uploadState.docType === 'hoe' ? 'HOE' : 'Arranque Seguro'}&quot; subido correctamente.
+                  </p>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.xlsx,.xls"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </section>
           </div>
         </div>
       </div>
@@ -620,6 +727,8 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
         <ReleaseItemModal
           orderItemId={releaseItemId}
           partNumber={order.items.find((i) => i.id === releaseItemId)?.partNumber ?? '—'}
+          isInProgress={order.items.find((i) => i.id === releaseItemId)?.status === 'in_progress'}
+          hasSubmittedReport={order.items.find((i) => i.id === releaseItemId)?.hasSubmittedReport ?? false}
           state={releaseState}
           action={releaseAction}
           onClose={() => setReleaseItemId(null)}
@@ -800,6 +909,18 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
   const router = useRouter()
   const [selectedOrder, setSelectedOrder] = useState<OrderWorkload | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredOrders = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return orders
+    return orders.filter(
+      (o) =>
+        (o.consecutiveNumber ?? '').toLowerCase().includes(q) ||
+        (o.clientName ?? '').toLowerCase().includes(q) ||
+        (o.plantName ?? '').toLowerCase().includes(q),
+    )
+  }, [orders, searchQuery])
 
   // Sync selectedOrder when server data refreshes after assign/release
   useEffect(() => {
@@ -843,13 +964,30 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
           </button>
         </div>
 
-        {orders.length === 0 ? (
+        <div className="relative">
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            aria-hidden="true"
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar por N. orden, cliente o planta…"
+            className="w-full rounded-lg border border-[#1a2d4d] bg-[#0c1829] pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+          />
+        </div>
+
+        {filteredOrders.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-[#1a2d4d] bg-[#0c1829] py-16">
             <Briefcase size={32} className="text-slate-600" aria-hidden="true" />
-            <p className="text-sm text-slate-500">Sin órdenes activas asignadas</p>
+            <p className="text-sm text-slate-500">
+              {searchQuery.trim() ? `Sin resultados para "${searchQuery.trim()}"` : 'Sin órdenes activas asignadas'}
+            </p>
           </div>
         ) : (
-          <OrdersTable orders={orders} onRowClick={setSelectedOrder} />
+          <OrdersTable orders={filteredOrders} onRowClick={setSelectedOrder} />
         )}
       </div>
 

@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { ClienteRow } from '@/shared/types/cliente'
 import { getSession } from '@/back/services/session'
@@ -8,7 +9,6 @@ import { updateCliente as serviceUpdateCliente } from '@/back/services/clientSer
 export type UpdateClienteState = {
   errors?: {
     nombre?: string[]
-    direccion?: string[]
     general?: string[]
   }
   success?: true
@@ -17,12 +17,10 @@ export type UpdateClienteState = {
 
 const UpdateClienteSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').trim(),
-  direccion: z.string().trim().optional(),
-  requiereOC: z.boolean(),
 })
 
 export async function updateCliente(
-  state: UpdateClienteState,
+  _state: UpdateClienteState,
   formData: FormData,
 ): Promise<UpdateClienteState> {
   const session = await getSession()
@@ -35,15 +33,8 @@ export async function updateCliente(
     return { errors: { general: ['ID de cliente inválido'] } }
   }
 
-  const ocRaw = String(formData.get('requiereOC') ?? '')
-  const requiereOC = ocRaw === 'on' || ocRaw === 'true'
-
-  const direccionRaw = String(formData.get('direccion') ?? '').trim()
-
   const raw = {
     nombre: String(formData.get('nombre') ?? '').trim(),
-    direccion: direccionRaw || undefined,
-    requiereOC,
   }
 
   const validated = UpdateClienteSchema.safeParse(raw)
@@ -51,20 +42,18 @@ export async function updateCliente(
     return { errors: validated.error.flatten().fieldErrors }
   }
 
-  try {
-    const result = await serviceUpdateCliente({
-      id,
-      nombre: validated.data.nombre,
-      direccion: direccionRaw === '' ? null : validated.data.direccion,
-      requiereOC: validated.data.requiereOC,
-    })
+  const result = await serviceUpdateCliente(
+    { id, nombre: validated.data.nombre },
+    session.accessToken,
+  )
 
-    if (!result.ok) {
+  if (!result.ok) {
+    if (result.reason === 'not_found') {
       return { errors: { general: ['Cliente no encontrado'] } }
     }
-
-    return { success: true, cliente: result.cliente }
-  } catch {
     return { errors: { general: ['Error inesperado al actualizar el cliente'] } }
   }
+
+  revalidatePath('/admin/clientes')
+  return { success: true, cliente: result.cliente }
 }

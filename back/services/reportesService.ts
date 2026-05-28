@@ -2,7 +2,7 @@ import 'server-only'
 
 import { prisma } from '@/back/db/prisma'
 
-export type ReporteEstatus = 'Pendiente' | 'Enviado' | 'En muestreo' | 'Firmado' | 'Publicado'
+export type ReporteEstatus = 'Enviado' | 'En muestreo' | 'Firmado' | 'Publicado'
 
 export type ReporteRow = {
   id: string
@@ -25,25 +25,20 @@ export type ReportesResult = {
 
 export const PAGE_SIZE = 20
 
-function mapEstatus(dbStatus: string, hasItems: boolean): ReporteEstatus {
-  if (dbStatus === 'pendiente') return hasItems ? 'Enviado' : 'Pendiente'
-  if (dbStatus === 'muestreado') return 'En muestreo'
-  if (dbStatus === 'firmado') return 'Firmado'
-  if (dbStatus === 'publicado') return 'Publicado'
-  return 'Pendiente'
-}
-
-export async function getUnassignedCount(): Promise<number> {
-  return 0
+function mapEstatus(dbStatus: string): ReporteEstatus {
+  // DB stores English values: submitted, sampled, signed, published
+  if (dbStatus === 'submitted') return 'Enviado'
+  if (dbStatus === 'sampled'   || dbStatus === 'muestreado') return 'En muestreo'
+  if (dbStatus === 'signed'    || dbStatus === 'firmado')    return 'Firmado'
+  if (dbStatus === 'published' || dbStatus === 'publicado')  return 'Publicado'
+  // Any unknown value defaults to Enviado — Pendiente no longer exists
+  return 'Enviado'
 }
 
 export async function getSupervisorReportes(
   _supervisorId: string,
-  mode: 'assigned' | 'unassigned' = 'assigned',
   page: number = 1,
 ): Promise<ReportesResult> {
-  if (mode === 'unassigned') return { rows: [], total: 0 }
-
   const skip = (page - 1) * PAGE_SIZE
 
   const [reports, total] = await prisma.$transaction([
@@ -63,6 +58,9 @@ export async function getSupervisorReportes(
                 order: {
                   include: {
                     plant: {
+                      select: { name: true },
+                    },
+                    client: {
                       select: { name: true },
                     },
                   },
@@ -90,13 +88,13 @@ export async function getSupervisorReportes(
     return {
       id: String(report.id),
       orderId: order.id,
-      cliente: order.clientName ?? '—',
+      cliente: order.client?.name ?? '—',
       planta: plant?.name ?? '—',
       cotizacion: quotation.consecutiveNumber ?? '—',
       parte: report.orderItem.partNumber ?? '—',
       inspector: report.operators[0]?.operatorName ?? '—',
       turno: report.shift ?? '—',
-      estatus: mapEstatus(report.status, report.items.length > 0),
+      estatus: mapEstatus(report.status),
       piezas: totalPieces.toLocaleString('es-MX'),
       pctNG: totalPieces > 0 ? `${((totalNg / totalPieces) * 100).toFixed(1)}%` : '-',
     }

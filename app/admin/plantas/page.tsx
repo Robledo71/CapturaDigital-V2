@@ -3,7 +3,7 @@ import { PlantasPage } from '@/front/components/admin/PlantasPage'
 import { getAllPlantas } from '@/back/services/plantService'
 import { getSession } from '@/back/services/session'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 12
 
 interface PageProps {
   searchParams: Promise<{ page?: string }>

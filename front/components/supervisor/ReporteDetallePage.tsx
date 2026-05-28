@@ -32,12 +32,6 @@ interface ReporteDetallePageProps {
 }
 
 const STATUS_CONFIG: Record<string, { dot: string; label: string; pill: string; text: string }> = {
-  pending: {
-    dot: 'bg-blue-600 dark:bg-blue-400',
-    label: 'Pendiente',
-    pill: 'bg-blue-100 border border-blue-300 dark:bg-blue-500/10 dark:border-blue-500/20',
-    text: 'text-blue-700 dark:text-blue-400',
-  },
   submitted: {
     dot: 'bg-blue-600 dark:bg-blue-400',
     label: 'Enviado',
@@ -98,7 +92,7 @@ function getNgColorClass(pct: number): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.submitted
 
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${cfg.pill} ${cfg.text}`}>
@@ -142,7 +136,7 @@ function InspectionItemsTable({
   onEditItem?: (item: InspectionItemRow) => void
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
-  const colCount = onEditItem ? 12 : 11
+  const colCount = onEditItem ? 13 : 12
 
   return (
     <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
@@ -157,11 +151,11 @@ function InspectionItemsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
-                {(['#', 'Descripción', 'Lote', 'Series', 'Otro', 'Inspeccionadas', 'OK', 'NG', 'Scrap', 'Recuperadas', 'Incidencias'] as const).map(
+                {(['#', 'N° Parte', 'Nombre de Parte', 'Lote', 'Serie', 'Identificadores', 'Inspeccionadas', 'OK', 'NG', 'Scrap', 'Recuperadas', 'Incidencias'] as const).map(
                   (col, i) => (
                     <th
                       key={col}
-                      className={`pb-2.5 text-xs font-medium text-slate-600 dark:text-slate-500 ${i < 2 ? 'text-left' : 'text-right'} ${i === 0 ? 'w-8 pr-4' : ''} ${i === 1 ? 'min-w-[140px] pr-4' : 'pl-4'}`}
+                      className={`pb-2.5 text-xs font-medium text-slate-600 dark:text-slate-500 ${i < 3 ? 'text-left' : 'text-right'} ${i === 0 ? 'w-8 pr-4' : ''} ${i === 1 ? 'min-w-[100px] pr-4' : ''} ${i === 2 ? 'min-w-[140px] pr-4' : ''} ${i > 2 ? 'pl-4' : ''}`}
                     >
                       {col}
                     </th>
@@ -179,17 +173,20 @@ function InspectionItemsTable({
                 <React.Fragment key={item.id}>
                   <tr className="border-b border-blue-100 dark:border-[#1a2d4d]/50">
                     <td className="py-2.5 pr-4 text-xs tabular-nums text-slate-400">{idx + 1}</td>
-                    <td className="max-w-[220px] truncate py-2.5 pr-4 text-slate-900 dark:text-white" title={item.description}>
-                      {item.description}
+                    <td className="py-2.5 pr-4 text-xs text-slate-500 font-mono" title={item.partNumber ?? '—'}>
+                      {item.partNumber ?? '—'}
+                    </td>
+                    <td className="max-w-[180px] truncate py-2.5 pr-4 text-slate-900 dark:text-white" title={item.partName ?? '—'}>
+                      {item.partName ?? '—'}
                     </td>
                     <td className="py-2.5 pl-4 text-right text-xs text-slate-400">
                       {item.lote ?? '—'}
                     </td>
                     <td className="py-2.5 pl-4 text-right text-xs text-slate-400">
-                      {item.series ?? '—'}
+                      {item.serie ?? '—'}
                     </td>
                     <td className="py-2.5 pl-4 text-right text-xs text-slate-400">
-                      {item.otro ?? '—'}
+                      {item.identificadores ?? '—'}
                     </td>
                     <td className="py-2.5 pl-4 text-right tabular-nums text-slate-900 dark:text-white">
                       {item.inspected.toLocaleString('es-MX')}
@@ -224,7 +221,7 @@ function InspectionItemsTable({
                         <button
                           type="button"
                           onClick={() => onEditItem(item)}
-                          aria-label={`Editar ítem ${item.description}`}
+                          aria-label={`Editar ítem ${item.partNumber ?? item.partName ?? item.id}`}
                           className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 transition-colors hover:border-blue-400 hover:text-blue-600 dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
                         >
                           <Edit2 size={11} aria-hidden="true" />
@@ -252,7 +249,7 @@ function InspectionItemsTable({
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-blue-200 dark:border-[#1a2d4d]">
-                <td colSpan={5} className="py-2.5 text-xs font-semibold text-slate-500">
+                <td colSpan={6} className="py-2.5 text-xs font-semibold text-slate-500">
                   Totales
                 </td>
                 <td className="py-2.5 pl-4 text-right tabular-nums font-semibold text-slate-900 dark:text-white">
@@ -324,6 +321,7 @@ function EditItemModal({
 
   const ngVal = Math.max(0, Math.floor(Number(values.ng) || 0))
   const recoveredVal = Math.max(0, Math.floor(Number(values.recovered) || 0))
+  const recoveredExceedsNg = recoveredVal > ngVal
   const computedScrap = Math.max(0, ngVal - recoveredVal)
   const incidentsJson = JSON.stringify(
     item.incidents.map((inc, i) => ({
@@ -345,6 +343,8 @@ function EditItemModal({
       >
         <input type="hidden" name="reportId" value={String(reportId)} />
         <input type="hidden" name="itemId" value={String(item.id)} />
+        {/* Pass the original total_pieces so the action does not silently derive it from ok+ng */}
+        <input type="hidden" name="total" value={String(item.inspected)} />
         <input type="hidden" name="scrap" value={String(computedScrap)} />
         <input type="hidden" name="incidents" value={incidentsJson} />
 
@@ -365,8 +365,8 @@ function EditItemModal({
 
         {/* Body */}
         <div className="flex flex-col gap-4 px-5 py-5">
-          <p className="truncate text-sm font-medium text-white" title={item.description}>
-            {item.description}
+          <p className="truncate text-sm font-medium text-white" title={`${item.partNumber ?? ''} ${item.partName ?? ''}`}>
+            {item.partNumber ? `${item.partNumber} · ` : ''}{item.partName ?? '—'}
           </p>
 
           <div className="grid grid-cols-2 gap-4">
@@ -395,6 +395,12 @@ function EditItemModal({
               </div>
             </div>
           </div>
+
+          {recoveredExceedsNg && (
+            <p className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-300">
+              Recuperadas ({recoveredVal}) no puede exceder NG ({ngVal}). Se ajustará automáticamente al guardar.
+            </p>
+          )}
 
           {item.incidents.length > 0 && (
             <div className="flex flex-col gap-2">
@@ -662,28 +668,29 @@ function SamplingModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-white hover:bg-white/10"
-          >
-            Cancelar
-          </button>
-          <WorkflowSubmitButton
-            name="decision"
-            value="reject"
-            className="inline-flex items-center gap-1.5 rounded-md border border-red-500 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-500/10 disabled:opacity-60"
-          >
-            No aprueba - reenviar al inspector
-          </WorkflowSubmitButton>
-          <WorkflowSubmitButton
-            name="decision"
-            value="approve"
-            className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60"
-          >
-            Aprobar muestreo
-          </WorkflowSubmitButton>
+        <div className="flex items-center justify-between gap-2 border-t border-[#25395f] px-5 py-4">
+          {!approves && (
+            <p className="text-xs text-red-300">
+              El muestreo no cumple las condiciones. Edita los ítems antes de aprobar.
+            </p>
+          )}
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-white hover:bg-white/10"
+            >
+              Cancelar
+            </button>
+            <WorkflowSubmitButton
+              name="decision"
+              value="approve"
+              disabled={!approves}
+              className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              Aprobar muestreo
+            </WorkflowSubmitButton>
+          </div>
         </div>
       </form>
     </div>

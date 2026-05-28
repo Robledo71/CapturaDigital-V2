@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { ClienteRow } from '@/shared/types/cliente'
 import { getSession } from '@/back/services/session'
@@ -8,7 +9,6 @@ import { createCliente as serviceCreateCliente } from '@/back/services/clientSer
 export type CreateClienteState = {
   errors?: {
     nombre?: string[]
-    direccion?: string[]
     general?: string[]
   }
   success?: true
@@ -17,12 +17,10 @@ export type CreateClienteState = {
 
 const CreateClienteSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').trim(),
-  direccion: z.string().trim().optional(),
-  requiereOC: z.boolean(),
 })
 
 export async function createCliente(
-  state: CreateClienteState,
+  _state: CreateClienteState,
   formData: FormData,
 ): Promise<CreateClienteState> {
   const session = await getSession()
@@ -30,13 +28,8 @@ export async function createCliente(
     return { errors: { general: ['No autorizado'] } }
   }
 
-  const ocRaw = String(formData.get('requiereOC') ?? '')
-  const requiereOC = ocRaw === 'on' || ocRaw === 'true'
-
   const raw = {
     nombre: String(formData.get('nombre') ?? '').trim(),
-    direccion: String(formData.get('direccion') ?? '').trim() || undefined,
-    requiereOC,
   }
 
   const validated = CreateClienteSchema.safeParse(raw)
@@ -44,15 +37,18 @@ export async function createCliente(
     return { errors: validated.error.flatten().fieldErrors }
   }
 
-  try {
-    const result = await serviceCreateCliente({
-      nombre: validated.data.nombre,
-      direccion: validated.data.direccion,
-      requiereOC: validated.data.requiereOC,
-    })
+  const result = await serviceCreateCliente(
+    { nombre: validated.data.nombre },
+    session.accessToken,
+  )
 
-    return { success: true, cliente: result.cliente }
-  } catch {
+  if (!result.ok) {
+    if (result.reason === 'duplicate_name') {
+      return { errors: { nombre: ['Ya existe un cliente con ese nombre'] } }
+    }
     return { errors: { general: ['Error inesperado al crear el cliente'] } }
   }
+
+  revalidatePath('/admin/clientes')
+  return { success: true, cliente: result.cliente }
 }

@@ -14,12 +14,6 @@ interface EditarClienteModalProps {
   onSuccess: (updated: ClienteRow) => void
 }
 
-interface FormValues {
-  nombre: string
-  direccion: string
-  requiereOC: string
-}
-
 // ─── Submit button ─────────────────────────────────────────────────────────────
 
 function SubmitButton() {
@@ -45,17 +39,7 @@ const inputCls =
 
 export function EditarClienteModal({ cliente, onClose, onSuccess }: EditarClienteModalProps) {
   const [state, dispatch] = useActionState(updateCliente, undefined)
-  const [values, setValues] = useState<FormValues>({
-    nombre: cliente.nombre,
-    direccion: cliente.direccion ?? '',
-    requiereOC: cliente.requiereOC ? 'true' : 'false',
-  })
-
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) {
-    setValues((prev) => ({ ...prev, [e.target.name]: e.target.value }))
-  }
+  const [nombre, setNombre] = useState(cliente.nombre)
 
   useEffect(() => {
     if (state?.success === true && state.cliente) {
@@ -82,7 +66,7 @@ export function EditarClienteModal({ cliente, onClose, onSuccess }: EditarClient
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="p-1.5 rounded text-blue-600 dark:text-slate-400 hover:text-blue-950 dark:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+            className="p-1.5 rounded text-blue-600 dark:text-slate-400 hover:text-blue-950 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
           >
             <X size={16} aria-hidden="true" />
           </button>
@@ -116,51 +100,13 @@ export function EditarClienteModal({ cliente, onClose, onSuccess }: EditarClient
                 autoComplete="off"
                 autoFocus
                 placeholder="Ej. Grupo Antolin"
-                value={values.nombre}
-                onChange={handleChange}
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
                 className={inputCls}
               />
               {state?.errors?.nombre && (
                 <p className="text-red-400 text-xs">{state.errors.nombre[0]}</p>
               )}
-            </div>
-
-            {/* Dirección */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="direccion-edit-cliente" className="text-xs font-medium text-blue-600 dark:text-slate-400">
-                Dirección
-                <span className="text-slate-600 font-normal ml-1">(opcional)</span>
-              </label>
-              <input
-                id="direccion-edit-cliente"
-                name="direccion"
-                type="text"
-                autoComplete="off"
-                placeholder="Ej. Blvd. Industrial 123, Silao"
-                value={values.direccion}
-                onChange={handleChange}
-                className={inputCls}
-              />
-              {state?.errors?.direccion && (
-                <p className="text-red-400 text-xs">{state.errors.direccion[0]}</p>
-              )}
-            </div>
-
-            {/* Requiere OC */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="requiereOC-edit-cliente" className="text-xs font-medium text-blue-600 dark:text-slate-400">
-                Requiere orden de compra (OC)
-              </label>
-              <select
-                id="requiereOC-edit-cliente"
-                name="requiereOC"
-                value={values.requiereOC}
-                onChange={handleChange}
-                className={inputCls}
-              >
-                <option value="false">No requiere OC</option>
-                <option value="true">Requiere OC</option>
-              </select>
             </div>
 
           </div>

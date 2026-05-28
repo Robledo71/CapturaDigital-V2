@@ -1,31 +1,19 @@
+import { redirect } from 'next/navigation'
 import { TopBar } from '@/front/components/admin/TopBar'
 import { ClientesPage } from '@/front/components/admin/ClientesPage'
 import { getAllClientes } from '@/back/services/clientService'
+import { getSession } from '@/back/services/session'
 
-const PAGE_SIZE = 20
+export default async function Page() {
+  const session = await getSession()
+  if (!session) redirect('/login')
 
-interface PageProps {
-  searchParams: Promise<{ page?: string }>
-}
-
-export default async function Page({ searchParams }: PageProps) {
-  const { page: pageParam } = await searchParams
-  const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
-
-  const allClientes = await getAllClientes()
-  const total = allClientes.length
-  const start = (page - 1) * PAGE_SIZE
-  const clientes = allClientes.slice(start, start + PAGE_SIZE)
+  const clientes = await getAllClientes(session.accessToken)
 
   return (
     <>
       <TopBar crumb="Clientes" />
-      <ClientesPage
-        initialClientes={clientes}
-        total={total}
-        page={page}
-        pageSize={PAGE_SIZE}
-      />
+      <ClientesPage initialClientes={clientes} />
     </>
   )
 }

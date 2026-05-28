@@ -14,7 +14,7 @@ export default async function CapturacionLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-blue-50/50 dark:bg-[#070e1a]">
-      <Sidebar />
+      <Sidebar user={{ nombreCompleto: session.nombreCompleto, rol: session.rol }} />
       <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
     </div>
   )

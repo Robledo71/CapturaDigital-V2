@@ -10,7 +10,7 @@ export async function GET() {
     return Response.json({ ok: false, error: 'UNAUTHORIZED' }, { status: 401 })
   }
 
-  const result = await getPublishedReportes()
+  const result = await getPublishedReportes(session.accessToken)
 
   return Response.json(result)
 }

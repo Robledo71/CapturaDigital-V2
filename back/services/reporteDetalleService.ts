@@ -21,7 +21,8 @@ export type IncidentEntry = {
 
 export type InspectionItemRow = {
   id: number
-  description: string
+  partName: string | null
+  partNumber: string | null
   inspected: number
   ok: number
   ng: number
@@ -29,8 +30,8 @@ export type InspectionItemRow = {
   recovered: number
   incidents: IncidentEntry[]
   lote: string | null
-  series: string | null
-  otro: string | null
+  serie: string | null
+  identificadores: string | null
 }
 
 export type ReporteDetalleData = {
@@ -126,6 +127,9 @@ type ApiItem = {
   ng_pieces: number
   scrap_pieces: number
   recovered_pieces: number
+  lote: string | null
+  serie: string | null
+  identificadores: string | null
   incidents: ApiIncident[]
 }
 
@@ -161,6 +165,7 @@ type ApiOrderContext = {
   id_supervisor: string | null
   supervisor_name: string | null
   id_tablet: string | null
+  tablet_alias: string | null
   session_status: string | null
   fecha_inicio: string | null
   fecha_fin: string | null
@@ -188,12 +193,18 @@ type ApiDailyReport = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function mapStatus(dbStatus: string, hasItems: boolean): string {
-  if (dbStatus === 'pendiente') return hasItems ? 'submitted' : 'pending'
+function mapStatus(dbStatus: string): string {
+  // DB stores English values
+  if (dbStatus === 'submitted')  return 'submitted'
+  if (dbStatus === 'sampled')    return 'sampling'
+  if (dbStatus === 'signed')     return 'signed'
+  if (dbStatus === 'published')  return 'published'
+  // Legacy Spanish values (pre-migration rows)
+  if (dbStatus === 'enviado')    return 'submitted'
   if (dbStatus === 'muestreado') return 'sampling'
-  if (dbStatus === 'firmado') return 'signed'
-  if (dbStatus === 'publicado') return 'published'
-  return 'pending'
+  if (dbStatus === 'firmado')    return 'signed'
+  if (dbStatus === 'publicado')  return 'published'
+  return 'submitted'
 }
 
 function apiHeaders(accessToken: string) {
@@ -224,9 +235,10 @@ export async function getReporteDetalle(
   const report: ApiDailyReport = body.data
   const ctx = report.order_context
 
-  const inspectionItems: InspectionItemRow[] = report.items.map((item, idx) => ({
+  const inspectionItems: InspectionItemRow[] = report.items.map((item) => ({
     id: item.id,
-    description: `Ítem ${idx + 1}`,
+    partName: ctx?.part_name ?? null,
+    partNumber: ctx?.part_number ?? null,
     inspected: item.total_pieces,
     ok: item.ok_pieces,
     ng: item.ng_pieces,
@@ -236,9 +248,9 @@ export async function getReporteDetalle(
       description: inc.incident_name ?? '—',
       count: inc.affected_pieces,
     })),
-    lote: null,
-    series: null,
-    otro: null,
+    lote: item.lote ?? null,
+    serie: item.serie ?? null,
+    identificadores: item.identificadores ?? null,
   }))
 
   const samplingItems: SamplingItemRule[] = inspectionItems
@@ -248,7 +260,7 @@ export async function getReporteDetalle(
       return {
         ...rule,
         id: item.id,
-        description: item.description,
+        description: item.partName ?? item.partNumber ?? `Ítem ${item.id}`,
         inspected: item.inspected,
         rangeLabel: `${rule.min}–${rule.max}`,
       }
@@ -275,7 +287,7 @@ export async function getReporteDetalle(
   return {
     reportId: report.id,
     consecutiveNumber: ctx?.quotation_consecutive ?? `RPT-${report.id}`,
-    status: mapStatus(report.status, report.items.length > 0),
+    status: mapStatus(report.status),
     reportDate: new Date(report.report_date),
     createdAt: new Date(report.created_at),
 
@@ -302,7 +314,7 @@ export async function getReporteDetalle(
 
     operadores,
     turno: report.shift ?? '—',
-    tabletAlias: ctx?.id_tablet ?? '—',
+    tabletAlias: ctx?.tablet_alias ?? ctx?.id_tablet ?? '—',
 
     sessionCreatedAt: ctx?.fecha_inicio ? new Date(ctx.fecha_inicio) : null,
     sessionFinishedAt: ctx?.fecha_fin ? new Date(ctx.fecha_fin) : null,

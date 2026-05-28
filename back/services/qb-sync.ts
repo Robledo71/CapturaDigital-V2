@@ -2,6 +2,19 @@ import 'server-only'
 import { prisma } from '@/back/db/prisma'
 import { searchOrder, searchCotizaciones, QBOrderItem } from './qb-api'
 
+/**
+ * Bug #2 fix — translate raw QB/legacy Rails order state values to the
+ * English enum expected by Prisma.  QB reads directly from the legacy DB
+ * which stores Spanish values ('abierta', 'cerrada').
+ */
+function mapOrderState(state: string | null | undefined): string | null {
+  if (!state) return null
+  if (state === 'cerrada' || state === 'closed') return 'closed'
+  if (state === 'cancelled') return 'cancelled'
+  // 'abierta', 'open', or any unknown value → open
+  return 'open'
+}
+
 // QB API returns order_items in one of four shapes:
 //   1. null / undefined / non-object  → no items
 //   2. Proper JS array                → filter valid non-null objects
@@ -52,14 +65,21 @@ export async function importCotizacionesByOrden(orden: string): Promise<ImportCo
   const cotizaciones = cotizacionesResult.data
 
   const orderPlant = qbOrder.plant_name
-    ? await prisma.plant.findFirst({ where: { name: qbOrder.plant_name }, select: { id: true } })
+    ? await prisma.plant.findFirst({ where: { name: qbOrder.plant_name }, select: { id: true, regionId: true } })
     : null
 
+  const regionId: number | null = orderPlant?.regionId
+    ?? (qbOrder.region_name
+      ? (await prisma.region.findFirst({ where: { name: qbOrder.region_name }, select: { id: true } }))?.id ?? null
+      : null)
+
+  const orderId = Number(qbOrder.id)
+
   await prisma.order.upsert({
-    where: { id: Number(qbOrder.id) },
+    where: { id: orderId },
     create: {
-      id: Number(qbOrder.id),
-      state: qbOrder.state,
+      id: orderId,
+      state: mapOrderState(qbOrder.state),          // Bug #2 fix — translate Spanish → English
       consecutiveNumber: qbOrder.consecutive_number,
       serviceTypeDetail: qbOrder.service_type_detail,
       serviceTypeName: qbOrder.service_type_name,
@@ -68,15 +88,15 @@ export async function importCotizacionesByOrden(orden: string): Promise<ImportCo
       pricePerHour: qbOrder.price_per_hour !== '' ? qbOrder.price_per_hour : null,
       language: qbOrder.language,
       userName: qbOrder.user_name,
-      clientName: qbOrder.client_name,
       clientContactName: qbOrder.client_contact_name,
       clientContactEmail: qbOrder.client_contact_email,
       plantId: orderPlant?.id ?? null,
+      regionId: regionId,
       createdAt: qbOrder.created_at ? new Date(qbOrder.created_at) : null,
       updatedAt: qbOrder.updated_at ? new Date(qbOrder.updated_at) : null,
     },
     update: {
-      state: qbOrder.state,
+      state: mapOrderState(qbOrder.state),          // Bug #2 fix — translate Spanish → English
       consecutiveNumber: qbOrder.consecutive_number,
       serviceTypeDetail: qbOrder.service_type_detail,
       serviceTypeName: qbOrder.service_type_name,
@@ -85,54 +105,64 @@ export async function importCotizacionesByOrden(orden: string): Promise<ImportCo
       pricePerHour: qbOrder.price_per_hour !== '' ? qbOrder.price_per_hour : null,
       language: qbOrder.language,
       userName: qbOrder.user_name,
-      clientName: qbOrder.client_name,
       clientContactName: qbOrder.client_contact_name,
       clientContactEmail: qbOrder.client_contact_email,
       plantId: orderPlant?.id ?? null,
+      regionId: regionId,
     },
   })
+
+  // Bug #1 fix — find-or-create the client by name and link it to the order.
+  // Without this, order.clientId was never set and order.client was always null.
+  const clientName = qbOrder.client_name?.trim()
+  if (clientName) {
+    const now = new Date()
+    const client = await prisma.client.upsert({
+      where: { name: clientName },
+      create: { name: clientName, createdAt: now, updatedAt: now },
+      update: {},
+    })
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { clientId: client.id },
+    })
+  }
 
   let totalItems = 0
 
   for (const cotizacion of cotizaciones) {
-    const cotPlant = cotizacion.plant_name
-      ? await prisma.plant.findFirst({ where: { name: cotizacion.plant_name }, select: { id: true } })
-      : null
-
+    // Note: region_id and plant_id have been removed from the quotations table.
+    // clientEmail now lives on quotations; client_name lives on orders.
     await prisma.quotation.upsert({
       where: { id: Number(cotizacion.id) },
       create: {
         id: Number(cotizacion.id),
         orderId: Number(cotizacion.order_id),
         consecutiveNumber: cotizacion.consecutive_number,
-        clientName: cotizacion.client_name,
-        clientEmail: cotizacion.client_email,
+        clientEmail: cotizacion.client_email ?? null,
         status: cotizacion.status,
         purchaseOrderNumber: cotizacion.purchase_order_number,
         contactEmails: cotizacion.contact_emails,
         orderUserName: cotizacion.order_user_name,
         orderConsecutiveNumber: cotizacion.order_consecutive_number,
-        plantId: cotPlant?.id ?? null,
         createdAt: cotizacion.created_at ? new Date(cotizacion.created_at) : null,
         updatedAt: cotizacion.updated_at ? new Date(cotizacion.updated_at) : null,
       },
       update: {
         consecutiveNumber: cotizacion.consecutive_number,
-        clientName: cotizacion.client_name,
-        clientEmail: cotizacion.client_email,
+        clientEmail: cotizacion.client_email ?? null,
         status: cotizacion.status,
         purchaseOrderNumber: cotizacion.purchase_order_number,
         contactEmails: cotizacion.contact_emails,
         orderUserName: cotizacion.order_user_name,
         orderConsecutiveNumber: cotizacion.order_consecutive_number,
-        plantId: cotPlant?.id ?? null,
       },
     })
 
     for (const item of toItemArray(cotizacion.order_items)) {
       const itemPlantId = item.plant_name
-        ? (await prisma.plant.findFirst({ where: { name: item.plant_name }, select: { id: true } }))?.id ?? cotPlant?.id ?? null
-        : cotPlant?.id ?? null
+        ? (await prisma.plant.findFirst({ where: { name: item.plant_name }, select: { id: true } }))?.id ?? null
+        : null
 
       const existing = await prisma.orderItem.findFirst({
         where: { quotationId: Number(cotizacion.id), partNumber: item.part_number },

@@ -16,9 +16,9 @@ export default async function SupervisorPage() {
   if (!session) redirect('/')
 
   const [stats, bandeja, produccion] = await Promise.all([
-    getSupervisorDashboardStats(String(session.userId)),
-    getDashboardBandeja(String(session.userId)),
-    getDashboardProduccion(String(session.userId)),
+    getSupervisorDashboardStats(session.accessToken),
+    getDashboardBandeja(session.accessToken),
+    getDashboardProduccion(session.accessToken),
   ])
   const firstName = session.nombreCompleto.split(' ')[0]
 

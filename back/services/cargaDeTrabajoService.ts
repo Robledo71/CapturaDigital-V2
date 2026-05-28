@@ -11,6 +11,10 @@ export type QuotationSummary = {
   consecutiveNumber: string | null
   status: string | null
   total: number
+  clientEmail: string | null
+  purchaseOrderNumber: string | null
+  contactEmails: string | null
+  orderUserName: string | null
 }
 
 export type OrderItemWorkload = {
@@ -23,6 +27,7 @@ export type OrderItemWorkload = {
   assignedAt: Date | null
   assignedTablet: AssignedTablet | null
   quotationConsecutive: string | null
+  hasSubmittedReport: boolean
 }
 
 export type OrderWorkload = {
@@ -35,6 +40,15 @@ export type OrderWorkload = {
   partName: string
   serviceType: string
   orderStatus: string
+  regionName: string | null
+  serviceTypeDetail: string | null
+  piecesPerHour: number | null
+  authorizedHours: number | null
+  pricePerHour: number | null
+  language: string | null
+  userName: string | null
+  clientContactName: string | null
+  clientContactEmail: string | null
   quotations: QuotationSummary[]
   items: OrderItemWorkload[]
 }
@@ -51,22 +65,29 @@ export type TabletOption = {
 
 function deriveItemStatus(sessionStatus: string | null): string {
   if (!sessionStatus) return 'pending'
-  if (sessionStatus === 'asignado') return 'assigned'
-  if (sessionStatus === 'en_progreso') return 'in_progress'
-  return 'assigned'
+  // English values (current DB schema)
+  if (sessionStatus === 'assigned')    return 'assigned'
+  if (sessionStatus === 'in_progress') return 'in_progress'
+  if (sessionStatus === 'finished')    return 'completed'
+  // Legacy Spanish values (pre-migration rows — kept for backward compat)
+  if (sessionStatus === 'asignado')   return 'assigned'
+  if (sessionStatus === 'en_proceso') return 'in_progress'
+  if (sessionStatus === 'finalizado') return 'completed'
+  return 'pending'
 }
 
 export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): Promise<OrderWorkload[]> {
   const orders = await prisma.order.findMany({
-    where: { NOT: { state: 'cerrada' } },
+    where: { NOT: { state: 'closed' } },
     include: {
-      plant: { select: { id: true, name: true } },
+      plant: { select: { id: true, name: true, region: { select: { name: true } } } },
+      client: { select: { name: true } },
       quotations: {
         include: {
           items: {
             include: {
               sessions: {
-                where: { status: { not: 'finalizado' } },
+                where: { status: { not: 'finished' } },
                 orderBy: { id: 'desc' },
                 take: 1,
               },
@@ -98,6 +119,22 @@ export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): 
 
   const tabletByCode = new Map(tablets.map((t) => [t.codigoTablet, t]))
 
+  // Batch-query submitted daily reports for all items across all orders
+  const allItemIds = orders.flatMap((order) =>
+    order.quotations.flatMap((q) => q.items.map((i) => i.id))
+  ).filter((id) => id > 0)
+
+  const submittedReportItems = allItemIds.length > 0
+    ? await prisma.dailyReport.findMany({
+        where: {
+          orderItemId: { in: allItemIds },
+          status: { in: ['submitted', 'sampled', 'signed', 'published'] },
+        },
+        select: { orderItemId: true },
+      })
+    : []
+  const submittedSet = new Set(submittedReportItems.map((r) => r.orderItemId))
+
   return orders.map((order) => {
     const allItems: OrderItemWorkload[] = order.quotations.flatMap((quotation) =>
       quotation.items.map((item) => {
@@ -116,6 +153,7 @@ export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): 
             ? { id: tabletRecord.id, alias: tabletRecord.alias ?? tabletRecord.codigoTablet }
             : null,
           quotationConsecutive: quotation.consecutiveNumber,
+          hasSubmittedReport: submittedSet.has(item.id),
         }
       }),
     )
@@ -125,18 +163,31 @@ export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): 
     return {
       id: order.id,
       consecutiveNumber: order.consecutiveNumber,
-      clientName: order.clientName,
+      clientName: order.client?.name ?? null,
       plantName: order.plant?.name ?? '—',
       plantId: order.plant?.id ?? null,
       partNumber: firstItem?.partNumber ?? '—',
       partName: firstItem?.partName ?? '—',
       serviceType: order.serviceTypeName ?? order.serviceTypeDetail ?? '—',
-      orderStatus: order.state ?? 'abierta',
+      orderStatus: order.state ?? 'open',
+      regionName: order.plant?.region?.name ?? null,
+      serviceTypeDetail: order.serviceTypeDetail ?? null,
+      piecesPerHour: order.piecesPerHour ? Number(order.piecesPerHour) : null,
+      authorizedHours: order.authorizedHours ? Number(order.authorizedHours) : null,
+      pricePerHour: order.pricePerHour ? Number(order.pricePerHour) : null,
+      language: order.language ?? null,
+      userName: order.userName ?? null,
+      clientContactName: order.clientContactName ?? null,
+      clientContactEmail: order.clientContactEmail ?? null,
       quotations: order.quotations.map((q) => ({
         id: q.id,
         consecutiveNumber: q.consecutiveNumber,
         status: q.status,
         total: 0,
+        clientEmail: q.clientEmail ?? null,
+        purchaseOrderNumber: q.purchaseOrderNumber ?? null,
+        contactEmails: q.contactEmails ?? null,
+        orderUserName: q.orderUserName ?? null,
       })),
       items: allItems,
     }
@@ -161,13 +212,14 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
-      plant: { select: { id: true, name: true } },
+      plant: { select: { id: true, name: true, region: { select: { name: true } } } },
+      client: { select: { name: true } },
       quotations: {
         include: {
           items: {
             include: {
               sessions: {
-                where: { status: { not: 'finalizado' } },
+                where: { status: { not: 'finished' } },
                 orderBy: { id: 'desc' },
                 take: 1,
               },
@@ -197,6 +249,20 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
 
   const tabletByCode = new Map(tablets.map((t) => [t.codigoTablet, t]))
 
+  // Batch-query submitted daily reports for this order items
+  const orderItemIds = order.quotations.flatMap((q) => q.items.map((i) => i.id)).filter((id) => id > 0)
+
+  const submittedReportItems = orderItemIds.length > 0
+    ? await prisma.dailyReport.findMany({
+        where: {
+          orderItemId: { in: orderItemIds },
+          status: { in: ['submitted', 'sampled', 'signed', 'published'] },
+        },
+        select: { orderItemId: true },
+      })
+    : []
+  const submittedSet = new Set(submittedReportItems.map((r) => r.orderItemId))
+
   const allItems: OrderItemWorkload[] = order.quotations.flatMap((quotation) =>
     quotation.items.map((item) => {
       const activeSession = item.sessions[0] ?? null
@@ -214,6 +280,7 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
           ? { id: tabletRecord.id, alias: tabletRecord.alias ?? tabletRecord.codigoTablet }
           : null,
         quotationConsecutive: quotation.consecutiveNumber,
+        hasSubmittedReport: submittedSet.has(item.id),
       }
     }),
   )
@@ -223,18 +290,31 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
   return {
     id: order.id,
     consecutiveNumber: order.consecutiveNumber,
-    clientName: order.clientName,
+    clientName: order.client?.name ?? null,
     plantName: order.plant?.name ?? '—',
     plantId: order.plant?.id ?? null,
     partNumber: firstItem?.partNumber ?? '—',
     partName: firstItem?.partName ?? '—',
     serviceType: order.serviceTypeName ?? order.serviceTypeDetail ?? '—',
-    orderStatus: order.state ?? 'abierta',
+    orderStatus: order.state ?? 'open',
+    regionName: order.plant?.region?.name ?? null,
+    serviceTypeDetail: order.serviceTypeDetail ?? null,
+    piecesPerHour: order.piecesPerHour ? Number(order.piecesPerHour) : null,
+    authorizedHours: order.authorizedHours ? Number(order.authorizedHours) : null,
+    pricePerHour: order.pricePerHour ? Number(order.pricePerHour) : null,
+    language: order.language ?? null,
+    userName: order.userName ?? null,
+    clientContactName: order.clientContactName ?? null,
+    clientContactEmail: order.clientContactEmail ?? null,
     quotations: order.quotations.map((q) => ({
       id: q.id,
       consecutiveNumber: q.consecutiveNumber,
       status: q.status,
       total: 0,
+      clientEmail: q.clientEmail ?? null,
+      purchaseOrderNumber: q.purchaseOrderNumber ?? null,
+      contactEmails: q.contactEmails ?? null,
+      orderUserName: q.orderUserName ?? null,
     })),
     items: allItems,
   }
@@ -263,7 +343,7 @@ export async function getAvailableTablets(accessToken: string): Promise<TabletOp
 
   // 2. Query local active sessions to determine which tablets are busy
   const activeSessions = await prisma.inspectionSession.findMany({
-    where: { status: { not: 'finalizado' } },
+    where: { status: { not: 'finished' } },
     select: { tabletId: true },
   })
   const busyTabletCodes = new Set(activeSessions.map((s) => s.tabletId))

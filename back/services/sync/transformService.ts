@@ -91,10 +91,10 @@ export function transformPlant(row: LegacyPlantRow): PlantCreateData {
 }
 
 // Legacy `orders.state` only has two values (state_machine: abierta/cerrada).
-// Map directly, store the raw value in legacyStatus for auditing.
+// Map to current English enum values; raw legacy value is preserved in legacyStatus.
 function mapOrderStatus(state: string | null): string {
-  if (state === 'cerrada') return 'cerrada';
-  return 'abierta';
+  if (state === 'cerrada') return 'closed';
+  return 'open';
 }
 
 export function transformOrder(
