@@ -107,7 +107,7 @@ function applyTotalsStyle(row: ExcelJS.Row, colCount: number): void {
 
 // ─── Builder ──────────────────────────────────────────────────────────────────
 
-async function buildExcel(data: ExcelReporteData): Promise<Buffer> {
+async function buildExcel(data: ExcelReporteData): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'Quality Bolca'
   wb.created = new Date()
@@ -235,5 +235,5 @@ async function buildExcel(data: ExcelReporteData): Promise<Buffer> {
   }
 
   const arrayBuffer = await wb.xlsx.writeBuffer()
-  return Buffer.from(arrayBuffer)
+  return new Uint8Array(arrayBuffer as ArrayBuffer)
 }
