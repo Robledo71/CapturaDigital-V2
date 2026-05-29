@@ -107,7 +107,7 @@ function applyTotalsStyle(row: ExcelJS.Row, colCount: number): void {
 
 // ─── Builder ──────────────────────────────────────────────────────────────────
 
-async function buildExcel(data: ExcelReporteData): Promise<Uint8Array> {
+async function buildExcel(data: ExcelReporteData): Promise<ArrayBuffer> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'Quality Bolca'
   wb.created = new Date()
@@ -235,5 +235,7 @@ async function buildExcel(data: ExcelReporteData): Promise<Uint8Array> {
   }
 
   const arrayBuffer = await wb.xlsx.writeBuffer()
-  return new Uint8Array(arrayBuffer as ArrayBuffer)
+  // ExcelJS.Buffer is ArrayBuffer-backed; coerce to a plain ArrayBuffer slice so it
+  // satisfies the Web `BodyInit` type (which requires ArrayBuffer, not ArrayBufferLike).
+  return arrayBuffer as ArrayBuffer
 }

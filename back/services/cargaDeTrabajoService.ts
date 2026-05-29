@@ -321,6 +321,7 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
       purchaseOrderNumber: q.purchaseOrderNumber ?? null,
       contactEmails: q.contactEmails ?? null,
       orderUserName: q.orderUserName ?? null,
+      orderConsecutiveNumber: q.orderConsecutiveNumber ?? null,
     })),
     items: allItems,
     hoe: order.hoe ?? null,
