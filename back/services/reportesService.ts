@@ -41,8 +41,8 @@ export async function getSupervisorReportes(
 ): Promise<ReportesResult> {
   const skip = (page - 1) * PAGE_SIZE
 
-  const [reports, total] = await prisma.$transaction([
-    prisma.dailyReport.findMany({
+  const { reports, total } = await prisma.$transaction(async (tx) => {
+    const reports = await tx.dailyReport.findMany({
       include: {
         items: {
           select: { totalPieces: true, ngPieces: true },
@@ -73,9 +73,10 @@ export async function getSupervisorReportes(
       orderBy: { reportDate: 'desc' },
       skip,
       take: PAGE_SIZE,
-    }),
-    prisma.dailyReport.count(),
-  ])
+    })
+    const total = await tx.dailyReport.count()
+    return { reports, total }
+  })
 
   const rows: ReporteRow[] = reports.map((report) => {
     const quotation = report.orderItem.quotation

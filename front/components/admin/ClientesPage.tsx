@@ -37,7 +37,7 @@ function ClienteTableRow({ cliente, onDeleted, onEditClick, onCrearUsuarioClick 
   }, [state])
 
   return (
-    <tr className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors">
+    <tr className="h-14 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors">
       {/* Nombre */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
@@ -292,14 +292,16 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
             </div>
           </div>
 
-          {/* Table */}
+          {/* Table — altura tope = header (56px) + 12 filas × 56px = 728px.
+              Aplica overflow-hidden estricto para evitar que un re-render con
+              ítems extra muestre el inicio de una fila 13. */}
           <div
-            className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden"
+            className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden max-h-[728px]"
           >
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-hidden max-h-[728px]">
               <table className="w-full text-sm" aria-label="Tabla de clientes">
                 <thead>
-                  <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+                  <tr className="h-14 border-b border-blue-200 dark:border-[#1a2d4d]">
                     <th
                       scope="col"
                       className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap"

@@ -74,10 +74,10 @@ export async function resetPassword(rawToken: string, newPassword: string): Prom
 
   const hashedPassword = await bcrypt.hash(newPassword, 12)
 
-  await prisma.$transaction([
-    prisma.usuario.update({ where: { id: record.userId }, data: { contrasena: hashedPassword } }),
-    prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
-  ])
+  await prisma.$transaction(async (tx) => {
+    await tx.usuario.update({ where: { id: record.userId }, data: { contrasena: hashedPassword } })
+    await tx.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } })
+  })
 
   return { ok: true }
 }
