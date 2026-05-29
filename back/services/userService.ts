@@ -26,7 +26,7 @@ export type UpdateUsuarioInput = {
   codigoEmpleado: string
   puesto: string
   plantaId: number | null
-  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider'
+  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
   correo: string
 }
 

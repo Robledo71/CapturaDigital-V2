@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 
 export type JWTPayload = {
   userId: number
-  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider'
+  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
   codigoEmpleado: string
   nombreCompleto: string
   accessToken: string

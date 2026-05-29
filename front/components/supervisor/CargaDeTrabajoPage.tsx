@@ -1,9 +1,9 @@
 'use client'
 
-import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Briefcase, ChevronLeft, ChevronRight, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
+import { Briefcase, ChevronLeft, ChevronRight, FileCheck, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
 import type {
   OrderWorkload,
   OrderItemWorkload,
@@ -210,6 +210,7 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
             <input type="hidden" name="qb_quotation_purchase_order_number" value={parentQuotation?.purchaseOrderNumber ?? ''} />
             <input type="hidden" name="qb_quotation_contact_emails" value={parentQuotation?.contactEmails ?? ''} />
             <input type="hidden" name="qb_quotation_order_user_name" value={parentQuotation?.orderUserName ?? ''} />
+            <input type="hidden" name="qb_quotation_order_consecutive_number" value={parentQuotation?.orderConsecutiveNumber ?? order.consecutiveNumber ?? ''} />
             <input type="hidden" name="qb_quotation_status" value={parentQuotation?.status ?? ''} />
             <input type="hidden" name="qb_quotation_plant_name" value={order.plantName ?? ''} />
             {/* OrderItem fields */}
@@ -485,8 +486,9 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
     if (uploadState !== undefined) {
       setUploadingDocType(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
+      if (uploadState.ok) router.refresh()
     }
-  }, [uploadState])
+  }, [uploadState, router])
 
   function handleUploadClick(docType: 'hoe' | 'arranque-seguro') {
     activeDocTypeRef.current = docType
@@ -497,12 +499,14 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
     const file = e.target.files?.[0]
     const docType = activeDocTypeRef.current
     if (!file || !docType) return
-    setUploadingDocType(docType)
     const fd = new FormData()
     fd.set('orderId', String(order.id))
     fd.set('docType', docType)
     fd.set('file', file)
-    uploadAction(fd)
+    startTransition(() => {
+      setUploadingDocType(docType)
+      uploadAction(fd)
+    })
   }
 
   useEffect(() => {
@@ -662,28 +666,48 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                     type="button"
                     disabled={uploadingDocType !== null}
                     onClick={() => handleUploadClick('hoe')}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#31476f] px-3 py-2 text-sm text-slate-300 transition-colors hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      order.hoe
+                        ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
+                        : 'border-[#31476f] text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300'
+                    }`}
                   >
                     {uploadingDocType === 'hoe' ? (
                       <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    ) : order.hoe ? (
+                      <FileCheck size={14} aria-hidden="true" />
                     ) : (
                       <Upload size={14} aria-hidden="true" />
                     )}
-                    {uploadingDocType === 'hoe' ? 'Subiendo...' : 'Agregar HOE'}
+                    {uploadingDocType === 'hoe'
+                      ? 'Subiendo...'
+                      : order.hoe
+                        ? 'HOE cargado'
+                        : 'Agregar HOE'}
                   </button>
 
                   <button
                     type="button"
                     disabled={uploadingDocType !== null}
                     onClick={() => handleUploadClick('arranque-seguro')}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#31476f] px-3 py-2 text-sm text-slate-300 transition-colors hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      order.arranqueSeguro
+                        ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
+                        : 'border-[#31476f] text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300'
+                    }`}
                   >
                     {uploadingDocType === 'arranque-seguro' ? (
                       <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                    ) : order.arranqueSeguro ? (
+                      <FileCheck size={14} aria-hidden="true" />
                     ) : (
                       <Upload size={14} aria-hidden="true" />
                     )}
-                    {uploadingDocType === 'arranque-seguro' ? 'Subiendo...' : 'Agregar Arranque Seguro'}
+                    {uploadingDocType === 'arranque-seguro'
+                      ? 'Subiendo...'
+                      : order.arranqueSeguro
+                        ? 'Arranque Seguro cargado'
+                        : 'Agregar Arranque Seguro'}
                   </button>
                 </div>
 

@@ -15,6 +15,7 @@ export type QuotationSummary = {
   purchaseOrderNumber: string | null
   contactEmails: string | null
   orderUserName: string | null
+  orderConsecutiveNumber: string | null
 }
 
 export type OrderItemWorkload = {
@@ -51,6 +52,8 @@ export type OrderWorkload = {
   clientContactEmail: string | null
   quotations: QuotationSummary[]
   items: OrderItemWorkload[]
+  hoe: string | null
+  arranqueSeguro: string | null
 }
 
 export type TabletOption = {
@@ -87,7 +90,6 @@ export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): 
           items: {
             include: {
               sessions: {
-                where: { status: { not: 'finished' } },
                 orderBy: { id: 'desc' },
                 take: 1,
               },
@@ -99,13 +101,13 @@ export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): 
     orderBy: { id: 'desc' },
   })
 
-  // Batch-fetch tablets referenced in active sessions
+  // Batch-fetch tablets referenced in active (non-finished) sessions only
   const codigosTablet = new Set<string>()
   for (const order of orders) {
     for (const quotation of order.quotations) {
       for (const item of quotation.items) {
         const session = item.sessions[0]
-        if (session?.tabletId) codigosTablet.add(session.tabletId)
+        if (session?.tabletId && session.status !== 'finished') codigosTablet.add(session.tabletId)
       }
     }
   }
@@ -138,17 +140,18 @@ export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): 
   return orders.map((order) => {
     const allItems: OrderItemWorkload[] = order.quotations.flatMap((quotation) =>
       quotation.items.map((item) => {
-        const activeSession = item.sessions[0] ?? null
-        const tabletRecord = activeSession ? tabletByCode.get(activeSession.tabletId) : null
+        const latestSession = item.sessions[0] ?? null
+        const isActive = latestSession !== null && latestSession.status !== 'finished'
+        const tabletRecord = isActive ? tabletByCode.get(latestSession.tabletId) : null
 
         return {
           id: item.id,
           partNumber: item.partNumber ?? '—',
           partName: item.partName ?? '—',
-          status: deriveItemStatus(activeSession?.status ?? null),
+          status: deriveItemStatus(latestSession?.status ?? null),
           inventario: item.inventory ? Number(item.inventory) : 0,
           inventarioTerminado: item.inventoryDone ? Number(item.inventoryDone) : 0,
-          assignedAt: activeSession?.fechaInicio ?? null,
+          assignedAt: isActive ? latestSession?.fechaInicio ?? null : null,
           assignedTablet: tabletRecord
             ? { id: tabletRecord.id, alias: tabletRecord.alias ?? tabletRecord.codigoTablet }
             : null,
@@ -188,8 +191,11 @@ export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): 
         purchaseOrderNumber: q.purchaseOrderNumber ?? null,
         contactEmails: q.contactEmails ?? null,
         orderUserName: q.orderUserName ?? null,
+        orderConsecutiveNumber: q.orderConsecutiveNumber ?? null,
       })),
       items: allItems,
+      hoe: order.hoe ?? null,
+      arranqueSeguro: order.arranqueSeguro ?? null,
     }
   })
 }
@@ -219,7 +225,6 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
           items: {
             include: {
               sessions: {
-                where: { status: { not: 'finished' } },
                 orderBy: { id: 'desc' },
                 take: 1,
               },
@@ -236,7 +241,7 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
   for (const quotation of order.quotations) {
     for (const item of quotation.items) {
       const session = item.sessions[0]
-      if (session?.tabletId) codigosTablet.add(session.tabletId)
+      if (session?.tabletId && session.status !== 'finished') codigosTablet.add(session.tabletId)
     }
   }
 
@@ -265,17 +270,18 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
 
   const allItems: OrderItemWorkload[] = order.quotations.flatMap((quotation) =>
     quotation.items.map((item) => {
-      const activeSession = item.sessions[0] ?? null
-      const tabletRecord = activeSession ? tabletByCode.get(activeSession.tabletId) : null
+      const latestSession = item.sessions[0] ?? null
+      const isActive = latestSession !== null && latestSession.status !== 'finished'
+      const tabletRecord = isActive ? tabletByCode.get(latestSession.tabletId) : null
 
       return {
         id: item.id,
         partNumber: item.partNumber ?? '—',
         partName: item.partName ?? '—',
-        status: deriveItemStatus(activeSession?.status ?? null),
+        status: deriveItemStatus(latestSession?.status ?? null),
         inventario: item.inventory ? Number(item.inventory) : 0,
         inventarioTerminado: item.inventoryDone ? Number(item.inventoryDone) : 0,
-        assignedAt: activeSession?.fechaInicio ?? null,
+        assignedAt: isActive ? latestSession?.fechaInicio ?? null : null,
         assignedTablet: tabletRecord
           ? { id: tabletRecord.id, alias: tabletRecord.alias ?? tabletRecord.codigoTablet }
           : null,
@@ -317,6 +323,8 @@ export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | 
       orderUserName: q.orderUserName ?? null,
     })),
     items: allItems,
+    hoe: order.hoe ?? null,
+    arranqueSeguro: order.arranqueSeguro ?? null,
   }
 }
 

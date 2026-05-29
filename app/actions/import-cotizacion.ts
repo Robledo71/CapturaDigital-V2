@@ -75,6 +75,7 @@ function buildOrderWorkloadFromQB(
     purchaseOrderNumber: cotizacion.purchase_order_number ?? null,
     contactEmails: cotizacion.contact_emails ?? null,
     orderUserName: cotizacion.order_user_name ?? null,
+    orderConsecutiveNumber: cotizacion.order_consecutive_number ?? null,
   }))
 
   const firstItem = items[0]
@@ -100,6 +101,8 @@ function buildOrderWorkloadFromQB(
     clientContactEmail: qbOrder.client_contact_email ?? null,
     quotations,
     items,
+    hoe: null,
+    arranqueSeguro: null,
   }
 }
 

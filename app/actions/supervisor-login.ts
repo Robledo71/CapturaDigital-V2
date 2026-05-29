@@ -88,16 +88,32 @@ export async function loginSupervisor(
     }
   }
 
+  const validRoles = ['admin', 'supervisor', 'capturacion', 'lider', 'cliente'] as const
+  type ValidRol = typeof validRoles[number]
+  if (!validRoles.includes(rol as ValidRol)) {
+    return {
+      errors: { general: ['Rol de usuario no soportado. Contacta al administrador.'] },
+      employee_number: validated.data.employee_number,
+    }
+  }
+
   await createSession({
     userId,
-    rol: rol as 'admin' | 'supervisor' | 'capturacion' | 'lider',
+    rol: rol as ValidRol,
     codigoEmpleado,
     nombreCompleto,
     accessToken,
     refreshToken,
   })
 
-  redirect(rol === 'supervisor' || rol === 'lider' ? '/supervisor' : rol === 'admin' ? '/admin' : '/capturacion')
+  const redirectByRol: Record<ValidRol, string> = {
+    supervisor:  '/supervisor',
+    lider:       '/supervisor',
+    admin:       '/admin',
+    capturacion: '/capturacion',
+    cliente:     '/cliente',
+  }
+  redirect(redirectByRol[rol as ValidRol])
 }
 
 export async function requestPasswordReset(

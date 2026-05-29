@@ -37,6 +37,7 @@ interface QBRawFields {
   qb_quotation_purchase_order_number: string
   qb_quotation_contact_emails: string
   qb_quotation_order_user_name: string
+  qb_quotation_order_consecutive_number: string
   // OrderItem
   qb_item_part_number: string
   qb_item_part_name: string
@@ -153,6 +154,7 @@ async function upsertOrderItemInPrisma(raw: QBRawFields): Promise<number> {
       purchaseOrderNumber: raw.qb_quotation_purchase_order_number || null,
       contactEmails: raw.qb_quotation_contact_emails || null,
       orderUserName: raw.qb_quotation_order_user_name || null,
+      orderConsecutiveNumber: raw.qb_quotation_order_consecutive_number || null,
     },
     update: {
       consecutiveNumber: raw.qb_quotation_consecutive || null,
@@ -161,6 +163,7 @@ async function upsertOrderItemInPrisma(raw: QBRawFields): Promise<number> {
       purchaseOrderNumber: raw.qb_quotation_purchase_order_number || null,
       contactEmails: raw.qb_quotation_contact_emails || null,
       orderUserName: raw.qb_quotation_order_user_name || null,
+      orderConsecutiveNumber: raw.qb_quotation_order_consecutive_number || null,
     },
   })
 
@@ -250,6 +253,7 @@ export async function assignOrderItemAction(
       qb_quotation_purchase_order_number: getStr(formData, 'qb_quotation_purchase_order_number'),
       qb_quotation_contact_emails: getStr(formData, 'qb_quotation_contact_emails'),
       qb_quotation_order_user_name: getStr(formData, 'qb_quotation_order_user_name'),
+      qb_quotation_order_consecutive_number: getStr(formData, 'qb_quotation_order_consecutive_number'),
       qb_item_part_number: getStr(formData, 'qb_item_part_number'),
       qb_item_part_name: getStr(formData, 'qb_item_part_name'),
       qb_item_inventory: getStr(formData, 'qb_item_inventory'),
@@ -366,7 +370,11 @@ export async function assignOrderItemAction(
       order_user_name: quotation.orderUserName ?? '',              // Bug #4 fix — was missing
     },
     orderItem: {
-      part_number: orderItem.partNumber ?? '',
+      // Use null (not '') when partNumber is absent — qb_sync stores NULL in the DB
+      // and does the lookup with `WHERE part_number = $2`. Sending '' instead of null
+      // causes the SQL equality check to miss the existing row (NULL != '') and
+      // triggers a spurious INSERT, creating a duplicate order_item.
+      part_number: orderItem.partNumber ?? null,
       part_name: orderItem.partName ?? '',
       inventory: Number(orderItem.inventory ?? 0),
       inventory_done: Number(orderItem.inventoryDone ?? 0),

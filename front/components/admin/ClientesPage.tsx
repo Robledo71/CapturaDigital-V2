@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useActionState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Pencil, Trash2, AlertTriangle, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, AlertTriangle, X, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
 
 const PAGE_SIZE = 12
 import { NuevoClienteModal } from './NuevoClienteModal'
 import { EditarClienteModal } from './EditarClienteModal'
+import { NuevoUsuarioClienteModal } from './NuevoUsuarioClienteModal'
 import { deleteClienteAction } from '@/app/actions/delete-cliente'
 import type { ClienteRow } from '@/shared/types/cliente'
 
@@ -22,9 +23,10 @@ interface DeleteRowProps {
   cliente: ClienteRow
   onDeleted: (id: number) => void
   onEditClick: (cliente: ClienteRow) => void
+  onCrearUsuarioClick: (cliente: ClienteRow) => void
 }
 
-function ClienteTableRow({ cliente, onDeleted, onEditClick }: DeleteRowProps) {
+function ClienteTableRow({ cliente, onDeleted, onEditClick, onCrearUsuarioClick }: DeleteRowProps) {
   const [confirming, setConfirming] = useState(false)
   const [state, dispatch] = useActionState(deleteClienteAction, undefined)
 
@@ -100,6 +102,17 @@ function ClienteTableRow({ cliente, onDeleted, onEditClick }: DeleteRowProps) {
             {state?.error && (
               <span className="text-xs text-red-400 mr-1">{state.error}</span>
             )}
+            {cliente.userId === null && (
+              <button
+                type="button"
+                aria-label={`Crear usuario para ${cliente.nombre}`}
+                onClick={() => onCrearUsuarioClick(cliente)}
+                className="p-1.5 rounded text-slate-500 hover:text-purple-400 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+                title="Crear usuario para este cliente"
+              >
+                <UserPlus size={14} />
+              </button>
+            )}
             <button
               type="button"
               aria-label={`Editar ${cliente.nombre}`}
@@ -132,6 +145,7 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
   const [page, setPage] = useState(1)
   const [showNuevoModal, setShowNuevoModal] = useState(false)
   const [editTarget, setEditTarget] = useState<ClienteRow | null>(null)
+  const [usuarioTarget, setUsuarioTarget] = useState<ClienteRow | null>(null)
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false,
@@ -163,6 +177,12 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
     setClientes((prev) => prev.map((item) => (item.id === c.id ? c : item)))
     setEditTarget(null)
     setToast({ message: 'Cliente actualizado correctamente', visible: true })
+    router.refresh()
+  }
+
+  function onUsuarioCreado() {
+    setUsuarioTarget(null)
+    setToast({ message: 'Usuario creado correctamente', visible: true })
     router.refresh()
   }
 
@@ -208,6 +228,15 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
           cliente={editTarget}
           onClose={() => setEditTarget(null)}
           onSuccess={onClienteActualizado}
+        />
+      )}
+
+      {/* Modal de creación de usuario para cliente */}
+      {usuarioTarget && (
+        <NuevoUsuarioClienteModal
+          cliente={usuarioTarget}
+          onClose={() => setUsuarioTarget(null)}
+          onSuccess={onUsuarioCreado}
         />
       )}
 
@@ -308,6 +337,7 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
                         cliente={cliente}
                         onDeleted={onClienteEliminado}
                         onEditClick={setEditTarget}
+                        onCrearUsuarioClick={setUsuarioTarget}
                       />
                     ))
                   )}

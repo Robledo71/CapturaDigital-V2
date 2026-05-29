@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useMemo, useState } from 'react'
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { LockKeyhole, LockKeyholeOpen, Loader2, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { CotizacionRow } from '@/back/services/cotizacionesService'
 import { desbloquearCotizacionAction, type DesbloquearCotizacionState } from '@/app/actions/desbloquear-cotizacion'
@@ -23,8 +23,14 @@ function ToggleButton({
     undefined,
   )
   const [pending, setPending] = useState(false)
+  // Track which state we've already reacted to so the effect runs once per real change.
+  // Without this, `cotizacion.desbloqueado` flipping inside onToggle re-fires the effect
+  // and toggles the value again → infinite loop.
+  const handledStateRef = useRef<DesbloquearCotizacionState>(undefined)
 
   useEffect(() => {
+    if (state === handledStateRef.current) return
+    handledStateRef.current = state
     if (state?.ok) {
       setPending(false)
       onToggle(cotizacion.id, !cotizacion.desbloqueado)

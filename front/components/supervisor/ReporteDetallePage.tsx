@@ -279,12 +279,12 @@ function InspectionItemsTable({
 
 // ─── Edit Item Modal ─────────────────────────────────────────────────────────
 
-function EditItemSubmitButton() {
+function EditItemSubmitButton({ disabled: disabledProp }: { disabled?: boolean }) {
   const { pending } = useFormStatus()
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabledProp}
       className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
@@ -319,10 +319,33 @@ function EditItemModal({
     setValues((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
+  function handleIncidentChange(idx: number, value: string) {
+    setIncidentCounts((prev) => {
+      const next = { ...prev, [idx]: value }
+      const newNg = Object.values(next).reduce(
+        (acc, v) => acc + Math.max(0, Math.floor(Number(v) || 0)),
+        0,
+      )
+      setValues((vals) => ({ ...vals, ng: String(newNg) }))
+      return next
+    })
+  }
+
+  const okVal = Math.max(0, Math.floor(Number(values.ok) || 0))
   const ngVal = Math.max(0, Math.floor(Number(values.ng) || 0))
   const recoveredVal = Math.max(0, Math.floor(Number(values.recovered) || 0))
   const recoveredExceedsNg = recoveredVal > ngVal
   const computedScrap = Math.max(0, ngVal - recoveredVal)
+
+  const sumMismatch = okVal + ngVal !== item.inspected
+  const ngChangedFromOriginal = ngVal !== item.ng
+  const totalIncidents = Object.values(incidentCounts).reduce(
+    (acc, v) => acc + Math.max(0, Math.floor(Number(v) || 0)),
+    0,
+  )
+  const incidentsMismatch = item.incidents.length > 0 && totalIncidents !== ngVal
+  const isFormInvalid = sumMismatch || incidentsMismatch || recoveredExceedsNg
+
   const incidentsJson = JSON.stringify(
     item.incidents.map((inc, i) => ({
       description: inc.description,
@@ -416,9 +439,7 @@ function EditItemModal({
                       min={0}
                       step={1}
                       value={incidentCounts[i] ?? '0'}
-                      onChange={(e) =>
-                        setIncidentCounts((prev) => ({ ...prev, [i]: e.target.value }))
-                      }
+                      onChange={(e) => handleIncidentChange(i, e.target.value)}
                       className="w-20 rounded-md border border-[#31476f] bg-[#111a30] px-2 py-1 text-right text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
                     />
                   </div>
@@ -434,6 +455,25 @@ function EditItemModal({
           )}
         </div>
 
+        {/* Banners de validación */}
+        <div className="flex flex-col gap-2 px-5 pb-2">
+          {sumMismatch && (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+              Las piezas OK ({okVal}) + NG ({ngVal}) = {okVal + ngVal}, pero deben sumar {item.inspected} (inspeccionadas).
+            </p>
+          )}
+          {ngChangedFromOriginal && item.incidents.length > 0 && !incidentsMismatch && (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+              Cambiaste las piezas NG. Debes actualizar las incidencias para que la suma cuadre con el nuevo NG.
+            </p>
+          )}
+          {incidentsMismatch && (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+              La suma de incidencias ({totalIncidents}) debe ser igual a las piezas NG ({ngVal}).
+            </p>
+          )}
+        </div>
+
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
           <button
@@ -443,7 +483,7 @@ function EditItemModal({
           >
             Cancelar
           </button>
-          <EditItemSubmitButton />
+          <EditItemSubmitButton disabled={isFormInvalid} />
         </div>
       </form>
     </div>

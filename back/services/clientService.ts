@@ -101,3 +101,46 @@ export async function deleteCliente(
   if (!res.ok) return { ok: false, reason: 'error' }
   return { ok: true }
 }
+
+// ─── Create client user ────────────────────────────────────────────────────────
+
+export type CreateClientUserInput = {
+  clienteId: number
+  nombreCompleto: string
+  codigoEmpleado: string
+  correo: string
+  contrasena: string
+  puesto?: string
+}
+
+export type CreateClientUserResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'duplicate' | 'validation' | 'error'; message?: string }
+
+export async function createClientUser(
+  input: CreateClientUserInput,
+  accessToken: string,
+): Promise<CreateClientUserResult> {
+  const res = await fetch(`${BASE()}/qb_sync/clientes/${input.clienteId}/user`, {
+    method: 'POST',
+    headers: apiHeaders(accessToken),
+    body: JSON.stringify({
+      nombre_completo: input.nombreCompleto,
+      codigo_empleado: input.codigoEmpleado,
+      correo:          input.correo,
+      contrasena:      input.contrasena,
+      puesto:          input.puesto ?? 'Cliente',
+    }),
+  })
+  if (res.status === 404) return { ok: false, reason: 'not_found' }
+  if (res.status === 409) {
+    const body = await res.json().catch(() => ({})) as { message?: string }
+    return { ok: false, reason: 'duplicate', message: body.message }
+  }
+  if (res.status === 400) {
+    const body = await res.json().catch(() => ({})) as { message?: string }
+    return { ok: false, reason: 'validation', message: body.message }
+  }
+  if (!res.ok) return { ok: false, reason: 'error' }
+  return { ok: true }
+}
