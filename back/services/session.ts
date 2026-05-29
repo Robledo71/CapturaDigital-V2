@@ -12,25 +12,35 @@ export type JWTPayload = {
   expiresAt: string
 }
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error('SESSION_SECRET env var is not set — cannot start the session module')
-}
-const secret = new TextEncoder().encode(process.env.SESSION_SECRET)
 const COOKIE = 'session'
 const EXPIRY = '8h'
+
+// Resolve the secret lazily so importing this module never throws at evaluation
+// time. Next.js imports route modules during `next build` to collect page data;
+// throwing at top level would break the build even though the secret is only
+// needed at runtime. The check still fails fast on the first actual use.
+let cachedSecret: Uint8Array | null = null
+function getSecret(): Uint8Array {
+  if (cachedSecret) return cachedSecret
+  if (!process.env.SESSION_SECRET) {
+    throw new Error('SESSION_SECRET env var is not set — cannot use the session module')
+  }
+  cachedSecret = new TextEncoder().encode(process.env.SESSION_SECRET)
+  return cachedSecret
+}
 
 export async function encrypt(payload: JWTPayload): Promise<string> {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(EXPIRY)
-    .sign(secret)
+    .sign(getSecret())
 }
 
 export async function decrypt(token: string | undefined): Promise<JWTPayload | null> {
   if (!token) return null
   try {
-    const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] })
+    const { payload } = await jwtVerify(token, getSecret(), { algorithms: ['HS256'] })
     return payload as unknown as JWTPayload
   } catch {
     return null
