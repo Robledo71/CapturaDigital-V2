@@ -249,7 +249,7 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
                 Selecciona una tablet
               </option>
               {tablets.map((tablet) => (
-                <option key={tablet.id} value={String(tablet.id)}>
+                <option key={tablet.id} value={`${tablet.id}:${tablet.codigoTablet}`}>
                   {tablet.codigoTablet}
                   {tablet.plantName ? ` (${tablet.plantName})` : ''}
                 </option>

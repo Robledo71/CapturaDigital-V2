@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { searchOrder, searchCotizaciones, type QBOrderData, type QBCotizacion, type QBOrderItem } from '@/back/services/qb-api'
 import { type OrderWorkload, type OrderItemWorkload, type QuotationSummary } from '@/back/services/cargaDeTrabajoService'
+import { getSession } from '@/back/services/session'
 import { prisma } from '@/back/db/prisma'
 
 const Schema = z.object({
@@ -110,6 +111,11 @@ export async function importCotizacionAction(
   _state: ImportCotizacionState,
   formData: FormData,
 ): Promise<ImportCotizacionState> {
+  const session = await getSession()
+  if (!session || (session.rol !== 'supervisor' && session.rol !== 'admin')) {
+    return { ok: false, error: 'No autorizado.' }
+  }
+
   const raw = { orden: formData.get('orden') as string }
   const validated = Schema.safeParse(raw)
   if (!validated.success) {

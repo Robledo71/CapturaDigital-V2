@@ -1,7 +1,5 @@
 import 'server-only'
 
-import { prisma } from '@/back/db/prisma'
-
 export type ReporteEstatus = 'Enviado' | 'En muestreo' | 'Firmado' | 'Publicado'
 
 export type ReporteRow = {
@@ -35,71 +33,52 @@ function mapEstatus(dbStatus: string): ReporteEstatus {
   return 'Enviado'
 }
 
+function apiHeaders(accessToken: string): Record<string, string> {
+  return {
+    'X-App-Token': process.env.X_APP_TOKEN ?? '',
+    Authorization: `Bearer ${accessToken}`,
+  }
+}
+
+const BASE = () => process.env.QSYNC_API_URL ?? 'http://localhost:3001'
+
 export async function getSupervisorReportes(
   _supervisorId: string,
   page: number = 1,
+  accessToken: string,
 ): Promise<ReportesResult> {
-  const skip = (page - 1) * PAGE_SIZE
+  const res = await fetch(
+    `${BASE()}/qb_sync/daily-reports/admin-list?page=${page}`,
+    {
+      headers: apiHeaders(accessToken),
+      cache: 'no-store',
+    },
+  )
+  if (!res.ok) throw new Error(`getSupervisorReportes failed: ${res.status}`)
 
-  const { reports, total } = await prisma.$transaction(async (tx) => {
-    const reports = await tx.dailyReport.findMany({
-      include: {
-        items: {
-          select: { totalPieces: true, ngPieces: true },
-        },
-        operators: {
-          take: 1,
-          select: { operatorName: true },
-        },
-        orderItem: {
-          include: {
-            quotation: {
-              include: {
-                order: {
-                  include: {
-                    plant: {
-                      select: { name: true },
-                    },
-                    client: {
-                      select: { name: true },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { reportDate: 'desc' },
-      skip,
-      take: PAGE_SIZE,
-    })
-    const total = await tx.dailyReport.count()
-    return { reports, total }
-  })
+  const body = await res.json() as {
+    success: boolean
+    data: { rows: unknown[]; total: number }
+  }
 
-  const rows: ReporteRow[] = reports.map((report) => {
-    const quotation = report.orderItem.quotation
-    const order = quotation.order
-    const plant = order.plant
-
-    const totalPieces = report.items.reduce((s, i) => s + (i.totalPieces ?? 0), 0)
-    const totalNg = report.items.reduce((s, i) => s + (i.ngPieces ?? 0), 0)
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows: ReporteRow[] = (body.data.rows ?? []).map((r: any) => {
+    const totalPieces = Number(r.total_pieces ?? 0)
+    const totalNg = Number(r.total_ng ?? 0)
     return {
-      id: String(report.id),
-      orderId: order.id,
-      cliente: order.client?.name ?? '—',
-      planta: plant?.name ?? '—',
-      cotizacion: quotation.consecutiveNumber ?? '—',
-      parte: report.orderItem.partNumber ?? '—',
-      inspector: report.operators[0]?.operatorName ?? '—',
-      turno: report.shift ?? '—',
-      estatus: mapEstatus(report.status),
+      id: String(r.id),
+      orderId: Number(r.order_id),
+      cliente: r.cliente ?? '—',
+      planta: r.planta ?? '—',
+      cotizacion: r.cotizacion ?? '—',
+      parte: r.parte ?? '—',
+      inspector: r.inspector ?? '—',
+      turno: r.turno ?? '—',
+      estatus: mapEstatus(r.status),
       piezas: totalPieces.toLocaleString('es-MX'),
       pctNG: totalPieces > 0 ? `${((totalNg / totalPieces) * 100).toFixed(1)}%` : '-',
     }
   })
 
-  return { rows, total }
+  return { rows, total: body.data.total }
 }

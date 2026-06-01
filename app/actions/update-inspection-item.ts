@@ -15,7 +15,9 @@ export async function updateInspectionItemAction(
   formData: FormData,
 ): Promise<UpdateInspectionItemState> {
   const session = await getSession()
-  if (!session) return { ok: false, error: 'No autorizado' }
+  if (!session || !['supervisor', 'admin', 'lider'].includes(session.rol)) {
+    return { ok: false, error: 'No autorizado' }
+  }
 
   const reportId = parseInt(String(formData.get('reportId') ?? ''), 10)
   const itemId   = parseInt(String(formData.get('itemId')   ?? ''), 10)

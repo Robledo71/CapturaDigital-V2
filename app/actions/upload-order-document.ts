@@ -12,7 +12,9 @@ export async function uploadOrderDocumentAction(
   formData: FormData,
 ): Promise<UploadOrderDocumentState> {
   const session = await getSession()
-  if (!session) return { ok: false, error: 'No autorizado' }
+  if (!session || (session.rol !== 'supervisor' && session.rol !== 'admin')) {
+    return { ok: false, error: 'No autorizado' }
+  }
 
   const orderId = String(formData.get('orderId') ?? '').trim()
   const docType = String(formData.get('docType') ?? '').trim()

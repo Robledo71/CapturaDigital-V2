@@ -13,7 +13,7 @@ export default async function CargaDeTrabajoRoute() {
   if (!session) redirect('/login')
 
   const [orders, tablets] = await Promise.all([
-    getCargaDeTrabajoData(session.codigoEmpleado),
+    getCargaDeTrabajoData(session.accessToken),
     getAvailableTablets(session.accessToken),
   ])
 

@@ -13,7 +13,9 @@ export async function desbloquearCotizacionAction(
   formData: FormData,
 ): Promise<DesbloquearCotizacionState> {
   const session = await getSession()
-  if (!session) return { ok: false, error: 'Sesión expirada.' }
+  if (!session || !['admin', 'supervisor', 'capturacion'].includes(session.rol)) {
+    return { ok: false, error: 'Sesión expirada o permisos insuficientes.' }
+  }
 
   const id = parseInt(String(formData.get('cotizacionId') ?? ''), 10)
   if (isNaN(id)) return { ok: false, error: 'ID inválido.' }

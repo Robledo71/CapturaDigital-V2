@@ -1,6 +1,4 @@
-'server-only'
-
-import { prisma } from '@/back/db/prisma'
+import 'server-only'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,90 +31,75 @@ export type AdminDashboardData = {
   recentUsuarios: AdminRecentUsuario[]
 }
 
+// ─── Raw shape from qb_sync ───────────────────────────────────────────────────
+
+interface RawUsuarioReciente {
+  id: number
+  nombre_completo: string
+  codigo_empleado: string
+  correo: string
+  rol: string
+  puesto: string | null
+  is_active: boolean
+  created_at: string
+}
+
+interface RawAdminDashboard {
+  usuariosActivos: number
+  porRol: Record<string, number>
+  totalPlantas: number
+  totalTablets: number
+  usuariosRecientes: RawUsuarioReciente[]
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function apiHeaders(accessToken: string): Record<string, string> {
+  return {
+    'X-App-Token': process.env.X_APP_TOKEN ?? '',
+    Authorization: `Bearer ${accessToken}`,
+  }
+}
+
+const BASE = () => process.env.QSYNC_API_URL ?? 'http://localhost:3001'
+
 // ─── Service ──────────────────────────────────────────────────────────────────
 
-export async function getAdminDashboardData(): Promise<AdminDashboardData> {
-  const [
-    usuariosActivos,
-    desgloseRol,
-    plantasActivas,
-    tabletsStats,
-    recentUsuarios,
-  ] = await Promise.all([
-    // Total usuarios activos
-    prisma.usuario.count({ where: { isActive: true } }),
+export async function getAdminDashboardData(accessToken: string): Promise<AdminDashboardData> {
+  const res = await fetch(`${BASE()}/qb_sync/users/admin-dashboard`, {
+    headers: apiHeaders(accessToken),
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`getAdminDashboardData failed: ${res.status}`)
 
-    // Desglose por rol (solo activos)
-    prisma.usuario.groupBy({
-      by: ['rol'],
-      where: { isActive: true },
-      _count: { _all: true },
-    }),
+  const body = await res.json() as { success: boolean; data: RawAdminDashboard }
+  const raw = body.data
 
-    // Plantas registradas
-    prisma.plant.count(),
-
-    // Tablets agrupadas por estado
-    prisma.tablet.groupBy({
-      by: ['status'],
-      _count: { _all: true },
-    }),
-
-    // Ultimos 10 usuarios creados
-    prisma.usuario.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-      select: {
-        id: true,
-        nombreCompleto: true,
-        codigoEmpleado: true,
-        rol: true,
-        plant: { select: { name: true } },
-        isActive: true,
-      },
-    }),
-  ])
-
-  // Build role breakdown map
-  const rolMap: Record<string, number> = {}
-  for (const row of desgloseRol) {
-    rolMap[row.rol] = row._count._all
-  }
-
-  // Build tablet counts from grouped result
-  let tabletsTotal = 0
-  let tabletsActivas = 0
-  for (const row of tabletsStats) {
-    tabletsTotal += row._count._all
-    if (row.status === 'activa') {
-      tabletsActivas = row._count._all
-    }
-  }
+  const porRol = raw.porRol ?? {}
 
   const stats: AdminDashboardStats = {
-    usuariosActivos,
-    totalClientes: 0, // TODO Fase 4: Client model eliminado del esquema
-    plantasActivas,
-    tabletsRegistradas: tabletsTotal,
-    reportesPendientes: 0, // TODO Fase 3: rehacer con nuevo esquema de DailyReport
-    tabletsActivas,
+    usuariosActivos: raw.usuariosActivos ?? 0,
+    totalClientes: 0,          // TODO Fase 4: no disponible en este endpoint
+    plantasActivas: raw.totalPlantas ?? 0,
+    tabletsRegistradas: raw.totalTablets ?? 0,
+    reportesPendientes: 0,     // TODO Fase 3: no disponible en este endpoint
+    tabletsActivas: 0,         // TODO: endpoint no devuelve desglose activa/total
     desglosePorRol: {
-      admin: rolMap['admin'] ?? 0,
-      supervisor: rolMap['supervisor'] ?? 0,
-      capturacion: rolMap['capturacion'] ?? 0,
-      lider: rolMap['lider'] ?? 0,
+      admin: porRol['admin'] ?? 0,
+      supervisor: porRol['supervisor'] ?? 0,
+      capturacion: porRol['capturacion'] ?? 0,
+      lider: porRol['lider'] ?? 0,
     },
   }
 
-  return {
-    stats,
-    recentUsuarios: recentUsuarios.map((u) => ({
-      id: u.id,
-      nombreCompleto: u.nombreCompleto,
-      codigoEmpleado: u.codigoEmpleado,
-      rol: u.rol,
-      plant: u.plant,
-      isActive: u.isActive,
-    })),
-  }
+  const recentUsuarios: AdminRecentUsuario[] = (raw.usuariosRecientes ?? []).map((u) => ({
+    id: u.id,
+    nombreCompleto: u.nombre_completo,
+    codigoEmpleado: u.codigo_empleado,
+    rol: u.rol,
+    plant: null, // endpoint no devuelve planta por usuario en este resumen
+    isActive: u.is_active,
+  }))
+
+  return { stats, recentUsuarios }
 }

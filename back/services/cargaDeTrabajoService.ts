@@ -1,5 +1,70 @@
 import 'server-only'
-import { prisma } from '@/back/db/prisma'
+
+function apiHeaders(accessToken: string): Record<string, string> {
+  return {
+    'X-App-Token': process.env.X_APP_TOKEN ?? '',
+    Authorization: `Bearer ${accessToken}`,
+  }
+}
+
+const BASE = () => process.env.QSYNC_API_URL ?? 'http://localhost:3001'
+
+// ─── Raw shapes from qb_sync ─────────────────────────────────────────────────
+
+interface RawAssignedTablet {
+  id: number
+  alias: string
+  codigoTablet: string
+}
+
+interface RawItem {
+  id: number
+  partNumber: string | null
+  partName: string | null
+  inventory: string | number | null
+  inventoryDone: string | number | null
+  sessionId: number | null
+  sessionStatus: string | null
+  assignedAt: string | null
+  assignedTablet: RawAssignedTablet | null
+  hasSubmittedReport: boolean
+  quotationConsecutive: string | null
+}
+
+interface RawQuotation {
+  id: number
+  consecutiveNumber: string | null
+  status: string | null
+  clientEmail: string | null
+  purchaseOrderNumber: string | null
+  contactEmails: string | null
+  orderUserName: string | null
+  orderConsecutiveNumber: string | null
+  total: number
+}
+
+interface RawOrder {
+  id: number
+  consecutiveNumber: string | null
+  state: string | null
+  serviceTypeName: string | null
+  serviceTypeDetail: string | null
+  piecesPerHour: string | number | null
+  authorizedHours: string | number | null
+  pricePerHour: string | number | null
+  language: string | null
+  userName: string | null
+  clientContactName: string | null
+  clientContactEmail: string | null
+  hoe: string | null
+  arranqueSeguro: string | null
+  clientName: string | null
+  plantId: number | null
+  plantName: string | null
+  regionName: string | null
+  quotations: RawQuotation[]
+  items: RawItem[]
+}
 
 export type AssignedTablet = {
   id: number
@@ -79,125 +144,68 @@ function deriveItemStatus(sessionStatus: string | null): string {
   return 'pending'
 }
 
-export async function getCargaDeTrabajoData(_supervisorCodigoEmpleado: string): Promise<OrderWorkload[]> {
-  const orders = await prisma.order.findMany({
-    where: { NOT: { state: 'closed' } },
-    include: {
-      plant: { select: { id: true, name: true, region: { select: { name: true } } } },
-      client: { select: { name: true } },
-      quotations: {
-        include: {
-          items: {
-            include: {
-              sessions: {
-                orderBy: { id: 'desc' },
-                take: 1,
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: { id: 'desc' },
-  })
+function mapWorkloadOrder(raw: RawOrder): OrderWorkload {
+  const items: OrderItemWorkload[] = (raw.items ?? []).map((item) => ({
+    id: item.id,
+    partNumber: item.partNumber ?? '—',
+    partName: item.partName ?? '—',
+    status: deriveItemStatus(item.sessionStatus),
+    inventario: Number(item.inventory ?? 0),
+    inventarioTerminado: Number(item.inventoryDone ?? 0),
+    assignedAt: item.assignedAt ? new Date(item.assignedAt) : null,
+    assignedTablet: item.assignedTablet
+      ? { id: item.assignedTablet.id, alias: item.assignedTablet.alias ?? item.assignedTablet.codigoTablet }
+      : null,
+    quotationConsecutive: item.quotationConsecutive ?? null,
+    hasSubmittedReport: item.hasSubmittedReport ?? false,
+  }))
 
-  // Batch-fetch tablets referenced in active (non-finished) sessions only
-  const codigosTablet = new Set<string>()
-  for (const order of orders) {
-    for (const quotation of order.quotations) {
-      for (const item of quotation.items) {
-        const session = item.sessions[0]
-        if (session?.tabletId && session.status !== 'finished') codigosTablet.add(session.tabletId)
-      }
-    }
+  const firstItem = items[0]
+
+  return {
+    id: raw.id,
+    consecutiveNumber: raw.consecutiveNumber ?? null,
+    clientName: raw.clientName ?? null,
+    plantName: raw.plantName ?? '—',
+    plantId: raw.plantId ?? null,
+    partNumber: firstItem?.partNumber ?? '—',
+    partName: firstItem?.partName ?? '—',
+    serviceType: raw.serviceTypeName ?? raw.serviceTypeDetail ?? '—',
+    orderStatus: raw.state ?? 'open',
+    regionName: raw.regionName ?? null,
+    serviceTypeDetail: raw.serviceTypeDetail ?? null,
+    piecesPerHour: raw.piecesPerHour != null ? Number(raw.piecesPerHour) : null,
+    authorizedHours: raw.authorizedHours != null ? Number(raw.authorizedHours) : null,
+    pricePerHour: raw.pricePerHour != null ? Number(raw.pricePerHour) : null,
+    language: raw.language ?? null,
+    userName: raw.userName ?? null,
+    clientContactName: raw.clientContactName ?? null,
+    clientContactEmail: raw.clientContactEmail ?? null,
+    quotations: (raw.quotations ?? []).map((q) => ({
+      id: q.id,
+      consecutiveNumber: q.consecutiveNumber ?? null,
+      status: q.status ?? null,
+      total: q.total ?? 0,
+      clientEmail: q.clientEmail ?? null,
+      purchaseOrderNumber: q.purchaseOrderNumber ?? null,
+      contactEmails: q.contactEmails ?? null,
+      orderUserName: q.orderUserName ?? null,
+      orderConsecutiveNumber: q.orderConsecutiveNumber ?? null,
+    })),
+    items,
+    hoe: raw.hoe ?? null,
+    arranqueSeguro: raw.arranqueSeguro ?? null,
   }
+}
 
-  const tablets = codigosTablet.size > 0
-    ? await prisma.tablet.findMany({
-        where: { codigoTablet: { in: Array.from(codigosTablet) } },
-        select: { id: true, alias: true, codigoTablet: true },
-      })
-    : []
-
-  const tabletByCode = new Map(tablets.map((t) => [t.codigoTablet, t]))
-
-  // Batch-query submitted daily reports for all items across all orders
-  const allItemIds = orders.flatMap((order) =>
-    order.quotations.flatMap((q) => q.items.map((i) => i.id))
-  ).filter((id) => id > 0)
-
-  const submittedReportItems = allItemIds.length > 0
-    ? await prisma.dailyReport.findMany({
-        where: {
-          orderItemId: { in: allItemIds },
-          status: { in: ['submitted', 'sampled', 'signed', 'published'] },
-        },
-        select: { orderItemId: true },
-      })
-    : []
-  const submittedSet = new Set(submittedReportItems.map((r) => r.orderItemId))
-
-  return orders.map((order) => {
-    const allItems: OrderItemWorkload[] = order.quotations.flatMap((quotation) =>
-      quotation.items.map((item) => {
-        const latestSession = item.sessions[0] ?? null
-        const isActive = latestSession !== null && latestSession.status !== 'finished'
-        const tabletRecord = isActive ? tabletByCode.get(latestSession.tabletId) : null
-
-        return {
-          id: item.id,
-          partNumber: item.partNumber ?? '—',
-          partName: item.partName ?? '—',
-          status: deriveItemStatus(latestSession?.status ?? null),
-          inventario: item.inventory ? Number(item.inventory) : 0,
-          inventarioTerminado: item.inventoryDone ? Number(item.inventoryDone) : 0,
-          assignedAt: isActive ? latestSession?.fechaInicio ?? null : null,
-          assignedTablet: tabletRecord
-            ? { id: tabletRecord.id, alias: tabletRecord.alias ?? tabletRecord.codigoTablet }
-            : null,
-          quotationConsecutive: quotation.consecutiveNumber,
-          hasSubmittedReport: submittedSet.has(item.id),
-        }
-      }),
-    )
-
-    const firstItem = allItems[0]
-
-    return {
-      id: order.id,
-      consecutiveNumber: order.consecutiveNumber,
-      clientName: order.client?.name ?? null,
-      plantName: order.plant?.name ?? '—',
-      plantId: order.plant?.id ?? null,
-      partNumber: firstItem?.partNumber ?? '—',
-      partName: firstItem?.partName ?? '—',
-      serviceType: order.serviceTypeName ?? order.serviceTypeDetail ?? '—',
-      orderStatus: order.state ?? 'open',
-      regionName: order.plant?.region?.name ?? null,
-      serviceTypeDetail: order.serviceTypeDetail ?? null,
-      piecesPerHour: order.piecesPerHour ? Number(order.piecesPerHour) : null,
-      authorizedHours: order.authorizedHours ? Number(order.authorizedHours) : null,
-      pricePerHour: order.pricePerHour ? Number(order.pricePerHour) : null,
-      language: order.language ?? null,
-      userName: order.userName ?? null,
-      clientContactName: order.clientContactName ?? null,
-      clientContactEmail: order.clientContactEmail ?? null,
-      quotations: order.quotations.map((q) => ({
-        id: q.id,
-        consecutiveNumber: q.consecutiveNumber,
-        status: q.status,
-        total: 0,
-        clientEmail: q.clientEmail ?? null,
-        purchaseOrderNumber: q.purchaseOrderNumber ?? null,
-        contactEmails: q.contactEmails ?? null,
-        orderUserName: q.orderUserName ?? null,
-        orderConsecutiveNumber: q.orderConsecutiveNumber ?? null,
-      })),
-      items: allItems,
-      hoe: order.hoe ?? null,
-      arranqueSeguro: order.arranqueSeguro ?? null,
-    }
+export async function getCargaDeTrabajoData(accessToken: string): Promise<OrderWorkload[]> {
+  const res = await fetch(`${BASE()}/qb_sync/orders/workload`, {
+    headers: apiHeaders(accessToken),
+    cache: 'no-store',
   })
+  if (!res.ok) throw new Error(`getCargaDeTrabajoData failed: ${res.status}`)
+  const body = await res.json() as { success: boolean; data: RawOrder[] }
+  return (body.data ?? []).map(mapWorkloadOrder)
 }
 
 type ExternalTablet = {
@@ -214,130 +222,17 @@ type ExternalTablet = {
   plant_name?: string
 }
 
-export async function getOrderWorkloadById(id: number): Promise<OrderWorkload | null> {
-  const order = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      plant: { select: { id: true, name: true, region: { select: { name: true } } } },
-      client: { select: { name: true } },
-      quotations: {
-        include: {
-          items: {
-            include: {
-              sessions: {
-                orderBy: { id: 'desc' },
-                take: 1,
-              },
-            },
-          },
-        },
-      },
-    },
-  })
-
-  if (!order) return null
-
-  const codigosTablet = new Set<string>()
-  for (const quotation of order.quotations) {
-    for (const item of quotation.items) {
-      const session = item.sessions[0]
-      if (session?.tabletId && session.status !== 'finished') codigosTablet.add(session.tabletId)
-    }
-  }
-
-  const tablets = codigosTablet.size > 0
-    ? await prisma.tablet.findMany({
-        where: { codigoTablet: { in: Array.from(codigosTablet) } },
-        select: { id: true, alias: true, codigoTablet: true },
-      })
-    : []
-
-  const tabletByCode = new Map(tablets.map((t) => [t.codigoTablet, t]))
-
-  // Batch-query submitted daily reports for this order items
-  const orderItemIds = order.quotations.flatMap((q) => q.items.map((i) => i.id)).filter((id) => id > 0)
-
-  const submittedReportItems = orderItemIds.length > 0
-    ? await prisma.dailyReport.findMany({
-        where: {
-          orderItemId: { in: orderItemIds },
-          status: { in: ['submitted', 'sampled', 'signed', 'published'] },
-        },
-        select: { orderItemId: true },
-      })
-    : []
-  const submittedSet = new Set(submittedReportItems.map((r) => r.orderItemId))
-
-  const allItems: OrderItemWorkload[] = order.quotations.flatMap((quotation) =>
-    quotation.items.map((item) => {
-      const latestSession = item.sessions[0] ?? null
-      const isActive = latestSession !== null && latestSession.status !== 'finished'
-      const tabletRecord = isActive ? tabletByCode.get(latestSession.tabletId) : null
-
-      return {
-        id: item.id,
-        partNumber: item.partNumber ?? '—',
-        partName: item.partName ?? '—',
-        status: deriveItemStatus(latestSession?.status ?? null),
-        inventario: item.inventory ? Number(item.inventory) : 0,
-        inventarioTerminado: item.inventoryDone ? Number(item.inventoryDone) : 0,
-        assignedAt: isActive ? latestSession?.fechaInicio ?? null : null,
-        assignedTablet: tabletRecord
-          ? { id: tabletRecord.id, alias: tabletRecord.alias ?? tabletRecord.codigoTablet }
-          : null,
-        quotationConsecutive: quotation.consecutiveNumber,
-        hasSubmittedReport: submittedSet.has(item.id),
-      }
-    }),
-  )
-
-  const firstItem = allItems[0]
-
-  return {
-    id: order.id,
-    consecutiveNumber: order.consecutiveNumber,
-    clientName: order.client?.name ?? null,
-    plantName: order.plant?.name ?? '—',
-    plantId: order.plant?.id ?? null,
-    partNumber: firstItem?.partNumber ?? '—',
-    partName: firstItem?.partName ?? '—',
-    serviceType: order.serviceTypeName ?? order.serviceTypeDetail ?? '—',
-    orderStatus: order.state ?? 'open',
-    regionName: order.plant?.region?.name ?? null,
-    serviceTypeDetail: order.serviceTypeDetail ?? null,
-    piecesPerHour: order.piecesPerHour ? Number(order.piecesPerHour) : null,
-    authorizedHours: order.authorizedHours ? Number(order.authorizedHours) : null,
-    pricePerHour: order.pricePerHour ? Number(order.pricePerHour) : null,
-    language: order.language ?? null,
-    userName: order.userName ?? null,
-    clientContactName: order.clientContactName ?? null,
-    clientContactEmail: order.clientContactEmail ?? null,
-    quotations: order.quotations.map((q) => ({
-      id: q.id,
-      consecutiveNumber: q.consecutiveNumber,
-      status: q.status,
-      total: 0,
-      clientEmail: q.clientEmail ?? null,
-      purchaseOrderNumber: q.purchaseOrderNumber ?? null,
-      contactEmails: q.contactEmails ?? null,
-      orderUserName: q.orderUserName ?? null,
-      orderConsecutiveNumber: q.orderConsecutiveNumber ?? null,
-    })),
-    items: allItems,
-    hoe: order.hoe ?? null,
-    arranqueSeguro: order.arranqueSeguro ?? null,
-  }
+export async function getOrderWorkloadById(id: number, accessToken: string): Promise<OrderWorkload | null> {
+  const all = await getCargaDeTrabajoData(accessToken)
+  return all.find((o) => o.id === id) ?? null
 }
 
 export async function getAvailableTablets(accessToken: string): Promise<TabletOption[]> {
-  // 1. Fetch all tablets from the external companion API
+  // 1. Fetch all tablets from qb_sync
   let externalTablets: ExternalTablet[] = []
   try {
-    const res = await fetch(`${process.env.QSYNC_API_URL}/qb_sync/tablets`, {
-      headers: {
-        'X-App-Token': process.env.X_APP_TOKEN ?? '',
-        'Authorization': `Bearer ${accessToken}`,
-      },
+    const res = await fetch(`${BASE()}/qb_sync/tablets`, {
+      headers: apiHeaders(accessToken),
     })
     if (res.ok) {
       const body = await res.json().catch(() => ({}))
@@ -350,12 +245,23 @@ export async function getAvailableTablets(accessToken: string): Promise<TabletOp
     return []
   }
 
-  // 2. Query local active sessions to determine which tablets are busy
-  const activeSessions = await prisma.inspectionSession.findMany({
-    where: { status: { not: 'finished' } },
-    select: { tabletId: true },
-  })
-  const busyTabletCodes = new Set(activeSessions.map((s) => s.tabletId))
+  // 2. Fetch active sessions from qb_sync to determine which tablets are busy
+  let busyTabletCodes: Set<string> = new Set()
+  try {
+    const sessRes = await fetch(`${BASE()}/qb_sync/inspection-sessions/active`, {
+      headers: apiHeaders(accessToken),
+    })
+    if (sessRes.ok) {
+      const sessBody = await sessRes.json().catch(() => ({}))
+      const activeSessions: Array<{ tabletId?: string }> = Array.isArray(sessBody.data) ? sessBody.data : []
+      busyTabletCodes = new Set(
+        activeSessions.map((s) => s.tabletId).filter((c): c is string => typeof c === 'string' && c !== ''),
+      )
+    }
+  } catch (err) {
+    console.error('[getAvailableTablets] Network error fetching active sessions:', err)
+    // Non-fatal — proceed without filtering busy tablets
+  }
 
   // 3. Filter and map to TabletOption
   return externalTablets

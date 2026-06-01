@@ -20,7 +20,7 @@ export default async function ReportesRoute({
   const { page: pageParam } = await searchParams
   const page = Math.max(1, Number.isInteger(Number(pageParam)) ? Math.max(1, Number(pageParam)) : 1)
 
-  const { rows: reportes, total } = await getSupervisorReportes(String(session.userId), page)
+  const { rows: reportes, total } = await getSupervisorReportes(String(session.userId), page, session.accessToken)
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
