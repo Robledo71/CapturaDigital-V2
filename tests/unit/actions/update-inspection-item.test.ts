@@ -1,3 +1,4 @@
+
 // tests/unit/actions/update-inspection-item.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
@@ -13,9 +14,9 @@ import { updateInspectionItemAction } from '@/app/actions/update-inspection-item
 function makeSession() {
   return {
     userId: 1,
-    rol: 'supervisor' as const,
-    codigoEmpleado: 'SUP001',
-    nombreCompleto: 'Supervisor User',
+    rol: 'capturacion' as const,
+    codigoEmpleado: 'CAP001',
+    nombreCompleto: 'Carlos Cap',
     accessToken: 'access-token',
     refreshToken: 'refresh-token',
     expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
