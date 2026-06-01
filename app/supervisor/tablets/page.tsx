@@ -12,7 +12,8 @@ export const metadata = {
 export default async function TabletsRoute() {
     const session = await getSession()
     if (!session) redirect('/')
-    const tablets = await getSupervisorTablets(String(session.userId))
+    const plantaId = session.rol !== 'admin' ? (session.plantaId ?? null) : null
+    const tablets = await getSupervisorTablets(String(session.userId), plantaId)
 
     return (
         <div className="flex flex-col flex-1 overflow-hidden">

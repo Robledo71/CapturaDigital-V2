@@ -21,6 +21,7 @@ export default async function SupervisorPage() {
     getDashboardProduccion(session.accessToken),
   ])
   const firstName = session.nombreCompleto.split(' ')[0]
+  const plantaNombre = session.plantaNombre ?? null
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -31,7 +32,14 @@ export default async function SupervisorPage() {
 
         {/* Page header */}
         <div className="flex items-start justify-between">
-          <LiveClock nombre={firstName} esperanRevision={stats.esperanRevision} />
+          <div className="flex flex-col gap-1">
+            <LiveClock nombre={firstName} esperanRevision={stats.esperanRevision} />
+            {plantaNombre && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 pl-0.5">
+                Planta: <span className="font-medium text-slate-700 dark:text-slate-300">{plantaNombre}</span>
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <Link
               href="/supervisor/tablets"

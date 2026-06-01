@@ -7,6 +7,8 @@ export type JWTPayload = {
   rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
   codigoEmpleado: string
   nombreCompleto: string
+  plantaId: number | null
+  plantaNombre: string | null
   accessToken: string
   refreshToken: string
   expiresAt: string

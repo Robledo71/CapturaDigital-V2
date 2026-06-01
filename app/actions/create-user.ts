@@ -30,7 +30,7 @@ const CreateUserSchema = z
       .number({ error: 'Selecciona una planta' })
       .int()
       .positive('Selecciona una planta'),
-    rol: z.enum(['supervisor', 'capturacion', 'admin', 'lider'], {
+    rol: z.enum(['supervisor', 'capturacion', 'admin', 'lider', 'cliente'], {
       error: 'Rol no válido',
     }),
     correo: z.string().email('El correo no es válido').trim(),

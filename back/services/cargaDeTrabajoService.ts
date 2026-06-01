@@ -227,7 +227,10 @@ export async function getOrderWorkloadById(id: number, accessToken: string): Pro
   return all.find((o) => o.id === id) ?? null
 }
 
-export async function getAvailableTablets(accessToken: string): Promise<TabletOption[]> {
+export async function getAvailableTablets(
+  accessToken: string,
+  plantaId: number | null = null,
+): Promise<TabletOption[]> {
   // 1. Fetch all tablets from qb_sync
   let externalTablets: ExternalTablet[] = []
   try {
@@ -267,7 +270,9 @@ export async function getAvailableTablets(accessToken: string): Promise<TabletOp
   return externalTablets
     .filter((t) => {
       const codigo = t.codigoTablet ?? t.codigo_tablet ?? ''
-      return codigo !== '' && t.status === 'activa' && !busyTabletCodes.has(codigo)
+      const tabletPlantId = t.plantId ?? t.plant_id ?? null
+      const matchesPlant = plantaId == null || tabletPlantId === plantaId
+      return codigo !== '' && t.status === 'activa' && !busyTabletCodes.has(codigo) && matchesPlant
     })
     .map((t) => ({
       id: t.id ?? 0,

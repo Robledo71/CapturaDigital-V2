@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useActionState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { toggleUserStatusAction, type ToggleUserStatusState } from '@/app/actions/toggle-user-status'
 import { Search, Plus, Pencil, Power, AlertTriangle } from 'lucide-react'
 import { NuevoUsuarioModal } from './NuevoUsuarioModal'
 import { EditarUsuarioModal } from './EditarUsuarioModal'
@@ -10,7 +11,7 @@ import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider'
+type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
 type UserEstado = 'activo' | 'inactivo'
 
 interface Usuario {
@@ -114,6 +115,13 @@ function RolBadge({ rol }: { rol: UserRol }) {
       </span>
     )
   }
+  if (rol === 'cliente') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-700 border border-teal-300 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20">
+        Cliente
+      </span>
+    )
+  }
   return (
     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 border border-violet-300 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20">
       Capturación
@@ -211,6 +219,11 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
     message: '',
     visible: false,
   })
+  const [toggleState, toggleAction] = useActionState<ToggleUserStatusState, FormData>(
+    toggleUserStatusAction,
+    undefined,
+  )
+  const [isToggling, startToggleTransition] = useTransition()
 
   // Sync when the server sends a new page of data
   useEffect(() => {
@@ -238,10 +251,21 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
 
   function confirmToggle() {
     if (!confirmTarget) return
+
+    const newIsActive = confirmTarget.action === 'activar'
+    const fd = new FormData()
+    fd.set('codigoEmpleado', confirmTarget.user.codigo)
+    fd.set('isActive', String(newIsActive))
+
+    startToggleTransition(() => {
+      toggleAction(fd)
+    })
+
+    // Optimistic update
     setUsuarios((prev) =>
       prev.map((u) =>
         u.id === confirmTarget.user.id
-          ? { ...u, estado: u.estado === 'activo' ? 'inactivo' : 'activo' }
+          ? { ...u, estado: newIsActive ? 'activo' : 'inactivo' }
           : u,
       ),
     )
@@ -268,8 +292,9 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
     { key: 'todos',       label: 'Todos',           count: usuarios.length },
     { key: 'admin',       label: 'Administradores', count: usuarios.filter((u) => u.rol === 'admin').length },
     { key: 'supervisor',  label: 'Supervisores',    count: usuarios.filter((u) => u.rol === 'supervisor').length },
-    { key: 'lider',       label: 'Líderes',        count: usuarios.filter((u) => u.rol === 'lider').length },
+    { key: 'lider',       label: 'Líderes',         count: usuarios.filter((u) => u.rol === 'lider').length },
     { key: 'capturacion', label: 'Capturación',     count: usuarios.filter((u) => u.rol === 'capturacion').length },
+    { key: 'cliente',     label: 'Clientes',        count: usuarios.filter((u) => u.rol === 'cliente').length },
     { key: 'inactivos',   label: 'Inactivos',       count: usuarios.filter((u) => u.estado === 'inactivo').length },
   ]
 
@@ -291,6 +316,17 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
 
   return (
     <>
+      {/* Banner de error de toggle */}
+      {toggleState && !toggleState.ok && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed top-6 right-6 z-50 flex items-center gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-5 py-3.5 shadow-2xl"
+        >
+          <p className="text-sm text-red-400">{toggleState.error}</p>
+        </div>
+      )}
+
       {/* ConfirmModal para toggle de estado */}
       {confirmTarget && (
         <ConfirmModal
@@ -494,10 +530,10 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
                                     : `Activar ${user.nombre}`
                                 }
                                 title={toggle.reason}
-                                disabled={!toggle.allowed}
+                                disabled={!toggle.allowed || isToggling}
                                 onClick={() => requestToggle(user)}
                                 className={`p-1.5 rounded transition-colors ${
-                                  toggle.allowed
+                                  toggle.allowed && !isToggling
                                     ? 'text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d]'
                                     : 'text-slate-700 cursor-not-allowed'
                                 }`}

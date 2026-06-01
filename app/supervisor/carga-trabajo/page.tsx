@@ -12,9 +12,11 @@ export default async function CargaDeTrabajoRoute() {
   const session = await getSession()
   if (!session) redirect('/login')
 
+  const plantaId = session.rol !== 'admin' ? (session.plantaId ?? null) : null
+
   const [orders, tablets] = await Promise.all([
     getCargaDeTrabajoData(session.accessToken),
-    getAvailableTablets(session.accessToken),
+    getAvailableTablets(session.accessToken, plantaId),
   ])
 
   return (

@@ -268,9 +268,12 @@ export type SupervisorTabletRow = {
   isOnline: boolean
 }
 
-export async function getSupervisorTablets(_supervisorId: string): Promise<SupervisorTabletRow[]> {
-  // TODO Fase 2: sessions relation removed from Tablet in new schema
+export async function getSupervisorTablets(
+  _supervisorId: string,
+  plantaId: number | null = null,
+): Promise<SupervisorTabletRow[]> {
   const tablets = await prisma.tablet.findMany({
+    where: plantaId != null ? { plantId: plantaId } : undefined,
     include: { plant: true },
     orderBy: [{ alias: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
   })

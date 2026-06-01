@@ -11,6 +11,12 @@ function getStr(formData: FormData, key: string): string {
   return (formData.get(key) as string | null) ?? ''
 }
 
+function mapOrderState(raw: string): 'open' | 'closed' | 'cancelled' {
+  if (raw === 'cerrada' || raw === 'closed') return 'closed'
+  if (raw === 'cancelled' || raw === 'cancelada') return 'cancelled'
+  return 'open' // 'abierta', 'open', o cualquier otro valor → open
+}
+
 export async function assignOrderItemAction(
   _state: AssignOrderItemState,
   formData: FormData,
@@ -53,7 +59,7 @@ export async function assignOrderItemAction(
       const body = {
         order: {
           consecutive_number:    getStr(formData, 'qb_order_consecutive'),
-          state:                 getStr(formData, 'qb_order_state'),
+          state:                 mapOrderState(getStr(formData, 'qb_order_state')),
           client_name:           getStr(formData, 'qb_order_client_name'),
           client_contact_name:   getStr(formData, 'qb_order_client_contact_name'),
           client_contact_email:  getStr(formData, 'qb_order_client_contact_email'),

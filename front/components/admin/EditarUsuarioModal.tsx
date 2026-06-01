@@ -226,6 +226,7 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                   <option value="supervisor">Supervisor</option>
                   <option value="lider">Líder</option>
                   <option value="capturacion">Capturación</option>
+                  <option value="cliente">Cliente</option>
                 </select>
                 {state?.errors?.rol && (
                   <p className="text-red-400 text-xs">{state.errors.rol[0]}</p>

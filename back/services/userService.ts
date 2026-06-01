@@ -11,7 +11,7 @@ export type CreateUsuarioInput = {
   codigoEmpleado: string
   puesto: string
   plantaId: number | null
-  rol: 'supervisor' | 'capturacion' | 'admin' | 'lider'
+  rol: 'supervisor' | 'capturacion' | 'admin' | 'lider' | 'cliente'
   correo: string
   contrasena: string
 }

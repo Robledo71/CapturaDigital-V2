@@ -144,6 +144,18 @@ export async function importCotizacionAction(
     }
   }
 
+  // --- Step 1c: filtro estricto por planta — admin ve todo, el resto solo su planta ---
+  if (session.rol !== 'admin') {
+    const userPlant = (session.plantaNombre ?? '').trim().toLowerCase()
+    const orderPlant = (orderResult.data.plant_name ?? '').trim().toLowerCase()
+    if (!userPlant || userPlant !== orderPlant) {
+      return {
+        ok: false,
+        error: 'Esta orden pertenece a otra planta. Solo puedes gestionar órdenes de tu planta asignada.',
+      }
+    }
+  }
+
   // --- Step 2: query QB API for the associated cotizaciones --- no DB writes ---
   const cotizacionesResult = await searchCotizaciones(validated.data.orden)
   if (!cotizacionesResult.ok) {

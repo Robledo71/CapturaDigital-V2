@@ -27,7 +27,7 @@ const UpdateUserSchema = z.object({
     .number({ error: 'Selecciona una planta' })
     .int()
     .positive('Selecciona una planta'),
-  rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider'], {
+  rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'cliente'], {
     error: 'Rol no válido',
   }),
   correo: z.string().email('El correo no es válido').trim(),

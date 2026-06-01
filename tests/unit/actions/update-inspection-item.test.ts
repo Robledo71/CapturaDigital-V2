@@ -14,9 +14,9 @@ import { updateInspectionItemAction } from '@/app/actions/update-inspection-item
 function makeSession() {
   return {
     userId: 1,
-    rol: 'capturacion' as const,
-    codigoEmpleado: 'CAP001',
-    nombreCompleto: 'Carlos Cap',
+    rol: 'supervisor' as const,
+    codigoEmpleado: 'SUP001',
+    nombreCompleto: 'Supervisor Test',
     accessToken: 'access-token',
     refreshToken: 'refresh-token',
     expiresAt: new Date(Date.now() + 3_600_000).toISOString(),

@@ -49,6 +49,8 @@ export async function loginSupervisor(
   let userId: number
   let codigoEmpleado: string
   let nombreCompleto: string
+  let plantaId: number | null
+  let plantaNombre: string | null
   let accessToken: string
   let refreshToken: string
 
@@ -79,6 +81,8 @@ export async function loginSupervisor(
     userId = Number(body.data.user.id)
     codigoEmpleado = validated.data.employee_number
     nombreCompleto = body.data.user.nombreCompleto ?? ''
+    plantaId = body.data.user.plantaId ?? null
+    plantaNombre = body.data.user.plantaNombre ?? null
     accessToken = body.data.accessToken
     refreshToken = body.data.refreshToken
   } catch {
@@ -102,6 +106,8 @@ export async function loginSupervisor(
     rol: rol as ValidRol,
     codigoEmpleado,
     nombreCompleto,
+    plantaId,
+    plantaNombre,
     accessToken,
     refreshToken,
   })
