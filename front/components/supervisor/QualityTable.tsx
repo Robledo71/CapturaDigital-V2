@@ -81,7 +81,7 @@ export function QualityTable({ rows }: QualityTableProps) {
 
                 {/* RECIBIDO */}
                 <td className="py-3 pr-4">
-                  <span className="text-black dark:text-slate-400 text-sm font-medium">{row.time}</span>
+                  <span className="text-slate-700 dark:text-slate-400 text-sm font-medium">{row.time}</span>
                 </td>
 
                 {/* Arrow */}

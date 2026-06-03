@@ -5,6 +5,8 @@ import {
   getSamplingRule,
   signReporte,
   publishReporte,
+  getReporteDetalle,
+  registerSamplingDecision,
 } from '@/back/services/reporteDetalleService'
 
 // ─── SAMPLING_RULES shape ────────────────────────────────────────────────────
@@ -221,5 +223,211 @@ describe('publishReporte', () => {
     )
 
     await expect(publishReporte(99, 'access-token')).rejects.toThrow('publish failed: 500')
+  })
+})
+
+// ─── getReporteDetalle ────────────────────────────────────────────────────────
+
+const mockApiReport = {
+  id: 42,
+  status: 'submitted',
+  shift: 'M',
+  report_date: '2026-01-15',
+  created_at: '2026-01-15T08:00:00Z',
+  signed_at: null,
+  published_at: null,
+  operators: [{ operator_name: 'Juan López' }],
+  sampling_results: [],
+  items: [
+    {
+      id: 1,
+      total_pieces: 300,
+      ok_pieces: 290,
+      ng_pieces: 10,
+      scrap_pieces: 5,
+      recovered_pieces: 5,
+      lote: 'L-001',
+      serie: null,
+      identificadores: null,
+      incidents: [{ incident_name: 'Rayadura', affected_pieces: 10 }],
+    },
+  ],
+  order_context: {
+    quotation_consecutive: 'OV-86068-CO-29462',
+    part_number: '83600-3BH',
+    part_name: 'MAT SET FLOOR',
+    client_name: 'Bimbo S.A.',
+    plant_name: 'Honda Celaya',
+    tablet_alias: 'TAB-001',
+    id_tablet: 'TAB-001',
+    supervisor_name: 'Pedro Ramírez',
+    fecha_inicio: '2026-01-15T07:00:00Z',
+    fecha_fin: null,
+  },
+}
+
+describe('getReporteDetalle', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    process.env.QSYNC_API_URL = 'http://localhost:3001'
+    process.env.X_APP_TOKEN = 'app-token'
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('id no numérico → null sin llamar fetch', async () => {
+    const result = await getReporteDetalle('abc', 'tok')
+    expect(result).toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('respuesta 404 → null', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('', { status: 404 }))
+    const result = await getReporteDetalle('99', 'tok')
+    expect(result).toBeNull()
+  })
+
+  it('respuesta 500 → lanza error', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('error', { status: 500 }))
+    await expect(getReporteDetalle('1', 'tok')).rejects.toThrow('getReporteDetalle failed: 500')
+  })
+
+  it('respuesta exitosa → mapea reportId, status y totales correctamente', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: mockApiReport }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result).not.toBeNull()
+    expect(result!.reportId).toBe(42)
+    expect(result!.totalInspected).toBe(300)
+    expect(result!.totalOk).toBe(290)
+    expect(result!.totalNg).toBe(10)
+    expect(result!.totalScrap).toBe(5)
+    expect(result!.totalRecovered).toBe(5)
+  })
+
+  it('mapea cliente, planta, cotización y parte desde order_context', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: mockApiReport }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.cliente).toBe('Bimbo S.A.')
+    expect(result!.planta).toBe('Honda Celaya')
+    expect(result!.cotizacion).toBe('OV-86068-CO-29462')
+    expect(result!.parte).toBe('83600-3BH')
+  })
+
+  it('mapea operadores como string concatenado', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: mockApiReport }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.operadores).toBe('Juan López')
+  })
+
+  it('items tienen incidencias mapeadas', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: mockApiReport }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.inspectionItems[0].incidents[0].description).toBe('Rayadura')
+    expect(result!.inspectionItems[0].incidents[0].count).toBe(10)
+  })
+
+  it('llama a la URL correcta con el reportId', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: mockApiReport }), { status: 200 }),
+    )
+    await getReporteDetalle('42', 'tok')
+    const [url] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toContain('/qb_sync/daily-reports/42')
+  })
+})
+
+// ─── registerSamplingDecision ─────────────────────────────────────────────────
+
+describe('registerSamplingDecision', () => {
+  const baseInput = {
+    reportId: 10,
+    accessToken: 'tok',
+    decision: 'approve' as const,
+    defectsByItem: { 1: 0 },
+    notes: '',
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    process.env.QSYNC_API_URL = 'http://localhost:3001'
+    process.env.X_APP_TOKEN = 'app-token'
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('aprobación exitosa → { ok: true, status: "sampling" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
+    const result = await registerSamplingDecision(baseInput)
+    expect(result).toEqual({ ok: true, status: 'sampling' })
+  })
+
+  it('rechazo exitoso → { ok: true, status: "pending" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
+    const result = await registerSamplingDecision({ ...baseInput, decision: 'reject' })
+    expect(result).toEqual({ ok: true, status: 'pending' })
+  })
+
+  it('respuesta 404 → { ok: false, reason: "not_found" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('', { status: 404 }))
+    const result = await registerSamplingDecision(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'not_found' })
+  })
+
+  it('respuesta 409 → { ok: false, reason: "invalid_status" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('', { status: 409 }))
+    const result = await registerSamplingDecision(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'invalid_status' })
+  })
+
+  it('respuesta 422 con reason "notes_required" → { ok: false, reason: "notes_required" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ reason: 'notes_required' }), { status: 422 }),
+    )
+    const result = await registerSamplingDecision(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'notes_required' })
+  })
+
+  it('respuesta 422 con reason "rule_failed" → { ok: false, reason: "rule_failed" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ reason: 'rule_failed' }), { status: 422 }),
+    )
+    const result = await registerSamplingDecision(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'rule_failed' })
+  })
+
+  it('respuesta 422 con reason desconocido → { ok: false, reason: "invalid_status" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ reason: 'algo_raro' }), { status: 422 }),
+    )
+    const result = await registerSamplingDecision(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'invalid_status' })
+  })
+
+  it('respuesta 500 → lanza error', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('error', { status: 500 }))
+    await expect(registerSamplingDecision(baseInput)).rejects.toThrow('sampling failed: 500')
+  })
+
+  it('llama al endpoint correcto con el body correcto', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
+    await registerSamplingDecision({ ...baseInput, defectsByItem: { 1: 2 }, notes: 'Observación' })
+    const [url, opts] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toContain('/qb_sync/daily-reports/10/sampling')
+    const body = JSON.parse((opts as RequestInit).body as string)
+    expect(body.decision).toBe('approve')
+    expect(body.defects_by_item).toEqual({ '1': 2 })
+    expect(body.notes).toBe('Observación')
   })
 })

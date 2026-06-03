@@ -358,11 +358,11 @@ function EditItemModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-edit-item-titulo"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in"
     >
       <form
         action={action}
-        className="w-full max-w-md overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] text-slate-100 shadow-2xl"
+        className="w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="reportId" value={String(reportId)} />
         <input type="hidden" name="itemId" value={String(item.id)} />
@@ -372,14 +372,14 @@ function EditItemModal({
         <input type="hidden" name="incidents" value={incidentsJson} />
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
-          <h2 id="modal-edit-item-titulo" className="text-sm font-semibold text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h2 id="modal-edit-item-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
             Editar ítem
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
             aria-label="Cerrar modal"
           >
             <X size={16} />
@@ -388,7 +388,7 @@ function EditItemModal({
 
         {/* Body */}
         <div className="flex flex-col gap-4 px-5 py-5">
-          <p className="truncate text-sm font-medium text-white" title={`${item.partNumber ?? ''} ${item.partName ?? ''}`}>
+          <p className="truncate text-sm font-medium text-slate-900 dark:text-white" title={`${item.partNumber ?? ''} ${item.partName ?? ''}`}>
             {item.partNumber ? `${item.partNumber} · ` : ''}{item.partName ?? '—'}
           </p>
 
@@ -399,7 +399,7 @@ function EditItemModal({
               { name: 'recovered', label: 'Recuperadas' },
             ] as const).map(({ name, label }) => (
               <label key={name} className="flex flex-col gap-1.5">
-                <span className="text-xs text-slate-300">{label}</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300">{label}</span>
                 <input
                   type="number"
                   name={name}
@@ -407,13 +407,13 @@ function EditItemModal({
                   step={1}
                   value={values[name]}
                   onChange={handleChange}
-                  className="rounded-md border border-[#31476f] bg-[#0c1426] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                  className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
                 />
               </label>
             ))}
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-300">Scrap (NG - Recuperadas)</span>
-              <div className="cursor-not-allowed rounded-md border border-[#31476f] bg-[#0c1426] px-3 py-2 text-sm text-slate-500 select-none">
+              <span className="text-xs text-slate-600 dark:text-slate-300">Scrap (NG - Recuperadas)</span>
+              <div className="cursor-not-allowed rounded-md border border-slate-300 bg-slate-100 dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-500 select-none">
                 {computedScrap}
               </div>
             </div>
@@ -427,8 +427,8 @@ function EditItemModal({
 
           {item.incidents.length > 0 && (
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-slate-300">NG por incidencia</p>
-              <div className="flex flex-col gap-2 rounded-lg border border-[#31476f] bg-[#0c1426] p-3">
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300">NG por incidencia</p>
+              <div className="flex flex-col gap-2 rounded-lg border border-slate-300 bg-slate-50 dark:border-[#31476f] dark:bg-[#0c1426] p-3">
                 {item.incidents.map((inc, i) => (
                   <div key={i} className="flex items-center justify-between gap-3">
                     <span className="min-w-0 flex-1 truncate text-xs text-slate-400" title={inc.description}>
@@ -440,7 +440,7 @@ function EditItemModal({
                       step={1}
                       value={incidentCounts[i] ?? '0'}
                       onChange={(e) => handleIncidentChange(i, e.target.value)}
-                      className="w-20 rounded-md border border-[#31476f] bg-[#111a30] px-2 py-1 text-right text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                      className="w-20 rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#111a30] px-2 py-1 text-right text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
                     />
                   </div>
                 ))}
@@ -475,11 +475,11 @@ function EditItemModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-slate-300 hover:bg-white/10"
+            className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
           >
             Cancelar
           </button>
@@ -582,19 +582,19 @@ function SamplingModal({
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in">
       <form
         action={action}
-        className="w-full max-w-[640px] overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] text-slate-100 shadow-2xl"
+        className="w-full max-w-[640px] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="reportId" value={String(reporte.reportId)} />
 
-        <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
-          <h2 className="text-sm font-semibold text-white">Registrar muestreo de liberacion</h2>
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Registrar muestreo de liberacion</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
             aria-label="Cerrar modal"
           >
             <X size={16} />
@@ -604,28 +604,28 @@ function SamplingModal({
         <div className="flex flex-col gap-4 px-5 py-5">
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-300">Piezas muestreadas</span>
+              <span className="text-xs text-slate-600 dark:text-slate-300">Piezas muestreadas</span>
               <input
                 readOnly
                 value={totalSample}
-                className="rounded-md border border-[#31476f] bg-[#0c1426] px-3 py-2 text-sm text-white outline-none"
+                className="rounded-md border border-slate-300 bg-slate-100 dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none"
               />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-300">Hallazgos (defectos)</span>
+              <span className="text-xs text-slate-600 dark:text-slate-300">Hallazgos (defectos)</span>
               <input
                 readOnly
                 value={totalDefects}
-                className="rounded-md border border-[#31476f] bg-[#0c1426] px-3 py-2 text-sm text-white outline-none"
+                className="rounded-md border border-slate-300 bg-slate-100 dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none"
               />
             </label>
           </div>
 
-          <div className="rounded-lg bg-[#0c1426] p-4">
+          <div className="rounded-lg bg-slate-100 dark:bg-[#0c1426] p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold text-white">Reglas por item inspeccionado</p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="text-xs font-semibold text-slate-900 dark:text-white">Reglas por item inspeccionado</p>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   El rango se calcula con las piezas inspeccionadas de cada item.
                 </p>
               </div>
@@ -649,16 +649,16 @@ function SamplingModal({
                   const passes = defects <= item.maxDefects
 
                   return (
-                    <div key={item.id} className="rounded-lg border border-[#25395f] bg-[#111a30] p-3">
+                    <div key={item.id} className="rounded-lg border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-white">{item.description}</p>
-                          <p className="mt-1 text-xs text-slate-400">
+                          <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{item.description}</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                             Rango {item.rangeLabel} pzs: muestrear {item.sampleSize} y maximo {item.maxDefects} defectuosa{item.maxDefects !== 1 ? 's' : ''}.
                           </p>
                         </div>
                         <label className="flex w-24 flex-col gap-1">
-                          <span className="text-[11px] text-slate-400">Defectos</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">Defectos</span>
                           <input
                             type="number"
                             min={0}
@@ -670,7 +670,7 @@ function SamplingModal({
                                 [item.id]: event.target.value,
                               }))
                             }
-                            className="rounded-md border border-[#31476f] bg-[#0c1426] px-2 py-1.5 text-sm text-white outline-none focus:border-blue-500"
+                            className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-2 py-1.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
                           />
                         </label>
                       </div>
@@ -683,21 +683,21 @@ function SamplingModal({
               </div>
             )}
 
-            <div className="mt-4 border-t border-[#25395f] pt-3">
-              <p className="text-xs text-slate-400">
+            <div className="mt-4 border-t border-slate-300 dark:border-[#25395f] pt-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Resultado calculado: {totalDefects} defecto{totalDefects !== 1 ? 's' : ''} / {totalAllowed} permitidos.
               </p>
             </div>
           </div>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-slate-300">Notas / motivo (si no aprueba)</span>
+            <span className="text-xs text-slate-600 dark:text-slate-300">Notas / motivo (si no aprueba)</span>
             <textarea
               name="notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Motivo obligatorio si el muestreo no aprueba..."
-              className="min-h-20 rounded-md border border-[#31476f] bg-[#0c1426] px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
+              className="min-h-20 rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500"
             />
           </label>
 
@@ -708,9 +708,9 @@ function SamplingModal({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-[#25395f] px-5 py-4">
+        <div className="flex items-center justify-between gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
           {!approves && (
-            <p className="text-xs text-red-300">
+            <p className="text-xs text-red-500 dark:text-red-300">
               El muestreo no cumple las condiciones. Edita los ítems antes de aprobar.
             </p>
           )}
@@ -718,7 +718,7 @@ function SamplingModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-white hover:bg-white/10"
+              className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10"
             >
               Cancelar
             </button>
@@ -762,27 +762,27 @@ function ConfirmWorkflowModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] text-slate-100 shadow-2xl"
+        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="reportId" value={String(reportId)} />
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
-          <h2 className="text-sm font-semibold text-white">{title}</h2>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white" aria-label="Cerrar">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h2>
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white" aria-label="Cerrar">
             <X size={16} />
           </button>
         </div>
 
         {/* Body */}
         <div className="flex flex-col gap-4 px-5 py-5">
-          <p className="text-sm text-slate-300">{description}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{description}</p>
 
           {'error' in state && state.error && (
             <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -792,8 +792,8 @@ function ConfirmWorkflowModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
-          <button type="button" onClick={onClose} className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-slate-300 hover:bg-white/10">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <button type="button" onClick={onClose} className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10">
             Cancelar
           </button>
           <WorkflowSubmitButton className={confirmClass}>
@@ -1218,15 +1218,15 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border px-5 py-3.5 shadow-2xl transition-all ${
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border px-5 py-3.5 shadow-2xl transition-all animate-slide-in-right ${
             toast.type === 'success'
-              ? 'border-green-500/30 bg-white dark:bg-[#0c1829]'
+              ? 'border-green-500/50 bg-white dark:bg-[#0c1829]'
               : 'border-red-500/30 bg-white dark:bg-[#0c1829]'
           }`}
         >
           <span
             className={`h-2 w-2 flex-shrink-0 rounded-full ${
-              toast.type === 'success' ? 'bg-green-400' : 'bg-red-400'
+              toast.type === 'success' ? 'bg-green-400 animate-pulse-dot' : 'bg-red-400'
             }`}
             aria-hidden="true"
           />

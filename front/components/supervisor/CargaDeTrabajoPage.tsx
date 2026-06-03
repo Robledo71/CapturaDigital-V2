@@ -65,7 +65,7 @@ const ITEM_STATUS_CONFIG: Record<string, { label: string; pill: string; dot: str
   in_progress: {
     label: 'En progreso',
     pill: 'bg-amber-100 border border-amber-300 dark:bg-amber-500/10 dark:border-amber-500/20',
-    dot: 'bg-amber-600 dark:bg-amber-400',
+    dot: 'bg-amber-600 dark:bg-amber-400 animate-pulse-dot',
     text: 'text-amber-700 dark:text-amber-400',
   },
   completed: {
@@ -125,7 +125,7 @@ function AssignSubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Asignando...' : 'Asignar'}
@@ -174,12 +174,12 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
       role="dialog"
       aria-modal="true"
       aria-labelledby="sub-modal-titulo"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-fade-in"
       onClick={handleOverlayClick}
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] shadow-2xl"
+        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="orderItemId" value={String(orderItemId)} />
 
@@ -222,14 +222,14 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
           </>
         )}
 
-        <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
-          <h3 id="sub-modal-titulo" className="text-sm font-semibold text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h3 id="sub-modal-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
             Asignar tablet al item
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
             aria-label="Cerrar"
           >
             <X size={15} />
@@ -238,12 +238,12 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
 
         <div className="flex flex-col gap-4 px-5 py-5">
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-slate-300">Tablet</span>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Tablet</span>
             <select
               name="tabletId"
               required
               defaultValue=""
-              className="rounded-md border border-[#31476f] bg-[#0c1426] px-3 py-2 text-sm text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+              className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
             >
               <option value="" disabled>
                 Selecciona una tablet
@@ -264,11 +264,11 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-slate-300 hover:bg-white/10"
+            className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
           >
             Cancelar
           </button>
@@ -297,7 +297,7 @@ function ReleaseSubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Liberando...' : 'Confirmar'}
@@ -326,23 +326,23 @@ function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedR
       role="dialog"
       aria-modal="true"
       aria-labelledby="release-modal-titulo"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-fade-in"
       onClick={handleOverlayClick}
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] shadow-2xl"
+        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="orderItemId" value={String(orderItemId)} />
 
-        <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
-          <h3 id="release-modal-titulo" className="text-sm font-semibold text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h3 id="release-modal-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
             Liberar tablet
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
             aria-label="Cerrar"
           >
             <X size={15} />
@@ -350,9 +350,9 @@ function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedR
         </div>
 
         <div className="flex flex-col gap-3 px-5 py-5">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
             ¿Liberar la tablet asignada al item{' '}
-            <span className="font-mono font-medium text-white">{partNumber}</span>?
+            <span className="font-mono font-medium text-slate-900 dark:text-white">{partNumber}</span>?
           </p>
           <p className="text-xs text-slate-500">
             La tablet volverá a estar disponible para nuevas asignaciones.
@@ -377,11 +377,11 @@ function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedR
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-slate-300 hover:bg-white/10"
+            className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
           >
             Cancelar
           </button>
@@ -406,9 +406,9 @@ function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
   const canRelease = item.status === 'assigned' || item.status === 'in_progress'
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a2d4d] px-4 py-3 last:border-b-0">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-[#1a2d4d] px-4 py-3 last:border-b-0">
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-mono text-xs font-medium text-slate-200">{item.partNumber}</span>
+        <span className="font-mono text-xs font-medium text-slate-800 dark:text-slate-200">{item.partNumber}</span>
         <span className="text-xs text-slate-400">{item.partName}</span>
         {item.quotationConsecutive && (
           <span className="text-xs text-slate-500">
@@ -549,15 +549,15 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="order-modal-titulo"
-        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8 backdrop-blur-sm animate-fade-in"
         onClick={handleOverlayClick}
       >
-        <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-[#25395f] bg-[#0c1829] shadow-2xl">
+        <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#0c1829] shadow-2xl animate-scale-in">
 
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-[#1a2d4d] px-6 py-5">
+          <div className="flex items-start justify-between border-b border-slate-200 dark:border-[#1a2d4d] px-6 py-5">
             <div className="flex flex-col gap-1">
-              <h2 id="order-modal-titulo" className="font-mono text-lg font-bold text-white">
+              <h2 id="order-modal-titulo" className="font-mono text-lg font-bold text-slate-900 dark:text-white">
                 {order.consecutiveNumber}
               </h2>
               <p className="text-sm text-slate-400">
@@ -569,14 +569,14 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="ml-4 flex-shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+              className="ml-4 flex-shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
               aria-label="Cerrar modal"
             >
               <X size={17} />
             </button>
           </div>
 
-          <div className="flex flex-col gap-0 divide-y divide-[#1a2d4d]">
+          <div className="flex flex-col gap-0 divide-y divide-slate-200 dark:divide-[#1a2d4d]">
 
             {/* Sección 1 — Datos de la orden */}
             <section className="px-6 py-5">
@@ -586,19 +586,19 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div>
                   <dt className="text-xs text-slate-500">No. de parte</dt>
-                  <dd className="font-mono text-sm text-slate-200">{order.partNumber}</dd>
+                  <dd className="font-mono text-sm text-slate-800 dark:text-slate-200">{order.partNumber}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-slate-500">Nombre de parte</dt>
-                  <dd className="text-sm text-slate-200">{order.partName}</dd>
+                  <dd className="text-sm text-slate-800 dark:text-slate-200">{order.partName}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-slate-500">Tipo de servicio</dt>
-                  <dd className="text-sm text-slate-200">{order.serviceType}</dd>
+                  <dd className="text-sm text-slate-800 dark:text-slate-200">{order.serviceType}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-slate-500">Estado</dt>
-                  <dd className="text-sm text-slate-200 capitalize">{order.orderStatus}</dd>
+                  <dd className="text-sm text-slate-800 dark:text-slate-200 capitalize">{order.orderStatus}</dd>
                 </div>
               </dl>
             </section>
@@ -615,14 +615,14 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                   {order.quotations.map((q) => (
                     <li
                       key={q.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-[#1a2d4d] bg-[#0a1628] px-3 py-2.5"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628] px-3 py-2.5"
                     >
-                      <span className="font-mono text-sm font-medium text-slate-200">
+                      <span className="font-mono text-sm font-medium text-slate-800 dark:text-slate-200">
                         {q.consecutiveNumber}
                       </span>
                       <div className="flex items-center gap-3">
                         <QuotationStatusBadge status={q.status ?? ''} />
-                        <span className="text-sm text-slate-300">{formatMXN(q.total)}</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-300">{formatMXN(q.total)}</span>
                       </div>
                     </li>
                   ))}
@@ -641,7 +641,7 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
               {order.items.length === 0 ? (
                 <p className="text-sm text-slate-600">Sin items registrados</p>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-[#1a2d4d] bg-[#0a1628]">
+                <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628]">
                   {order.items.map((item, idx) => (
                     <OrderItemRow
                       // Use idx as part of key when id is 0 (items from QB search not yet persisted)
@@ -669,7 +669,7 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                     className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       order.hoe
                         ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
-                        : 'border-[#31476f] text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300'
+                        : 'border-slate-300 text-slate-600 dark:border-[#31476f] dark:text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-300'
                     }`}
                   >
                     {uploadingDocType === 'hoe' ? (
@@ -693,7 +693,7 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                     className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       order.arranqueSeguro
                         ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
-                        : 'border-[#31476f] text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300'
+                        : 'border-slate-300 text-slate-600 dark:border-[#31476f] dark:text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-300'
                     }`}
                   >
                     {uploadingDocType === 'arranque-seguro' ? (
@@ -849,7 +849,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
                   <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{order.partNumber}</span>
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[#25395f] bg-[#111a30] px-2 text-xs text-slate-400">
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 bg-slate-100 dark:border-[#25395f] dark:bg-[#111a30] px-2 text-xs text-slate-500 dark:text-slate-400">
                     {order.items.length}
                   </span>
                 </td>
@@ -999,12 +999,12 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar por N. orden, cliente o planta…"
-            className="w-full rounded-lg border border-[#1a2d4d] bg-[#0c1829] pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+            className="w-full rounded-lg border border-slate-200 bg-white dark:border-[#1a2d4d] dark:bg-[#0c1829] pl-9 pr-4 py-2 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
           />
         </div>
 
         {filteredOrders.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-[#1a2d4d] bg-[#0c1829] py-16">
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white dark:border-[#1a2d4d] dark:bg-[#0c1829] py-16">
             <Briefcase size={32} className="text-slate-600" aria-hidden="true" />
             <p className="text-sm text-slate-500">
               {searchQuery.trim() ? `Sin resultados para "${searchQuery.trim()}"` : 'Sin órdenes activas asignadas'}

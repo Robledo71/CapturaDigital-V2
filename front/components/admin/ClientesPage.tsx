@@ -42,7 +42,7 @@ function ClienteTableRow({ cliente, onDeleted, onEditClick, onCrearUsuarioClick 
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
           <div
-            className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center flex-shrink-0 text-white text-xs font-bold"
+            className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0 text-slate-700 dark:text-white text-xs font-bold"
             aria-hidden="true"
           >
             {cliente.nombre.charAt(0).toUpperCase()}
@@ -245,9 +245,9 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-[#0c1829] border border-green-500/30 rounded-xl px-5 py-3.5 shadow-2xl transition-all"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-[#0c1829] border border-green-500/50 rounded-xl px-5 py-3.5 shadow-2xl transition-all animate-slide-in-right"
         >
-          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" aria-hidden="true" />
+          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0 animate-pulse-dot" aria-hidden="true" />
           <p className="text-sm text-slate-700 dark:text-slate-200">{toast.message}</p>
         </div>
       )}
@@ -322,7 +322,7 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1a2d4d]">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                   {paginated.length === 0 ? (
                     <tr>
                       <td

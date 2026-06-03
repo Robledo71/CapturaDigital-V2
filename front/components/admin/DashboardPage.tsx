@@ -260,7 +260,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1a2d4d]">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                 {recentUsuarios.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-12 text-center text-slate-500 text-sm">
@@ -272,8 +272,8 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
                     <tr key={user.id} className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0" aria-hidden="true">
-                            <span className="text-white text-xs font-bold">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                            <span className="text-slate-700 dark:text-white text-xs font-bold">
                               {user.nombreCompleto.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                             </span>
                           </div>

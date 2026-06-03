@@ -305,7 +305,7 @@ export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClie
             {pagedRows.map((row) => (
               <tr
                 key={row.id}
-                className={`border-b border-blue-200 dark:border-[#1a2d4d]/60 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors ${
+                className={`border-b border-slate-100 dark:border-[#1a2d4d]/60 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors ${
                   selectedIds.has(row.id) ? 'bg-blue-500/10' : ''
                 }`}
               >

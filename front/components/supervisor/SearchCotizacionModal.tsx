@@ -75,23 +75,23 @@ export function SearchCotizacionModal({ onClose, onOrderFound }: Props) {
       role="dialog"
       aria-modal="true"
       aria-labelledby="search-cotizacion-titulo"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-fade-in"
       onClick={handleOverlayClick}
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-[#25395f] bg-[#111a30] shadow-2xl"
+        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#25395f] px-5 py-4">
-          <h3 id="search-cotizacion-titulo" className="text-sm font-semibold text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h3 id="search-cotizacion-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
             Buscar cotización
           </h3>
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="rounded-md p-1 text-slate-400 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Cerrar"
           >
             <X size={15} />
@@ -100,19 +100,19 @@ export function SearchCotizacionModal({ onClose, onOrderFound }: Props) {
 
         {/* Body */}
         <div className="flex flex-col gap-4 px-5 py-5">
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Ingresa el número de orden para importar sus cotizaciones desde Quality Bolca.
           </p>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-slate-300">Número de orden</span>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Número de orden</span>
             <input
               type="text"
               name="orden"
               required
               placeholder="Ej. OA-1000"
               autoFocus
-              className="rounded-md border border-[#31476f] bg-[#0c1426] px-3 py-2 text-sm text-white placeholder-slate-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+              className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
             />
           </label>
 
@@ -124,12 +124,12 @@ export function SearchCotizacionModal({ onClose, onOrderFound }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-[#25395f] px-5 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="rounded-md border border-[#31476f] px-4 py-2 text-sm text-slate-300 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancelar
           </button>

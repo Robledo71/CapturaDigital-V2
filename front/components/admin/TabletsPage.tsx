@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useActionState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Pencil, Power } from 'lucide-react'
+import { Search, Plus, Pencil, Power, Loader2 } from 'lucide-react'
 import { NuevoTabletModal } from './NuevoTabletModal'
 import { EditarTabletModal } from './EditarTabletModal'
+import { toggleTabletStatusAction, type ToggleTabletStatusState } from '@/app/actions/toggle-tablet-status'
 import type { TabletRow } from '@/shared/types/tablet'
 import type { PlantaRow } from '@/shared/types/planta'
 
@@ -93,28 +94,6 @@ function EstadoBadge({ estado }: { estado: string }) {
   )
 }
 
-function InspectorCell({ inspector }: { inspector: string | null }) {
-  if (!inspector) {
-    return <span className="text-slate-600 text-sm italic">Sin inspector</span>
-  }
-  const initials = inspector
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        className="w-7 h-7 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0"
-        aria-hidden="true"
-      >
-        <span className="text-white text-xs font-bold">{initials}</span>
-      </div>
-      <span className="text-slate-700 dark:text-slate-300 text-sm">{inspector}</span>
-    </div>
-  )
-}
-
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: TabletsPageProps) {
@@ -128,6 +107,8 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
     message: '',
     visible: false,
   })
+  const [toggleState, toggleAction] = useActionState<ToggleTabletStatusState, FormData>(toggleTabletStatusAction, undefined)
+  const [isToggling, startToggleTransition] = useTransition()
 
   // Sync when the server sends a new page of data
   useEffect(() => {
@@ -160,13 +141,19 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
     router.refresh()
   }
 
-  function toggleEstado(id: number) {
+  function toggleEstado(tablet: Tablet) {
+    const newStatus = tablet.estado === 'activa' ? 'inactiva' : 'activa'
+    const fd = new FormData()
+    fd.set('codigoTablet', tablet.codigotablet)
+    fd.set('status', newStatus)
+
+    startToggleTransition(() => {
+      toggleAction(fd)
+    })
+
+    // Optimistic update
     setTablets((prev) =>
-      prev.map((t) =>
-        t.id === id
-          ? { ...t, estado: t.estado === 'activa' ? 'inactiva' : 'activa' }
-          : t,
-      ),
+      prev.map((t) => t.id === tablet.id ? { ...t, estado: newStatus } : t),
     )
   }
 
@@ -223,10 +210,20 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-[#0c1829] border border-green-500/30 rounded-xl px-5 py-3.5 shadow-2xl transition-all"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-[#0c1829] border border-green-500/30 rounded-xl px-5 py-3.5 shadow-2xl animate-slide-in-right"
         >
-          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" aria-hidden="true" />
+          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0 animate-pulse-dot" aria-hidden="true" />
           <p className="text-sm text-slate-700 dark:text-slate-200">{toast.message}</p>
+        </div>
+      )}
+
+      {/* Error de toggle */}
+      {toggleState && !toggleState.ok && (
+        <div
+          role="alert"
+          className="fixed top-6 right-6 z-50 flex items-center gap-3 bg-red-500/10 border border-red-500/30 rounded-xl px-5 py-3.5 shadow-2xl animate-slide-in-right"
+        >
+          <p className="text-sm text-red-400">{toggleState.error}</p>
         </div>
       )}
 
@@ -295,7 +292,7 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                   <span
                     className={`ml-2 text-xs px-1.5 py-0.5 rounded-full font-medium ${
                       isActive
-                        ? 'bg-blue-500/20 text-blue-300'
+                        ? 'bg-slate-100 dark:bg-blue-500/20 text-slate-700 dark:text-blue-300'
                         : 'bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400'
                     }`}
                   >
@@ -328,13 +325,7 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                       Planta
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                      Inspector actual
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                       Estado
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                      Última actividad
                     </th>
                     <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <span className="sr-only">Acciones</span>
@@ -344,7 +335,7 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                 <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-4 py-12 text-center text-slate-500 text-sm">
+                      <td colSpan={7} className="px-4 py-12 text-center text-slate-500 text-sm">
                         No se encontraron tablets con los filtros actuales.
                       </td>
                     </tr>
@@ -373,13 +364,7 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <InspectorCell inspector={tablet.inspector} />
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
                           <EstadoBadge estado={tablet.estado} />
-                        </td>
-                        <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                          {tablet.ultimaActividad}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-2">
@@ -393,15 +378,16 @@ export function TabletsPage({ initialTablets, plantas, total, page, pageSize }: 
                             </button>
                             <button
                               type="button"
+                              disabled={isToggling}
                               aria-label={
                                 tablet.estado === 'activa'
                                   ? `Desactivar ${tablet.alias ?? tablet.serie}`
                                   : `Activar ${tablet.alias ?? tablet.serie}`
                               }
-                              onClick={() => toggleEstado(tablet.id)}
-                              className="p-1.5 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a2d4d] transition-colors"
+                              onClick={() => toggleEstado(tablet)}
+                              className="p-1.5 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1a2d4d] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              <Power size={14} />
+                              {isToggling ? <Loader2 size={14} className="animate-spin" /> : <Power size={14} />}
                             </button>
                           </div>
                         </td>

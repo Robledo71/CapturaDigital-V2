@@ -161,9 +161,9 @@ function ConfirmModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
     >
-      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
+      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4 animate-scale-in">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
             <AlertTriangle size={18} className="text-amber-400" aria-hidden="true" />
@@ -360,9 +360,9 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-[#0c1829] border border-green-500/30 rounded-xl px-5 py-3.5 shadow-2xl transition-all"
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-white dark:bg-[#0c1829] border border-green-500/50 rounded-xl px-5 py-3.5 shadow-2xl transition-all animate-slide-in-right"
         >
-          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" aria-hidden="true" />
+          <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0 animate-pulse-dot" aria-hidden="true" />
           <p className="text-sm text-slate-700 dark:text-slate-200">{toast.message}</p>
         </div>
       )}
@@ -472,7 +472,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1a2d4d]">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-12 text-center text-slate-500 text-sm">
@@ -487,10 +487,10 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <div
-                                className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0"
+                                className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0"
                                 aria-hidden="true"
                               >
-                                <span className="text-white text-xs font-bold">
+                                <span className="text-slate-700 dark:text-white text-xs font-bold">
                                   {user.nombre.split(' ').map((n) => n[0]).slice(0, 2).join('')}
                                 </span>
                               </div>

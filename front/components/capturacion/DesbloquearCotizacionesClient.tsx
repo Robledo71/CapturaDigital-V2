@@ -48,8 +48,8 @@ function ToggleButton({
         disabled={pending}
         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60 ${
           cotizacion.desbloqueado
-            ? 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20'
-            : 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
+            ? 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20'
+            : 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300 dark:hover:bg-green-500/20'
         }`}
       >
         {pending ? (
@@ -104,8 +104,8 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
     <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Desbloquear Cotizaciones</h1>
-          <p className="mt-0.5 text-sm text-slate-400">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Desbloquear Cotizaciones</h1>
+          <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
             Gestiona el acceso del cliente a sus cotizaciones.
           </p>
         </div>
@@ -119,11 +119,11 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
           placeholder="Buscar por cotización, orden o cliente..."
           value={search}
           onChange={(e) => handleSearch(e.target.value)}
-          className="w-full rounded-lg border border-[#1a2d4d] bg-[#0c1829] pl-9 pr-4 py-2 text-sm text-slate-200 placeholder:text-slate-600 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+          className="w-full rounded-lg border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] pl-9 pr-4 py-2 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
         />
       </div>
 
-      <div className="rounded-xl border border-[#1a2d4d] bg-[#0c1829] overflow-hidden">
+      <div className="rounded-xl border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] overflow-hidden">
         {filtered.length === 0 ? (
           <p className="p-6 text-sm text-slate-500">
             {search ? 'Sin resultados para la búsqueda.' : 'No hay cotizaciones registradas.'}
@@ -132,7 +132,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
           <>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1a2d4d]">
+                <tr className="border-b border-slate-200 dark:border-[#1a2d4d]">
                   {['Cotización', 'Orden', 'Cliente', 'Email', 'Estado', 'Acceso', 'Acción'].map((col, i) => (
                     <th
                       key={col}
@@ -145,28 +145,28 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
               </thead>
               <tbody>
                 {paginated.map((c) => (
-                  <tr key={c.id} className="border-b border-[#1a2d4d]/60 hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                  <tr key={c.id} className="border-b border-slate-100 dark:border-[#1a2d4d]/60 hover:bg-blue-50 dark:hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-300">
                       {c.consecutiveNumber ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">
+                    <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                       {c.orderConsecutive ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-white max-w-[160px] truncate" title={c.clientName ?? ''}>
+                    <td className="px-4 py-3 text-sm text-slate-900 dark:text-white max-w-[160px] truncate" title={c.clientName ?? ''}>
                       {c.clientName ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-400 max-w-[160px] truncate" title={c.clientEmail ?? ''}>
+                    <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 max-w-[160px] truncate" title={c.clientEmail ?? ''}>
                       {c.clientEmail ?? '—'}
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">
+                    <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                       {c.status ?? '—'}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
                           c.desbloqueado
-                            ? 'bg-green-500/10 text-green-300'
-                            : 'bg-slate-500/10 text-slate-400'
+                            ? 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-300'
+                            : 'bg-slate-100 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400'
                         }`}
                       >
                         {c.desbloqueado ? (
@@ -185,7 +185,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
             </table>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between border-t border-[#1a2d4d] px-4 py-3">
+            <div className="flex items-center justify-between border-t border-slate-200 dark:border-[#1a2d4d] px-4 py-3">
               <p className="text-xs text-slate-500">
                 {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
                 {totalPages > 1 && ` · Página ${currentPage} de ${totalPages}`}
@@ -196,7 +196,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[#1a2d4d] text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 dark:border-[#1a2d4d] text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft size={14} />
                   </button>
@@ -218,7 +218,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
                           className={`inline-flex h-7 min-w-[28px] items-center justify-center rounded-md border px-2 text-xs transition-colors ${
                             currentPage === p
                               ? 'border-blue-500 bg-blue-600 text-white'
-                              : 'border-[#1a2d4d] text-slate-400 hover:bg-white/5 hover:text-white'
+                              : 'border-slate-200 dark:border-[#1a2d4d] text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                           }`}
                         >
                           {p}
@@ -229,7 +229,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[#1a2d4d] text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 dark:border-[#1a2d4d] text-slate-500 dark:text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ChevronRight size={14} />
                   </button>
