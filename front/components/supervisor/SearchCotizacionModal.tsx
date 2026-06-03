@@ -101,7 +101,7 @@ export function SearchCotizacionModal({ onClose, onOrderFound }: Props) {
         {/* Body */}
         <div className="flex flex-col gap-4 px-5 py-5">
           <p className="text-sm text-slate-600 dark:text-slate-400">
-            Ingresa el número de orden para importar sus cotizaciones desde Quality Bolca.
+            Ingresa el número de orden para importar sus cotizaciones desde SysQB.
           </p>
 
           <label className="flex flex-col gap-1.5">

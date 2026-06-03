@@ -149,20 +149,50 @@ async function buildExcel(data: ExcelReporteData): Promise<ArrayBuffer> {
   })
   applyHeaderStyle(headerRow, HEADERS.length)
 
-  // Fila 5: Data
-  const dataRow = [
-    data.consecutiveNumber, data.item, data.planta, data.clienteCobro,
-    data.folio, data.turno, data.reportDate, data.numeroParte,
-    data.nombreParte, data.columnA, data.totalInspected, data.totalOk,
-    data.totalNg, data.totalRecovered, data.totalScrap, data.pzasXHr,
-    data.hrsEnReportes, data.tipoServicio, data.reviso, data.ingeniero,
-    data.incidencias, data.fechas, data.series, data.lotes,
-    data.destinatarios, data.idioma, data.resumen, data.firma,
-    data.capturista, data.cotizacion, data.status, data.acumulado,
-    data.fechaEnvio,
+  // Una fila por ítem; si no hay ítems, una sola fila con totales agregados
+  const buildItemRow = (item: (typeof data.items)[number] | null, idx: number) => [
+    data.consecutiveNumber,                           // 0: NÚM DE REPORTE
+    item ? String(idx + 1) : data.item,               // 1: ÍTEM
+    data.planta,                                       // 2: PLANTA
+    data.clienteCobro,                                 // 3: CLIENTE COBRO
+    data.folio,                                        // 4: FOLIO
+    data.turno,                                        // 5: TURNO
+    data.reportDate,                                   // 6: FECHA
+    data.numeroParte,                                  // 7: NÚMERO PARTE
+    data.nombreParte,                                  // 8: NOMBRE PARTE
+    data.columnA,                                      // 9: A
+    item ? item.inspected  : data.totalInspected,      // 10: PZS. INSPECCIONADAS
+    item ? item.ok         : data.totalOk,             // 11: OK
+    item ? item.ng         : data.totalNg,             // 12: NG
+    item ? item.recovered  : data.totalRecovered,      // 13: RECUP
+    item ? item.scrap      : data.totalScrap,          // 14: SCRAP
+    data.pzasXHr,                                      // 15: PZAS X HR (RATE)
+    data.hrsEnReportes,                                // 16: HRS EN REPORTES
+    data.tipoServicio,                                 // 17: T. SERV.
+    data.reviso,                                       // 18: REVISÓ
+    data.ingeniero,                                    // 19: INGENIERO
+    item ? item.incidents : data.incidencias,          // 20: A)
+    data.fechas,                                       // 21: FECHAS
+    item ? item.series : data.series,                  // 22: SERIES
+    item ? item.lote   : data.lotes,                   // 23: LOTES
+    data.destinatarios,                                // 24: DESTINATARIOS
+    data.idioma,                                       // 25: IDIOMA
+    data.resumen,                                      // 26: RESUMEN
+    data.firma,                                        // 27: FIRMA
+    data.capturista,                                   // 28: CAPTURISTA
+    data.cotizacion,                                   // 29: COTIZACIÓN
+    data.status,                                       // 30: STATUS
+    data.acumulado,                                    // 31: ACUMULADO
+    data.fechaEnvio,                                   // 32: FECHA ENVIO
   ]
-  const addedDataRow = wsReporte.addRow(dataRow)
-  applyDataRowStyle(addedDataRow, HEADERS.length, false)
+
+  const itemsToRender = data.items.length > 0
+    ? data.items
+    : [null as unknown as (typeof data.items)[number]]
+  itemsToRender.forEach((item, idx) => {
+    const addedRow = wsReporte.addRow(buildItemRow(item, idx))
+    applyDataRowStyle(addedRow, HEADERS.length, idx % 2 === 1)
+  })
 
   // ═══ Hoja 2: Detalle Items ═══════════════════════════════════════════════
   if (data.items.length > 0) {

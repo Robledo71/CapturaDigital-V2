@@ -41,7 +41,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-blue-950 dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Registrando...' : 'Registrar tablet'}
@@ -115,7 +115,7 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
 
               {/* Código tablet — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="codigotablet-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="codigotablet-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Código de tablet
                   <span className="text-slate-600 font-normal ml-1">(opcional — se genera automáticamente)</span>
                 </label>
@@ -136,7 +136,7 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
 
               {/* Modelo */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="modelo-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="modelo-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Modelo
                 </label>
                 <input
@@ -157,7 +157,7 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
 
               {/* Serie */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="serie-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="serie-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Número de serie
                 </label>
                 <input
@@ -177,7 +177,7 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
 
               {/* Alias — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="alias-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="alias-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Alias
                   <span className="text-slate-600 font-normal ml-1">(opcional)</span>
                 </label>
@@ -198,7 +198,7 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
 
               {/* Planta — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="plantaId-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="plantaId-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Planta
                   <span className="text-slate-600 font-normal ml-1">(opcional)</span>
                 </label>
@@ -223,7 +223,7 @@ export function NuevoTabletModal({ plantas, onClose, onSuccess }: NuevoTabletMod
 
               {/* Notas — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="notes-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="notes-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Notas
                   <span className="text-slate-600 font-normal ml-1">(opcional)</span>
                 </label>

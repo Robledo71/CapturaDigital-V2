@@ -170,26 +170,23 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
     setClientes((prev) => [c, ...prev])
     setShowNuevoModal(false)
     setToast({ message: 'Cliente creado correctamente', visible: true })
-    router.refresh()
+    // revalidatePath en la server action ya dispara el re-render del servidor
   }
 
   function onClienteActualizado(c: ClienteRow) {
     setClientes((prev) => prev.map((item) => (item.id === c.id ? c : item)))
     setEditTarget(null)
     setToast({ message: 'Cliente actualizado correctamente', visible: true })
-    router.refresh()
   }
 
   function onUsuarioCreado() {
     setUsuarioTarget(null)
     setToast({ message: 'Usuario creado correctamente', visible: true })
-    router.refresh()
   }
 
   function onClienteEliminado(id: number) {
     setClientes((prev) => prev.filter((item) => item.id !== id))
     setToast({ message: 'Cliente eliminado correctamente', visible: true })
-    router.refresh()
   }
 
   const filtered = useMemo(() => {

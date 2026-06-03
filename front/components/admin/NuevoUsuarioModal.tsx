@@ -45,7 +45,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-blue-950 dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Creando...' : 'Crear usuario'}
@@ -120,7 +120,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Nombre completo — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="nombreCompleto" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="nombreCompleto" className="text-xs font-medium text-black dark:text-slate-400">
                   Nombre completo
                 </label>
                 <input
@@ -141,7 +141,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Código de empleado */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="codigoEmpleado" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="codigoEmpleado" className="text-xs font-medium text-black dark:text-slate-400">
                   Código de empleado
                 </label>
                 <input
@@ -161,7 +161,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Puesto */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="puesto" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="puesto" className="text-xs font-medium text-black dark:text-slate-400">
                   Puesto
                 </label>
                 <input
@@ -181,7 +181,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Planta */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="plantaId" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="plantaId" className="text-xs font-medium text-black dark:text-slate-400">
                   Planta
                 </label>
                 <select
@@ -203,7 +203,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Rol */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="rol" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="rol" className="text-xs font-medium text-black dark:text-slate-400">
                   Rol
                 </label>
                 <select
@@ -229,7 +229,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Correo — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="correo" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="correo" className="text-xs font-medium text-black dark:text-slate-400">
                   Correo electrónico
                 </label>
                 <input
@@ -249,7 +249,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Contraseña */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="contrasena" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="contrasena" className="text-xs font-medium text-black dark:text-slate-400">
                   Contraseña
                 </label>
                 <input
@@ -269,7 +269,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
               {/* Confirmar contraseña */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="confirmContrasena" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="confirmContrasena" className="text-xs font-medium text-black dark:text-slate-400">
                   Confirmar contraseña
                 </label>
                 <input

@@ -34,7 +34,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-blue-950 dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Guardando...' : 'Guardar cambios'}
@@ -118,7 +118,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
               {/* Código tablet — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="codigotablet-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="codigotablet-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Código de tablet
                 </label>
                 <input
@@ -138,7 +138,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
               {/* Modelo */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="modelo-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="modelo-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Modelo
                 </label>
                 <input
@@ -159,7 +159,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
               {/* Serie */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="serie-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="serie-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Número de serie
                 </label>
                 <input
@@ -179,7 +179,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
               {/* Alias — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="alias-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="alias-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Alias
                   <span className="text-slate-600 font-normal ml-1">(opcional)</span>
                 </label>
@@ -200,7 +200,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
               {/* Planta */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="plantaId-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="plantaId-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Planta
                   <span className="text-slate-600 font-normal ml-1">(opcional)</span>
                 </label>
@@ -225,7 +225,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
               {/* Estado */}
               <div className="flex flex-col gap-1">
-                <label htmlFor="estado-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="estado-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Estado
                 </label>
                 <select
@@ -246,7 +246,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
               {/* Notas — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="notes-edit-tablet" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+                <label htmlFor="notes-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Notas
                   <span className="text-slate-600 font-normal ml-1">(opcional)</span>
                 </label>

@@ -27,7 +27,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-blue-950 dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Guardando...' : 'Guardar cambios'}
@@ -102,7 +102,7 @@ export function EditarPlantaModal({ planta, onClose, onSuccess }: EditarPlantaMo
 
             {/* Nombre */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="nombre-edit-planta" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+              <label htmlFor="nombre-edit-planta" className="text-xs font-medium text-black dark:text-slate-400">
                 Nombre de la planta
               </label>
               <input
@@ -123,7 +123,7 @@ export function EditarPlantaModal({ planta, onClose, onSuccess }: EditarPlantaMo
 
             {/* Dirección */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="direccion-edit-planta" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+              <label htmlFor="direccion-edit-planta" className="text-xs font-medium text-black dark:text-slate-400">
                 Dirección
                 <span className="text-slate-600 font-normal ml-1">(opcional)</span>
               </label>

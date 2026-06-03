@@ -34,7 +34,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-blue-950 dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+      className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Creando...' : 'Crear usuario'}
@@ -112,7 +112,7 @@ export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoU
 
             {/* Nombre completo */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="cu-nombre" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+              <label htmlFor="cu-nombre" className="text-xs font-medium text-black dark:text-slate-400">
                 Nombre completo
               </label>
               <input
@@ -132,7 +132,7 @@ export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoU
 
             {/* Código empleado */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="cu-codigo" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+              <label htmlFor="cu-codigo" className="text-xs font-medium text-black dark:text-slate-400">
                 Código empleado
               </label>
               <input
@@ -151,7 +151,7 @@ export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoU
 
             {/* Correo */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="cu-correo" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+              <label htmlFor="cu-correo" className="text-xs font-medium text-black dark:text-slate-400">
                 Correo electrónico
               </label>
               <input
@@ -171,7 +171,7 @@ export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoU
 
             {/* Contraseña */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="cu-contrasena" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+              <label htmlFor="cu-contrasena" className="text-xs font-medium text-black dark:text-slate-400">
                 Contraseña
               </label>
               <div className="relative">
@@ -204,7 +204,7 @@ export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoU
 
             {/* Puesto (readonly — el service siempre envía "Cliente") */}
             <div className="flex flex-col gap-1">
-              <label htmlFor="cu-puesto" className="text-xs font-medium text-blue-600 dark:text-slate-400">
+              <label htmlFor="cu-puesto" className="text-xs font-medium text-black dark:text-slate-400">
                 Puesto
               </label>
               <input

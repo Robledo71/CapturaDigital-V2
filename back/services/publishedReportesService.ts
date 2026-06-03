@@ -108,6 +108,9 @@ interface QbSyncItem {
   ng_pieces: number
   scrap_pieces: number
   recovered_pieces: number
+  lote: string | null
+  serie: string | null
+  identificadores: unknown
   incidents: QbSyncIncident[]
 }
 
@@ -119,6 +122,7 @@ interface QbSyncOrderContext {
   client_name: string | null
   plant_name: string | null
   supervisor_name: string | null
+  language: string | null
 }
 
 interface QbSyncFullReport {
@@ -197,11 +201,16 @@ function mapToExcelData(report: QbSyncFullReport): ExcelReporteData {
     scrap:       item.scrap_pieces     ?? 0,
     recovered:   item.recovered_pieces ?? 0,
     incidents:   (item.incidents ?? [])
-      .map((inc) => `${inc.incident_name} (${inc.affected_pieces})`)
+      .map((inc) => `${inc.incident_name} (${inc.affected_pieces} pzs)`)
       .join('; '),
-    lote:   '',
-    series: '',
-    otro:   '',
+    lote:   item.lote   ?? '',
+    series: item.serie  ?? '',
+    otro:   (() => {
+      if (!item.identificadores) return ''
+      if (Array.isArray(item.identificadores)) return (item.identificadores as unknown[]).join(', ')
+      if (typeof item.identificadores === 'string') return item.identificadores
+      return JSON.stringify(item.identificadores)
+    })(),
   }))
 
   return {
@@ -227,10 +236,10 @@ function mapToExcelData(report: QbSyncFullReport): ExcelReporteData {
     ingeniero:         '',
     incidencias:       uniqueIncidents,
     fechas:            reportDateStr,
-    series:            '',
-    lotes:             '',
+    series:            [...new Set(items.map(i => i.serie).filter(Boolean))].join(', '),
+    lotes:             [...new Set(items.map(i => i.lote).filter(Boolean))].join(', '),
     destinatarios:     '',
-    idioma:            '',
+    idioma:            ctx?.language ?? '',
     resumen:           '',
     firma:             '',
     capturista:        report.published_by_name  ?? '—',
