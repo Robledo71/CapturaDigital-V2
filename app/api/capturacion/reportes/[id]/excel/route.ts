@@ -53,14 +53,14 @@ const HEADERS = [
   'NÚM DE REPORTE', 'ÍTEM', 'PLANTA', 'CLIENTE COBRO', 'FOLIO', 'TURNO',
   'FECHA', 'NÚMERO PARTE', 'NOMBRE PARTE', 'A', 'PZS. INSPECCIONADAS',
   'OK', 'NG', 'RECUP', 'SCRAP', 'PZAS X HR (RATE)', 'HRS EN REPORTES',
-  'T. SERV.', 'REVISÓ', 'INGENIERO', 'A)', 'FECHAS', 'SERIES', 'LOTES',
+  'T. SERV.', 'REVISÓ', 'SUPERVISOR', 'INGENIERO', 'A)', 'FECHAS', 'SERIES', 'LOTES',
   'DESTINATARIOS', 'IDIOMA', 'RESUMEN', 'FIRMA', 'CAPTURISTA',
   'COTIZACIÓN', 'STATUS', 'ACUMULADO', 'FECHA ENVIO',
 ]
 
 const COLUMN_WIDTHS = [
   18, 8, 28, 22, 10, 8, 14, 20, 18, 10, 20, 10, 10, 10, 10, 16, 16, 10,
-  20, 22, 30, 14, 20, 20, 50, 8, 30, 8, 18, 28, 14, 12, 22,
+  20, 22, 22, 30, 14, 20, 20, 50, 8, 30, 8, 18, 28, 14, 12, 22,
 ]
 
 // ─── Helpers de estilo ────────────────────────────────────────────────────────
@@ -170,20 +170,21 @@ async function buildExcel(data: ExcelReporteData): Promise<ArrayBuffer> {
     data.hrsEnReportes,                                // 16: HRS EN REPORTES
     data.tipoServicio,                                 // 17: T. SERV.
     data.reviso,                                       // 18: REVISÓ
-    data.ingeniero,                                    // 19: INGENIERO
-    item ? item.incidents : data.incidencias,          // 20: A)
-    data.fechas,                                       // 21: FECHAS
-    item ? item.series : data.series,                  // 22: SERIES
-    item ? item.lote   : data.lotes,                   // 23: LOTES
-    data.destinatarios,                                // 24: DESTINATARIOS
-    data.idioma,                                       // 25: IDIOMA
-    data.resumen,                                      // 26: RESUMEN
-    data.firma,                                        // 27: FIRMA
-    data.capturista,                                   // 28: CAPTURISTA
-    data.cotizacion,                                   // 29: COTIZACIÓN
-    data.status,                                       // 30: STATUS
-    data.acumulado,                                    // 31: ACUMULADO
-    data.fechaEnvio,                                   // 32: FECHA ENVIO
+    data.supervisor,                                   // 19: SUPERVISOR
+    data.ingeniero,                                    // 20: INGENIERO
+    item ? item.incidents : data.incidencias,          // 21: A)
+    data.fechas,                                       // 22: FECHAS
+    item ? item.series : data.series,                  // 23: SERIES
+    item ? item.lote   : data.lotes,                   // 24: LOTES
+    data.destinatarios,                                // 25: DESTINATARIOS
+    data.idioma,                                       // 26: IDIOMA
+    data.resumen,                                      // 27: RESUMEN
+    data.firma,                                        // 28: FIRMA
+    data.capturista,                                   // 29: CAPTURISTA (vacío, lo llena el capturista)
+    data.cotizacion,                                   // 30: COTIZACIÓN
+    data.status,                                       // 31: STATUS
+    data.acumulado,                                    // 32: ACUMULADO
+    data.fechaEnvio,                                   // 33: FECHA ENVIO
   ]
 
   const itemsToRender = data.items.length > 0

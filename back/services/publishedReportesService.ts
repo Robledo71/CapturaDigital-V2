@@ -58,6 +58,7 @@ export type ExcelReporteData = {
   hrsEnReportes: string
   tipoServicio: string
   reviso: string
+  supervisor: string
   ingeniero: string
   incidencias: string
   fechas: string
@@ -232,7 +233,8 @@ function mapToExcelData(report: QbSyncFullReport): ExcelReporteData {
     pzasXHr:           '',
     hrsEnReportes:     '',
     tipoServicio:      '',
-    reviso:            report.signed_by_name     ?? ctx?.supervisor_name ?? '—',
+    reviso:            report.signed_by_name     ?? '—',
+    supervisor:        ctx?.supervisor_name      ?? '—',
     ingeniero:         '',
     incidencias:       uniqueIncidents,
     fechas:            reportDateStr,
@@ -242,7 +244,7 @@ function mapToExcelData(report: QbSyncFullReport): ExcelReporteData {
     idioma:            ctx?.language ?? '',
     resumen:           '',
     firma:             '',
-    capturista:        report.published_by_name  ?? '—',
+    capturista:        '',
     cotizacion:        ctx?.quotation_consecutive ?? '—',
     status:            'Publicado',
     acumulado:         '',
