@@ -207,10 +207,33 @@ function mapToExcelData(report: QbSyncFullReport): ExcelReporteData {
     lote:   item.lote   ?? '',
     series: item.serie  ?? '',
     otro:   (() => {
-      if (!item.identificadores) return ''
-      if (Array.isArray(item.identificadores)) return (item.identificadores as unknown[]).join(', ')
-      if (typeof item.identificadores === 'string') return item.identificadores
-      return JSON.stringify(item.identificadores)
+      const idf = item.identificadores
+      if (!idf) return ''
+      if (typeof idf === 'string') return idf
+      if (Array.isArray(idf)) {
+        return (idf as unknown[])
+          .map((entry) => {
+            if (entry === null || entry === undefined) return ''
+            if (typeof entry !== 'object') return String(entry)
+            // Array de objetos: extrae el campo "value" si existe,
+            // de lo contrario concatena todos los valores del objeto
+            const obj = entry as Record<string, unknown>
+            if ('value' in obj && obj.value !== null && obj.value !== undefined) {
+              return String(obj.value)
+            }
+            return Object.values(obj).filter(v => v !== null && v !== undefined).map(String).join(':')
+          })
+          .filter(Boolean)
+          .join(', ')
+      }
+      if (typeof idf === 'object') {
+        // Objeto plano: { identificador1: "ABC", identificador2: "DEF" }
+        return Object.values(idf as Record<string, unknown>)
+          .filter(v => v !== null && v !== undefined)
+          .map(String)
+          .join(', ')
+      }
+      return JSON.stringify(idf)
     })(),
   }))
 

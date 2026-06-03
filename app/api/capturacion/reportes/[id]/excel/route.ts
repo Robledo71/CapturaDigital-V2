@@ -54,13 +54,13 @@ const HEADERS = [
   'FECHA', 'NÚMERO PARTE', 'NOMBRE PARTE', 'A', 'PZS. INSPECCIONADAS',
   'OK', 'NG', 'RECUP', 'SCRAP', 'PZAS X HR (RATE)', 'HRS EN REPORTES',
   'T. SERV.', 'REVISÓ', 'SUPERVISOR', 'INGENIERO', 'A)', 'FECHAS', 'SERIES', 'LOTES',
-  'DESTINATARIOS', 'IDIOMA', 'RESUMEN', 'FIRMA', 'CAPTURISTA',
+  'IDENTIFICADORES', 'DESTINATARIOS', 'IDIOMA', 'RESUMEN', 'FIRMA', 'CAPTURISTA',
   'COTIZACIÓN', 'STATUS', 'ACUMULADO', 'FECHA ENVIO',
 ]
 
 const COLUMN_WIDTHS = [
   18, 8, 28, 22, 10, 8, 14, 20, 18, 10, 20, 10, 10, 10, 10, 16, 16, 10,
-  20, 22, 22, 30, 14, 20, 20, 50, 8, 30, 8, 18, 28, 14, 12, 22,
+  20, 22, 22, 30, 14, 20, 20, 20, 50, 8, 30, 8, 18, 28, 14, 12, 22,
 ]
 
 // ─── Helpers de estilo ────────────────────────────────────────────────────────
@@ -176,15 +176,16 @@ async function buildExcel(data: ExcelReporteData): Promise<ArrayBuffer> {
     data.fechas,                                       // 22: FECHAS
     item ? item.series : data.series,                  // 23: SERIES
     item ? item.lote   : data.lotes,                   // 24: LOTES
-    data.destinatarios,                                // 25: DESTINATARIOS
-    data.idioma,                                       // 26: IDIOMA
-    data.resumen,                                      // 27: RESUMEN
-    data.firma,                                        // 28: FIRMA
-    data.capturista,                                   // 29: CAPTURISTA (vacío, lo llena el capturista)
-    data.cotizacion,                                   // 30: COTIZACIÓN
-    data.status,                                       // 31: STATUS
-    data.acumulado,                                    // 32: ACUMULADO
-    data.fechaEnvio,                                   // 33: FECHA ENVIO
+    item ? item.otro   : '',                           // 25: IDENTIFICADORES
+    data.destinatarios,                                // 26: DESTINATARIOS
+    data.idioma,                                       // 27: IDIOMA
+    data.resumen,                                      // 28: RESUMEN
+    data.firma,                                        // 29: FIRMA
+    data.capturista,                                   // 30: CAPTURISTA (vacío, lo llena el capturista)
+    data.cotizacion,                                   // 31: COTIZACIÓN
+    data.status,                                       // 32: STATUS
+    data.acumulado,                                    // 33: ACUMULADO
+    data.fechaEnvio,                                   // 34: FECHA ENVIO
   ]
 
   const itemsToRender = data.items.length > 0
@@ -202,7 +203,7 @@ async function buildExcel(data: ExcelReporteData): Promise<ArrayBuffer> {
     })
 
     const itemHeaders = [
-      '#', 'Descripción', 'Lote', 'Series', 'Otro',
+      '#', 'Descripción', 'Lote', 'Series', 'Identificadores',
       'Inspeccionadas', 'OK', 'NG', 'Scrap', 'Recuperadas', 'Incidencias',
     ]
     const itemWidths = [4, 32, 14, 14, 14, 16, 10, 10, 10, 14, 40]
