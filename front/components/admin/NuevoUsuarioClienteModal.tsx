@@ -133,7 +133,7 @@ export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoU
             {/* Código empleado */}
             <div className="flex flex-col gap-1">
               <label htmlFor="cu-codigo" className="text-xs font-medium text-black dark:text-slate-400">
-                Código empleado
+                Código cliente
               </label>
               <input
                 id="cu-codigo"

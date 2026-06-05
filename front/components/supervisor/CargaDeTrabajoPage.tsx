@@ -136,7 +136,7 @@ function AssignSubmitButton() {
 // ─── Assign Item Modal ────────────────────────────────────────────────────────
 
 interface AssignItemModalProps {
-  /** Prisma DB id of the OrderItem, or 0 if the item is not yet persisted (came from QB search). */
+  /** DB id of the OrderItem, or 0 if the item is not yet persisted (came from QB search). */
   orderItemId: number
   /** Full item data — needed to embed hidden QB fields when orderItemId === 0. */
   item: OrderItemWorkload

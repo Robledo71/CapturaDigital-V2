@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { searchOrder, searchCotizaciones, type QBOrderData, type QBCotizacion, type QBOrderItem } from '@/back/services/qb-api'
 import { type OrderWorkload, type OrderItemWorkload, type QuotationSummary } from '@/back/services/cargaDeTrabajoService'
 import { getSession } from '@/back/services/session'
-import { prisma } from '@/back/db/prisma'
+import { orderExists } from '@/back/services/qb_sync-api'
 
 const Schema = z.object({
   orden: z.string().min(1, 'El número de orden es requerido').trim(),
@@ -131,12 +131,9 @@ export async function importCotizacionAction(
     return { ok: false, error: ERROR_MESSAGES['not_found'] }
   }
 
-  // --- Step 1b: block re-import if order already exists in DB ---
+  // --- Step 1b: block re-import if order already exists in DB (vía qb_sync API) ---
   const orderId = Number(orderResult.data.id)
-  const existsInDb = await prisma.order.findUnique({
-    where: { id: orderId },
-    select: { id: true },
-  })
+  const existsInDb = await orderExists(orderId, session.accessToken)
   if (existsInDb) {
     return {
       ok: false,

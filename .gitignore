@@ -9,10 +9,6 @@ CLAUDE.md
 /.pnp
 /docs
 /scripts
-/prisma/migrations
-/prisma/seed.ts
-/prisma/supabase_init.sql
-/prisma/schema-legacy.prisma
 .pnp.*
 .yarn/*
 !.yarn/patches

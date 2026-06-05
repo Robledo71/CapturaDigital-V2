@@ -10,9 +10,13 @@ vi.mock('@/back/services/qb-api', () => ({
   searchCotizaciones: vi.fn(),
 }))
 
+vi.mock('@/back/services/qb_sync-api', () => ({
+  orderExists: vi.fn(),
+}))
+
 import { getSession } from '@/back/services/session'
 import { searchOrder, searchCotizaciones } from '@/back/services/qb-api'
-import { prisma } from '@/back/db/prisma'
+import { orderExists } from '@/back/services/qb_sync-api'
 import { importCotizacionAction } from '@/app/actions/import-cotizacion'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -158,7 +162,7 @@ describe('importCotizacionAction', () => {
       found: true,
       data: makeQBOrder(),
     })
-    vi.mocked(prisma.order.findUnique).mockResolvedValue({ id: 1001 } as never)
+    vi.mocked(orderExists).mockResolvedValue(true)
 
     const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
 
@@ -176,7 +180,7 @@ describe('importCotizacionAction', () => {
       found: true,
       data: makeQBOrder({ plant_name: 'Toyota Aguascalientes' }),
     })
-    vi.mocked(prisma.order.findUnique).mockResolvedValue(null as never)
+    vi.mocked(orderExists).mockResolvedValue(false)
 
     const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
 
@@ -196,7 +200,7 @@ describe('importCotizacionAction', () => {
       found: true,
       data: makeQBOrder({ plant_name: 'Toyota Aguascalientes' }),
     })
-    vi.mocked(prisma.order.findUnique).mockResolvedValue(null as never)
+    vi.mocked(orderExists).mockResolvedValue(false)
     vi.mocked(searchCotizaciones).mockResolvedValue({
       ok: true,
       data: [makeQBCotizacion()],
@@ -217,7 +221,7 @@ describe('importCotizacionAction', () => {
       found: true,
       data: makeQBOrder({ plant_name: 'Honda Celaya' }),
     })
-    vi.mocked(prisma.order.findUnique).mockResolvedValue(null as never)
+    vi.mocked(orderExists).mockResolvedValue(false)
     vi.mocked(searchCotizaciones).mockResolvedValue({
       ok: true,
       data: [makeQBCotizacion()],
@@ -241,7 +245,7 @@ describe('importCotizacionAction', () => {
       found: true,
       data: makeQBOrder({ plant_name: 'honda celaya' }),
     })
-    vi.mocked(prisma.order.findUnique).mockResolvedValue(null as never)
+    vi.mocked(orderExists).mockResolvedValue(false)
     vi.mocked(searchCotizaciones).mockResolvedValue({
       ok: true,
       data: [makeQBCotizacion()],
@@ -275,7 +279,7 @@ describe('importCotizacionAction', () => {
       found: true,
       data: makeQBOrder(),
     })
-    vi.mocked(prisma.order.findUnique).mockResolvedValue(null as never)
+    vi.mocked(orderExists).mockResolvedValue(false)
     vi.mocked(searchCotizaciones).mockResolvedValue({
       ok: true,
       data: [makeQBCotizacion()],

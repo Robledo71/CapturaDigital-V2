@@ -1,5 +1,4 @@
 import 'server-only'
-import { prisma } from '@/back/db/prisma'
 import type { TabletRow } from '@/shared/types/tablet'
 
 // ---------------------------------------------------------------------------
@@ -253,7 +252,7 @@ export async function updateTablet(
 }
 
 // ---------------------------------------------------------------------------
-// Supervisor view — still uses Prisma (not migrated yet)
+// Supervisor view — external API (qb_sync)
 // ---------------------------------------------------------------------------
 
 export type SupervisorTabletRow = {
@@ -269,31 +268,52 @@ export type SupervisorTabletRow = {
 }
 
 export async function getSupervisorTablets(
-  _supervisorId: string,
+  accessToken: string,
   plantaId: number | null = null,
 ): Promise<SupervisorTabletRow[]> {
-  const tablets = await prisma.tablet.findMany({
-    where: plantaId != null ? { plantId: plantaId } : undefined,
-    include: { plant: true },
-    orderBy: [{ alias: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
+  const res = await fetch(`${baseUrl()}/qb_sync/tablets`, {
+    headers: apiHeaders(accessToken),
+    cache: 'no-store',
   })
 
-  return tablets.map((t) => {
-    const lastInspector = t.currentInspectorName ?? null
-    const isOnline =
-      t.lastSeenAt != null &&
-      Date.now() - new Date(t.lastSeenAt).getTime() < 10 * 60 * 1000
+  if (!res.ok) {
+    throw new Error(`getSupervisorTablets: API respondió ${res.status}`)
+  }
 
-    return {
-      id: t.id,
-      alias: t.alias ?? t.serialNumber,
-      serialNumber: t.serialNumber,
-      model: t.model,
-      status: t.status as 'activa' | 'inactiva' | 'mantenimiento',
-      plantName: t.plant?.name ?? null,
-      lastInspector,
-      lastUsedAt: t.lastSeenAt ? formatUltimaActividad(t.lastSeenAt) : null,
-      isOnline,
-    }
-  })
+  const body = await res.json()
+  const raw: ExternalTablet[] = Array.isArray(body.data) ? body.data : []
+
+  return raw
+    .filter((t) => {
+      if (plantaId == null) return true
+      return (t.plantId ?? t.plant_id ?? null) === plantaId
+    })
+    .map((t) => {
+      const lastSeenRaw = t.lastSeenAt ?? t.last_seen_at ?? null
+      const lastSeenDate = lastSeenRaw ? new Date(lastSeenRaw) : null
+      const isOnline =
+        lastSeenDate != null && Date.now() - lastSeenDate.getTime() < 10 * 60 * 1000
+
+      // qb_sync persiste 'en_mantenimiento'; la UI usa 'mantenimiento'
+      const rawStatus = t.status ?? 'inactiva'
+      const status = rawStatus === 'en_mantenimiento' ? 'mantenimiento' : rawStatus
+      const serialNumber = t.serialNumber ?? t.serial_number ?? ''
+
+      return {
+        id: t.id ?? 0,
+        alias: t.alias ?? serialNumber,
+        serialNumber,
+        model: t.model ?? '',
+        status: status as 'activa' | 'inactiva' | 'mantenimiento',
+        plantName: t.plantName ?? t.plant_name ?? null,
+        lastInspector: t.currentInspectorName ?? t.current_inspector_name ?? null,
+        lastUsedAt: lastSeenDate ? formatUltimaActividad(lastSeenDate) : null,
+        isOnline,
+      }
+    })
+    .sort((a, b) => {
+      const aliasCmp = a.alias.localeCompare(b.alias)
+      if (aliasCmp !== 0) return aliasCmp
+      return a.id - b.id
+    })
 }

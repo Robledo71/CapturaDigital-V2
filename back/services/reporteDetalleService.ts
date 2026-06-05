@@ -129,7 +129,10 @@ type ApiItem = {
   recovered_pieces: number
   lote: string | null
   serie: string | null
-  identificadores: string | null
+  // The DB column is JSONB; qb_sync stores it as Record<string,string>.
+  // It can also arrive as a plain string on older rows. Never assume it is
+  // already a string — always serialise to string before passing to React.
+  identificadores: Record<string, string> | string | null
   incidents: ApiIncident[]
 }
 
@@ -250,7 +253,16 @@ export async function getReporteDetalle(
     })),
     lote: item.lote ?? null,
     serie: item.serie ?? null,
-    identificadores: item.identificadores ?? null,
+    identificadores: (() => {
+      const idf = item.identificadores
+      if (!idf) return null
+      if (typeof idf === 'string') return idf
+      // JSONB object: {"Delta": "ABC", "Indicador de Máquina": "X1"} → "ABC, X1"
+      return Object.values(idf as Record<string, unknown>)
+        .filter((v) => v != null && v !== '')
+        .map(String)
+        .join(', ')
+    })(),
   }))
 
   const samplingItems: SamplingItemRule[] = inspectionItems

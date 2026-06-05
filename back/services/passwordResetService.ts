@@ -1,83 +1,67 @@
 import 'server-only'
-import { randomBytes } from 'crypto'
-import bcrypt from 'bcryptjs'
-import nodemailer from 'nodemailer'
-import { findByCorreo } from '@/back/repositories/userRepository'
-import { createResetToken, findResetToken } from '@/back/repositories/passwordResetRepository'
-import { prisma } from '@/back/db/prisma'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-const TOKEN_EXPIRY_MS = 60 * 60 * 1000 // 1 hora
+// Recuperación de contraseña — toda la lógica (token, BD, email) vive en qb_sync.
+// Este servicio solo orquesta las llamadas HTTP a la API interna.
 
-function createTransport() {
-  const port = Number(process.env.SMTP_PORT ?? 465)
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST ?? 'smtp.hostinger.com',
-    port,
-    secure: port === 465, // SSL en 465, STARTTLS en 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  })
+function baseUrl(): string {
+  return (process.env.QSYNC_API_URL ?? '').replace(/\/$/, '')
 }
 
+function headers(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'X-App-Token': process.env.X_APP_TOKEN ?? '',
+  }
+}
+
+/**
+ * Solicita el envío del correo de recuperación.
+ * Silencioso por diseño: nunca revela si el correo existe.
+ */
 export async function requestPasswordReset(email: string): Promise<void> {
-  const user = await findByCorreo(email)
-  if (!user || !user.isActive) return // Siempre silencioso — no revelar si el email existe
-
-  const rawToken = randomBytes(32).toString('hex')
-  const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MS)
-  await createResetToken(user.id, rawToken, expiresAt)
-
-  const resetUrl = `${APP_URL}/reset-password?token=${rawToken}`
-  console.log('[password-reset] URL generada:', resetUrl)
-  const from = process.env.SMTP_FROM ?? `Captura Digital <${process.env.SMTP_USER}>`
-
-  const transporter = createTransport()
-  await transporter.sendMail({
-    from,
-    to: user.correo,
-    subject: 'Restablecer contraseña — Captura Digital',
-    html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#1e3a5f">Restablecer contraseña</h2>
-        <p>Hola ${user.nombreCompleto},</p>
-        <p>Recibimos una solicitud para restablecer tu contraseña. Este enlace es válido por <strong>1 hora</strong>.</p>
-        <p style="margin:28px 0">
-          <a href="${resetUrl}"
-             style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">
-            Restablecer contraseña
-          </a>
-        </p>
-        <p style="color:#64748b;font-size:13px">Si no solicitaste este cambio, ignora este correo. Tu contraseña no cambiará.</p>
-        <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
-        <p style="color:#94a3b8;font-size:12px">Quality Bolca — Captura Digital</p>
-      </div>
-    `,
-  })
+  try {
+    await fetch(`${baseUrl()}/qb_sync/auth/password-reset/request`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ correo: email }),
+      cache: 'no-store',
+    })
+  } catch {
+    // Silencioso — no exponemos errores de red en este flujo.
+  }
 }
 
 export type ResetPasswordResult =
   | { ok: true }
   | { ok: false; reason: 'invalid_token' | 'expired_token' | 'same_password' }
 
+/**
+ * Confirma el cambio de contraseña usando el token del enlace del correo.
+ */
 export async function resetPassword(rawToken: string, newPassword: string): Promise<ResetPasswordResult> {
-  const record = await findResetToken(rawToken)
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl()}/qb_sync/auth/password-reset/confirm`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ token: rawToken, newPassword }),
+      cache: 'no-store',
+    })
+  } catch {
+    return { ok: false, reason: 'invalid_token' }
+  }
 
-  if (!record) return { ok: false, reason: 'invalid_token' }
-  if (record.usedAt) return { ok: false, reason: 'invalid_token' }
-  if (record.expiresAt < new Date()) return { ok: false, reason: 'expired_token' }
+  if (!res.ok) {
+    return { ok: false, reason: 'invalid_token' }
+  }
 
-  const isSame = await bcrypt.compare(newPassword, record.user.contrasena)
-  if (isSame) return { ok: false, reason: 'same_password' }
+  const body = await res.json().catch(() => null)
+  const result = body?.result
+  if (result?.ok === true) return { ok: true }
 
-  const hashedPassword = await bcrypt.hash(newPassword, 12)
-
-  await prisma.$transaction(async (tx) => {
-    await tx.usuario.update({ where: { id: record.userId }, data: { contrasena: hashedPassword } })
-    await tx.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } })
-  })
-
-  return { ok: true }
+  const reason = result?.reason
+  if (reason === 'expired_token' || reason === 'same_password') {
+    return { ok: false, reason }
+  }
+  return { ok: false, reason: 'invalid_token' }
 }

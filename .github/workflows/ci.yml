@@ -1,0 +1,84 @@
+name: CI
+
+# Corre en cada push a main y en cada Pull Request hacia main.
+# Vercel detecta el push a main y despliega automáticamente,
+# pero espera este check si configuras "Required Checks" en el dashboard.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─── Job 1: Tests unitarios ─────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Los tests usan Vitest con todo mockeado — no necesitan BD real
+      - name: Correr tests unitarios
+        run: npm test
+
+      - name: Subir reporte de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # ─── Job 2: Build check ──────────────────────────────────────────────────────
+  # Verifica que next build compila sin errores ANTES de que Vercel intente
+  # desplegar. Si falla, Vercel también fallará — pero aquí lo sabemos más
+  # rápido y con logs más claros.
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test   # Solo corre si los tests pasan
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build (next build)
+        run: npm run build
+        env:
+          # Agrega estas variables en GitHub → Settings → Secrets and variables → Actions
+          # "Repository secrets" para las sensibles, "Variables" para las públicas.
+
+          # Sesión iron-session (mínimo 32 caracteres)
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+
+          # API del backend qb_sync
+          QSYNC_API_URL: ${{ secrets.QSYNC_API_URL }}
+          X_APP_TOKEN: ${{ secrets.X_APP_TOKEN }}
+
+          # API externa Quality Bolca
+          QB_API_URL: ${{ vars.QB_API_URL }}
+          QB_API_KEY: ${{ secrets.QB_API_KEY }}
+          QB_CLIENT_ID: ${{ vars.QB_CLIENT_ID }}
+
+          # URL base del app (para generar links en emails)
+          APP_URL: ${{ vars.APP_URL }}
