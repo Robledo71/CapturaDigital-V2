@@ -107,27 +107,21 @@ function InspectorAvatar({ nombre }: InspectorAvatarProps) {
 
 interface ReportesPageProps {
   initialReportes: ReporteRow[]
-  page: number
-  totalPages: number
-  total: number
 }
 
-function buildPageUrl(page: number): string {
-  const params = new URLSearchParams()
-  if (page > 1) params.set('page', String(page))
-  const qs = params.toString()
-  return `/supervisor/reportes${qs ? `?${qs}` : ''}`
-}
+const PAGE_SIZE = 20
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function ReportesPage({ initialReportes, page, totalPages, total }: ReportesPageProps) {
+export function ReportesPage({ initialReportes }: ReportesPageProps) {
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<TabKey>('todos')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
 
-  const pageStatusCounts = {
+  // Conteos globales sobre TODOS los reportes (no solo la página visible).
+  const statusCounts = {
     Enviado: initialReportes.filter((r) => r.estatus === 'Enviado').length,
     'En muestreo': initialReportes.filter((r) => r.estatus === 'En muestreo').length,
     Firmado: initialReportes.filter((r) => r.estatus === 'Firmado').length,
@@ -135,13 +129,14 @@ export function ReportesPage({ initialReportes, page, totalPages, total }: Repor
   }
 
   const TABS: TabConfig[] = [
-    { key: 'todos',       label: 'Todos',       count: total },
-    { key: 'Enviado',     label: 'Por revisar',  count: pageStatusCounts.Enviado },
-    { key: 'En muestreo', label: 'En muestreo',  count: pageStatusCounts['En muestreo'] },
-    { key: 'Firmado',     label: 'Firmados',     count: pageStatusCounts.Firmado },
-    { key: 'Publicado',   label: 'Publicados',   count: pageStatusCounts.Publicado },
+    { key: 'todos',       label: 'Todos',        count: initialReportes.length },
+    { key: 'Enviado',     label: 'Por revisar',  count: statusCounts.Enviado },
+    { key: 'En muestreo', label: 'En muestreo',  count: statusCounts['En muestreo'] },
+    { key: 'Firmado',     label: 'Firmados',     count: statusCounts.Firmado },
+    { key: 'Publicado',   label: 'Publicados',   count: statusCounts.Publicado },
   ]
 
+  // Filtrado por búsqueda + tab sobre el set completo.
   const filtered = initialReportes.filter((r) => {
     const q = search.toLowerCase()
     const matchSearch =
@@ -153,6 +148,19 @@ export function ReportesPage({ initialReportes, page, totalPages, total }: Repor
     const matchTab = activeTab === 'todos' || r.estatus === activeTab
     return matchTab && matchSearch
   })
+
+  // Paginación en cliente sobre el set filtrado.
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  // Si cambian filtros/búsqueda, vuelve a la página 1 para no quedar fuera de rango.
+  useEffect(() => {
+    setPage(1)
+  }, [search, activeTab])
+
+  // Clampa la página actual al rango válido (p. ej. tras filtrar).
+  const currentPage = Math.min(page, totalPages)
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -282,7 +290,7 @@ export function ReportesPage({ initialReportes, page, totalPages, total }: Repor
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((r) => (
+                  paginated.map((r) => (
                     <tr
                       key={r.id}
                       onClick={() => router.push(`/supervisor/reportes/${r.id}`)}
@@ -333,15 +341,15 @@ export function ReportesPage({ initialReportes, page, totalPages, total }: Repor
           {total > 0 && (
             <div className="flex items-center justify-between border-t border-blue-200 dark:border-[#1a2d4d] px-4 py-3">
               <span className="text-xs text-slate-500">
-                {total.toLocaleString('es-MX')} resultado{total !== 1 ? 's' : ''} · página {page} de {totalPages}
+                {total.toLocaleString('es-MX')} resultado{total !== 1 ? 's' : ''} · página {currentPage} de {totalPages}
               </span>
 
               {totalPages > 1 && (
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    disabled={page <= 1}
-                    onClick={() => router.push(buildPageUrl(page - 1))}
+                    disabled={currentPage <= 1}
+                    onClick={() => setPage(currentPage - 1)}
                     className="px-3 py-1.5 text-xs font-medium rounded-md border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     ← Anterior
@@ -349,8 +357,8 @@ export function ReportesPage({ initialReportes, page, totalPages, total }: Repor
 
                   <div className="flex items-center gap-1 mx-1">
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-                      const isCurrentPage = p === page
-                      const show = p === 1 || p === totalPages || Math.abs(p - page) <= 1
+                      const isCurrentPage = p === currentPage
+                      const show = p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1
                       if (!show) {
                         const isGap = p === 2 || p === totalPages - 1
                         return isGap ? (
@@ -361,7 +369,7 @@ export function ReportesPage({ initialReportes, page, totalPages, total }: Repor
                         <button
                           key={p}
                           type="button"
-                          onClick={() => router.push(buildPageUrl(p))}
+                          onClick={() => setPage(p)}
                           className={`min-w-[28px] px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
                             isCurrentPage
                               ? 'bg-blue-600 text-white'
@@ -376,8 +384,8 @@ export function ReportesPage({ initialReportes, page, totalPages, total }: Repor
 
                   <button
                     type="button"
-                    disabled={page >= totalPages}
-                    onClick={() => router.push(buildPageUrl(page + 1))}
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setPage(currentPage + 1)}
                     className="px-3 py-1.5 text-xs font-medium rounded-md border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     Siguiente →

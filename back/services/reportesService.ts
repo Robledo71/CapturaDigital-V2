@@ -21,8 +21,6 @@ export type ReportesResult = {
   total: number
 }
 
-export const PAGE_SIZE = 20
-
 function mapEstatus(dbStatus: string): ReporteEstatus {
   // DB stores English values: submitted, sampled, signed, published
   if (dbStatus === 'submitted') return 'Enviado'
@@ -44,11 +42,11 @@ const BASE = () => process.env.QSYNC_API_URL ?? 'http://localhost:3001'
 
 export async function getSupervisorReportes(
   _supervisorId: string,
-  page: number = 1,
   accessToken: string,
 ): Promise<ReportesResult> {
+  // Trae TODOS los reportes de una sola vez; la paginación se maneja en el cliente.
   const res = await fetch(
-    `${BASE()}/qb_sync/daily-reports/admin-list?page=${page}`,
+    `${BASE()}/qb_sync/daily-reports/admin-list`,
     {
       headers: apiHeaders(accessToken),
       cache: 'no-store',

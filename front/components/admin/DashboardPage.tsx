@@ -4,7 +4,7 @@ import type { AdminDashboardStats, AdminRecentUsuario } from '@/back/services/ad
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider'
+type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
@@ -76,6 +76,13 @@ function RolBadge({ rol }: { rol: UserRol }) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-500/10 dark:text-yellow-300 dark:border-yellow-500/20">
         Líder
+      </span>
+    )
+  }
+  if (rol === 'cliente') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-500/20">
+        Cliente
       </span>
     )
   }

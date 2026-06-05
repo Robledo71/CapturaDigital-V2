@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decrypt } from '@/back/services/session'
 
-const PUBLIC_ROUTES = ['/', '/tablet/login']
+const PUBLIC_ROUTES = ['/', '/tablet/login', '/reset-password']
 const ROLE_ROUTES: Record<string, string> = {
   '/admin': 'admin',
   '/supervisor': 'supervisor',

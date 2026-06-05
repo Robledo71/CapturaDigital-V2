@@ -1,6 +1,6 @@
 // tests/unit/services/reportesService.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getSupervisorReportes, PAGE_SIZE } from '@/back/services/reportesService'
+import { getSupervisorReportes } from '@/back/services/reportesService'
 
 const ACCESS_TOKEN = 'test-token'
 
@@ -43,7 +43,7 @@ describe('getSupervisorReportes', () => {
   it('devuelve { rows, total } correctamente mapeados', async () => {
     mockFetch([makeRawRow({ status: 'submitted' })], 1)
 
-    const result = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const result = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
 
     expect(result.total).toBe(1)
     expect(result.rows).toHaveLength(1)
@@ -64,65 +64,52 @@ describe('getSupervisorReportes', () => {
 
   it('mapEstatus: submitted → "Enviado"', async () => {
     mockFetch([makeRawRow({ status: 'submitted' })], 1)
-    const { rows } = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const { rows } = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
     expect(rows[0].estatus).toBe('Enviado')
   })
 
   it('mapEstatus: sampled → "En muestreo"', async () => {
     mockFetch([makeRawRow({ status: 'sampled' })], 1)
-    const { rows } = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const { rows } = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
     expect(rows[0].estatus).toBe('En muestreo')
   })
 
   it('mapEstatus: signed → "Firmado"', async () => {
     mockFetch([makeRawRow({ status: 'signed' })], 1)
-    const { rows } = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const { rows } = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
     expect(rows[0].estatus).toBe('Firmado')
   })
 
   it('mapEstatus: published → "Publicado"', async () => {
     mockFetch([makeRawRow({ status: 'published' })], 1)
-    const { rows } = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const { rows } = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
     expect(rows[0].estatus).toBe('Publicado')
   })
 
   it('mapEstatus: valor desconocido → "Enviado"', async () => {
     mockFetch([makeRawRow({ status: 'unknown_status' })], 1)
-    const { rows } = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const { rows } = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
     expect(rows[0].estatus).toBe('Enviado')
   })
 
-  it('paginación: page=1 envía ?page=1 en la URL correcta (/admin-list)', async () => {
+  it('llama a /admin-list SIN parámetro page (paginación en cliente)', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ success: true, data: { rows: [], total: 0 } }),
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    await getSupervisorReportes('sup-1', ACCESS_TOKEN)
 
     const calledUrl = fetchMock.mock.calls[0][0] as string
     expect(calledUrl).toContain('/daily-reports/admin-list')
-    expect(calledUrl).toContain('page=1')
-  })
-
-  it('paginación: page=2 envía ?page=2 en la URL', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ success: true, data: { rows: [], total: 0 } }),
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    await getSupervisorReportes('sup-1', 2, ACCESS_TOKEN)
-
-    const calledUrl = fetchMock.mock.calls[0][0] as string
-    expect(calledUrl).toContain('page=2')
+    expect(calledUrl).not.toContain('page=')
   })
 
   it('cuando el API devuelve array vacío → rows=[], total=0', async () => {
     mockFetch([], 0)
 
-    const result = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const result = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
     expect(result.rows).toEqual([])
     expect(result.total).toBe(0)
   })
@@ -130,11 +117,7 @@ describe('getSupervisorReportes', () => {
   it('pctNG es "-" cuando total_pieces es 0', async () => {
     mockFetch([{ ...makeRawRow(), total_pieces: 0, total_ng: 0 }], 1)
 
-    const { rows } = await getSupervisorReportes('sup-1', 1, ACCESS_TOKEN)
+    const { rows } = await getSupervisorReportes('sup-1', ACCESS_TOKEN)
     expect(rows[0].pctNG).toBe('-')
-  })
-
-  it('PAGE_SIZE exportado es 20', () => {
-    expect(PAGE_SIZE).toBe(20)
   })
 })

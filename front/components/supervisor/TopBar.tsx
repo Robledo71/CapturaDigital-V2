@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Bell, Settings, ChevronRight, MessageCircle } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { ThemeToggle } from '@/front/components/ui/ThemeToggle'
 
 interface TopBarProps {
@@ -27,15 +27,6 @@ export function TopBar({ crumb }: TopBarProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-3">
-        <a
-          href="https://wa.me/524492737260"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm font-medium transition-colors"
-        >
-          <MessageCircle size={16} />
-          Soporte TI
-        </a>
         <ThemeToggle />
       </div>
     </header>

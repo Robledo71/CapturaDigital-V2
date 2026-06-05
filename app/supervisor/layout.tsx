@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { Sidebar } from '@/front/components/supervisor/Sidebar'
+import { SupportButton } from '@/front/components/supervisor/SupportButton'
 
 export default async function SupervisorLayout({
   children,
@@ -16,6 +17,7 @@ export default async function SupervisorLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         {children}
       </div>
+      <SupportButton />
     </div>
   )
 }
