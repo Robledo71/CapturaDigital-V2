@@ -124,6 +124,19 @@ describe('tabletService', () => {
 
       await expect(createTablet(input, ACCESS_TOKEN)).rejects.toThrow('API responded 500')
     })
+
+    it('envía la planta como "plant_id" en el body (no "planta_id")', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: makeExternalTablet() }), { status: 201 }),
+      )
+
+      await createTablet({ ...input, plantaId: 7 }, ACCESS_TOKEN)
+
+      const postCall = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(postCall[1]!.body as string) as Record<string, unknown>
+      expect(body.plant_id).toBe(7)
+      expect(body).not.toHaveProperty('planta_id')
+    })
   })
 
   // ─── updateTablet ──────────────────────────────────────────────────────────

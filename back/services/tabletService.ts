@@ -181,7 +181,7 @@ export async function createTablet(
       serial_number: input.serie,
       codigo_tablet: codigoTablet,
       alias: input.alias,
-      planta_id: input.plantaId,
+      plant_id: input.plantaId,
       notes: input.notes,
     }),
   })
