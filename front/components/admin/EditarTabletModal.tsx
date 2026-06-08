@@ -116,7 +116,7 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
 
             <div className="grid grid-cols-2 gap-4">
 
-              {/* Código tablet — col span 2 */}
+              {/* Código tablet — col span 2 (solo lectura: es la identidad/login de la tablet) */}
               <div className="col-span-2 flex flex-col gap-1">
                 <label htmlFor="codigotablet-edit-tablet" className="text-xs font-medium text-black dark:text-slate-400">
                   Código de tablet
@@ -126,11 +126,15 @@ export function EditarTabletModal({ tablet, plantas, onClose, onSuccess }: Edita
                   name="codigotablet"
                   type="text"
                   autoComplete="off"
-                  placeholder="Ej. CC1-1234"
                   value={values.codigotablet}
-                  onChange={handleChange}
-                  className={inputCls}
+                  readOnly
+                  aria-readonly="true"
+                  tabIndex={-1}
+                  className={`${inputCls} cursor-not-allowed opacity-70 bg-slate-100 dark:bg-[#0a1322]`}
                 />
+                <p className="text-[11px] text-slate-500 dark:text-slate-500">
+                  El código identifica a la tablet y no puede cambiarse.
+                </p>
                 {state?.errors?.codigotablet && (
                   <p className="text-red-400 text-xs">{state.errors.codigotablet[0]}</p>
                 )}

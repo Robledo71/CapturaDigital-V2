@@ -19,19 +19,22 @@ export type UpdateUserState = {
   usuario?: UsuarioRow
 } | undefined
 
-const UpdateUserSchema = z.object({
-  nombreCompleto: z.string().min(1, 'El nombre completo es requerido').trim(),
-  codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
-  puesto: z.string().min(1, 'El puesto es requerido').trim(),
-  plantaId: z.coerce
-    .number({ error: 'Selecciona una planta' })
-    .int()
-    .positive('Selecciona una planta'),
-  rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'cliente'], {
-    error: 'Rol no válido',
-  }),
-  correo: z.string().email('El correo no es válido').trim(),
-})
+const UpdateUserSchema = z
+  .object({
+    nombreCompleto: z.string().min(1, 'El nombre completo es requerido').trim(),
+    codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
+    puesto: z.string().min(1, 'El puesto es requerido').trim(),
+    plantaId: z.number().int().positive().nullable(),
+    rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'cliente'], {
+      error: 'Rol no válido',
+    }),
+    correo: z.string().email('El correo no es válido').trim(),
+  })
+  // Los clientes no tienen planta asignada; el resto de roles sí la requiere.
+  .refine((d) => d.rol === 'cliente' || d.plantaId !== null, {
+    message: 'Selecciona una planta',
+    path: ['plantaId'],
+  })
 
 export async function updateUser(
   state: UpdateUserState,
@@ -55,7 +58,7 @@ export async function updateUser(
     nombreCompleto: String(formData.get('nombreCompleto') ?? '').trim(),
     codigoEmpleado: String(formData.get('codigoEmpleado') ?? '').trim(),
     puesto: String(formData.get('puesto') ?? '').trim(),
-    plantaId: isNaN(plantaIdRaw) ? '' : plantaIdRaw,
+    plantaId: isNaN(plantaIdRaw) ? null : plantaIdRaw,
     rol: String(formData.get('rol') ?? '').trim(),
     correo: String(formData.get('correo') ?? '').trim(),
   }

@@ -5,6 +5,8 @@ import {
   findAllPlants,
   createPlant as repoCreatePlant,
   updatePlant as repoUpdatePlant,
+  deletePlant as repoDeletePlant,
+  type DeletePlantResult,
 } from '@/back/repositories/plantRepository'
 
 // ---------------------------------------------------------------------------
@@ -16,10 +18,6 @@ function mapToRow(p: PlantRecord): PlantaRow {
     id: p.id,
     nombre: p.name,
     direccion: p.address ?? null,
-    // External API does not return counts — default to 0.
-    // The admin list page uses these for display only.
-    tabletsCount: 0,
-    ordenesActivas: 0,
   }
 }
 
@@ -75,4 +73,13 @@ export async function updatePlanta(
     }
     throw err
   }
+}
+
+export type DeletePlantaResult = DeletePlantResult
+
+export async function deletePlanta(
+  id: number,
+  accessToken: string,
+): Promise<DeletePlantaResult> {
+  return repoDeletePlant(id, accessToken)
 }

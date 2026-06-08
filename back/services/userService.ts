@@ -111,7 +111,8 @@ export async function createUsuario(
       nombre_completo: input.nombreCompleto,
       codigo_empleado: input.codigoEmpleado,
       puesto: input.puesto,
-      planta_id: input.plantaId,
+      // El endpoint de creación no acepta planta_id null; se omite para clientes.
+      planta_id: input.plantaId ?? undefined,
       rol: input.rol,
       correo: input.correo,
       contrasena: input.contrasena,
@@ -150,6 +151,7 @@ export async function updateUsuario(
         puesto: input.puesto,
         planta_id: input.plantaId,
         rol: input.rol,
+        correo: input.correo,
       }),
     },
   )

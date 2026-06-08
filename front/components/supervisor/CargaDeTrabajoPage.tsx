@@ -402,7 +402,14 @@ interface OrderItemRowProps {
 }
 
 function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
-  const canAssign = item.status === 'pending' && item.assignedTablet === null && !item.hasSubmittedReport
+  // Se puede asignar si el ítem no tiene tablet activa y NUNCA ha enviado reportes:
+  // - 'pending'   → recién creado, sin asignar.
+  // - 'completed' → liberado sin haber sido trabajado (sin reportes) → se permite reasignar.
+  // Si ya envió reportes (hasSubmittedReport), queda como estado terminal y NO se reasigna.
+  const canAssign =
+    item.assignedTablet === null &&
+    !item.hasSubmittedReport &&
+    (item.status === 'pending' || item.status === 'completed')
   const canRelease = item.status === 'assigned' || item.status === 'in_progress'
 
   return (

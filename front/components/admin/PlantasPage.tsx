@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useActionState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Plus, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { NuevoPlantaModal } from './NuevoPlantaModal'
 import { EditarPlantaModal } from './EditarPlantaModal'
+import { deletePlantaAction } from '@/app/actions/delete-planta'
 import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -17,8 +18,6 @@ interface Planta {
   id: number
   nombre: string
   direccion: string | null
-  tabletsCount: number
-  ordenesActivas: number
 }
 
 interface PlantasPageProps {
@@ -32,8 +31,6 @@ function mapRow(p: PlantaRow): Planta {
     id: p.id,
     nombre: p.nombre,
     direccion: p.direccion,
-    tabletsCount: p.tabletsCount,
-    ordenesActivas: p.ordenesActivas,
   }
 }
 
@@ -43,10 +40,12 @@ function ConfirmDeleteModal({
   planta,
   onConfirm,
   onCancel,
+  pending = false,
 }: {
   planta: Planta
   onConfirm: () => void
   onCancel: () => void
+  pending?: boolean
 }) {
   return (
     <div
@@ -74,16 +73,19 @@ function ConfirmDeleteModal({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+            disabled={pending}
+            className="px-4 py-2 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-60"
           >
             Cancelar
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="px-4 py-2 text-sm rounded-lg font-medium bg-red-500/80 hover:bg-red-500 text-white transition-colors"
+            disabled={pending}
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg font-medium bg-red-500/80 hover:bg-red-500 text-white transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Sí, eliminar
+            {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+            {pending ? 'Eliminando...' : 'Sí, eliminar'}
           </button>
         </div>
       </div>
@@ -101,6 +103,8 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
   const [showNuevoModal, setShowNuevoModal] = useState(false)
   const [editTarget, setEditTarget] = useState<Planta | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Planta | null>(null)
+  const [deleteState, deleteDispatch, isDeleting] = useActionState(deletePlantaAction, undefined)
+  const pendingDeleteIdRef = useRef<number | null>(null)
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false,
@@ -143,11 +147,26 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
   }
 
   function handleDelete() {
-    if (!confirmDelete) return
-    setPlantas((prev) => prev.filter((p) => p.id !== confirmDelete.id))
-    setConfirmDelete(null)
-    setToast({ message: 'Planta eliminada correctamente', visible: true })
+    if (!confirmDelete || isDeleting) return
+    pendingDeleteIdRef.current = confirmDelete.id
+    const fd = new FormData()
+    fd.set('id', String(confirmDelete.id))
+    deleteDispatch(fd)
   }
+
+  // Procesa el resultado de la acción de borrado (éxito o error de negocio).
+  useEffect(() => {
+    if (!deleteState) return
+    if (deleteState.ok) {
+      const id = pendingDeleteIdRef.current
+      if (id != null) setPlantas((prev) => prev.filter((p) => p.id !== id))
+      setToast({ message: 'Planta eliminada correctamente', visible: true })
+    } else if (deleteState.error) {
+      setToast({ message: deleteState.error, visible: true })
+    }
+    pendingDeleteIdRef.current = null
+    setConfirmDelete(null)
+  }, [deleteState])
 
   // ── Búsqueda sobre la lista completa ──────────────────────────────────────
   const filtered = useMemo(() => {
@@ -190,6 +209,7 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
           planta={confirmDelete}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(null)}
+          pending={isDeleting}
         />
       )}
 
@@ -259,12 +279,6 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
                     <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                       Dirección
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                      Tablets
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
-                      Órdenes activas
-                    </th>
                     <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       <span className="sr-only">Acciones</span>
                     </th>
@@ -273,70 +287,45 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
                 <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                   {paginated.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center text-slate-500 text-sm">
+                      <td colSpan={3} className="px-4 py-12 text-center text-slate-500 text-sm">
                         {search.trim()
                           ? `Sin resultados para "${search.trim()}"`
                           : 'No hay plantas registradas.'}
                       </td>
                     </tr>
                   ) : (
-                    paginated.map((planta) => {
-                      const hasTablets = planta.tabletsCount > 0
-                      return (
-                        <tr key={String(planta.id)} className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors">
-                          <td className="px-4 py-3">
-                            <span className="text-slate-900 dark:text-slate-200 font-medium">{planta.nombre}</span>
-                          </td>
-                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm">
-                            {planta.direccion ?? (
-                              <span className="text-slate-400 dark:text-slate-600 italic">Sin dirección</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-slate-700 dark:text-slate-300 text-sm tabular-nums">
-                              {planta.tabletsCount}{' '}
-                              <span className="text-slate-500">
-                                {planta.tabletsCount === 1 ? 'tablet' : 'tablets'}
-                              </span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-slate-700 dark:text-slate-300 text-sm tabular-nums">
-                              {planta.ordenesActivas}{' '}
-                              <span className="text-slate-500">
-                                {planta.ordenesActivas === 1 ? 'orden activa' : 'órdenes activas'}
-                              </span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                aria-label={`Editar ${planta.nombre}`}
-                                onClick={() => setEditTarget(planta)}
-                                className="p-1.5 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                aria-label={`Eliminar ${planta.nombre}`}
-                                disabled={hasTablets}
-                                title={hasTablets ? 'No se puede eliminar: tiene tablets asignadas' : undefined}
-                                onClick={() => !hasTablets && setConfirmDelete(planta)}
-                                className={`p-1.5 rounded transition-colors ${
-                                  hasTablets
-                                    ? 'text-slate-300 dark:text-slate-700 cursor-not-allowed'
-                                    : 'text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-[#1a2d4d] transition-colors'
-                                }`}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })
+                    paginated.map((planta) => (
+                      <tr key={String(planta.id)} className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors">
+                        <td className="px-4 py-3">
+                          <span className="text-slate-900 dark:text-slate-200 font-medium">{planta.nombre}</span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm">
+                          {planta.direccion ?? (
+                            <span className="text-slate-400 dark:text-slate-600 italic">Sin dirección</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              aria-label={`Editar ${planta.nombre}`}
+                              onClick={() => setEditTarget(planta)}
+                              className="p-1.5 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label={`Eliminar ${planta.nombre}`}
+                              onClick={() => setConfirmDelete(planta)}
+                              className="p-1.5 rounded text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-[#1a2d4d] transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>

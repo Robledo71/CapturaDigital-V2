@@ -43,10 +43,9 @@ interface UsuariosPageProps {
   initialUsuarios: UsuarioRow[]
   plantas: PlantaRow[]
   currentUserId: string | number
-  total: number
-  page: number
-  pageSize: number
 }
+
+const PAGE_SIZE = 12
 
 // ─── Mapper (outside component for stable reference) ──────────────────────────
 
@@ -207,11 +206,12 @@ function ConfirmModal({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, page, pageSize }: UsuariosPageProps) {
+export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: UsuariosPageProps) {
   const router = useRouter()
   const [usuarios, setUsuarios] = useState<Usuario[]>(() => initialUsuarios.map(mapRow))
   const [activeTab, setActiveTab] = useState<TabKey>('todos')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null)
   const [showNuevoModal, setShowNuevoModal] = useState(false)
   const [editTarget, setEditTarget] = useState<Usuario | null>(null)
@@ -313,6 +313,16 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
       (u.plantaNombre?.toLowerCase().includes(q) ?? false)
     return matchTab && matchSearch
   })
+
+  // Paginación en cliente sobre el set filtrado.
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  // Al cambiar búsqueda o pestaña, vuelve a la página 1.
+  useEffect(() => {
+    setPage(1)
+  }, [search, activeTab])
 
   return (
     <>
@@ -444,7 +454,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${page} de usuarios`}>
+          <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${currentPage} de usuarios`}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Tabla de usuarios">
                 <thead>
@@ -480,7 +490,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((user) => {
+                    paginated.map((user) => {
                       const toggle = canToggle(user, usuarios, currentUserId)
                       return (
                         <tr key={user.id} className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors">
@@ -552,34 +562,34 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId, total, p
           </div>
 
           {/* Pagination */}
-          {total > pageSize && (
+          {totalPages > 1 && (
             <div className="flex items-center justify-between gap-4 pt-1">
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Mostrando{' '}
                 <span className="font-medium text-slate-900 dark:text-white">
-                  {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)}
+                  {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)}
                 </span>{' '}
                 de{' '}
-                <span className="font-medium text-slate-900 dark:text-white">{total}</span>{' '}
+                <span className="font-medium text-slate-900 dark:text-white">{filtered.length}</span>{' '}
                 registros
               </p>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={page <= 1}
-                  onClick={() => router.push(`?page=${page - 1}`)}
+                  disabled={currentPage <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   aria-label="Página anterior"
                   className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Anterior
                 </button>
                 <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
-                  {page} / {Math.ceil(total / pageSize)}
+                  {currentPage} / {totalPages}
                 </span>
                 <button
                   type="button"
-                  disabled={page >= Math.ceil(total / pageSize)}
-                  onClick={() => router.push(`?page=${page + 1}`)}
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   aria-label="Página siguiente"
                   className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >

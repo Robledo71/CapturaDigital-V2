@@ -26,10 +26,7 @@ const CreateUserSchema = z
     nombreCompleto: z.string().min(1, 'El nombre completo es requerido').trim(),
     codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
     puesto: z.string().min(1, 'El puesto es requerido').trim(),
-    plantaId: z.coerce
-      .number({ error: 'Selecciona una planta' })
-      .int()
-      .positive('Selecciona una planta'),
+    plantaId: z.number().int().positive().nullable(),
     rol: z.enum(['supervisor', 'capturacion', 'admin', 'lider', 'cliente'], {
       error: 'Rol no válido',
     }),
@@ -40,6 +37,11 @@ const CreateUserSchema = z
   .refine((data) => data.contrasena === data.confirmContrasena, {
     message: 'Las contraseñas no coinciden',
     path: ['confirmContrasena'],
+  })
+  // Los clientes no tienen planta asignada; el resto de roles sí la requiere.
+  .refine((data) => data.rol === 'cliente' || data.plantaId !== null, {
+    message: 'Selecciona una planta',
+    path: ['plantaId'],
   })
 
 export async function createUser(
@@ -58,7 +60,7 @@ export async function createUser(
     nombreCompleto: String(formData.get('nombreCompleto') ?? '').trim(),
     codigoEmpleado: String(formData.get('codigoEmpleado') ?? '').trim(),
     puesto: String(formData.get('puesto') ?? '').trim(),
-    plantaId: isNaN(plantaIdRaw) ? '' : plantaIdRaw,
+    plantaId: isNaN(plantaIdRaw) ? null : plantaIdRaw,
     rol: String(formData.get('rol') ?? '').trim(),
     correo: String(formData.get('correo') ?? '').trim(),
     contrasena: String(formData.get('contrasena') ?? ''),

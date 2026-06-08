@@ -37,8 +37,6 @@ describe('plantService', () => {
         id: 1,
         nombre: 'Planta Norte',
         direccion: 'Calle 1',
-        tabletsCount: 0,
-        ordenesActivas: 0,
       })
     })
 
@@ -64,8 +62,6 @@ describe('plantService', () => {
           id: 1,
           nombre: 'Planta Norte',
           direccion: 'Calle 1',
-          tabletsCount: 0,
-          ordenesActivas: 0,
         },
       })
     })

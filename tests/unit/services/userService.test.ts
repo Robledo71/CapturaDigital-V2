@@ -178,6 +178,18 @@ describe('userService', () => {
       }
     })
 
+    it('envía "correo" en el body del PUT', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: makeExternalUser() }), { status: 200 }),
+      )
+
+      await updateUsuario({ ...input, correo: 'nuevo@example.com' }, ACCESS_TOKEN)
+
+      const putCall = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(putCall[1]!.body as string) as Record<string, unknown>
+      expect(body.correo).toBe('nuevo@example.com')
+    })
+
     it('fetch 404 devuelve { ok: false, reason: "not_found" }', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(
         new Response('Not Found', { status: 404 }),

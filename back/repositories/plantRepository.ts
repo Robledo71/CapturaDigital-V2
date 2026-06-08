@@ -120,3 +120,23 @@ export async function updatePlant(
   const raw: ExternalPlant = body.data ?? body.plant ?? body
   return mapExternalPlant(raw)
 }
+
+export type DeletePlantResult =
+  | { ok: true }
+  | { ok: false; reason: 'not_found' | 'has_tablets' | 'error' }
+
+export async function deletePlant(
+  id: number,
+  accessToken: string,
+): Promise<DeletePlantResult> {
+  const res = await fetch(`${baseUrl()}/qb_sync/plants/${id}`, {
+    method: 'DELETE',
+    headers: apiHeaders(accessToken),
+  })
+
+  if (res.status === 404) return { ok: false, reason: 'not_found' }
+  // 409 = la planta tiene tablets asignadas (regla de negocio del backend).
+  if (res.status === 409) return { ok: false, reason: 'has_tablets' }
+  if (!res.ok) return { ok: false, reason: 'error' }
+  return { ok: true }
+}
