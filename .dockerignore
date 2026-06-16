@@ -1,0 +1,31 @@
+# Dependencias y build — se generan dentro de la imagen
+node_modules
+.next
+out
+
+# Tests y cobertura — no van a producción
+tests
+coverage
+
+# Git / CI
+.git
+.gitignore
+.gitattributes
+.github
+
+# Entornos locales — el VPS inyecta su propio env vía docker-compose
+.env
+.env.*
+!.env.example
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Misceláneos
+*.md
+*.log
+npm-debug.log*
+.vscode
+.idea
+scripts

@@ -257,11 +257,11 @@ export async function getReporteDetalle(
       const idf = item.identificadores
       if (!idf) return null
       if (typeof idf === 'string') return idf
-      // JSONB object: {"Delta": "ABC", "Indicador de Máquina": "X1"} → "ABC, X1"
-      return Object.values(idf as Record<string, unknown>)
-        .filter((v) => v != null && v !== '')
-        .map(String)
-        .join(', ')
+      // JSONB object: {"Identificador": "T1", "Indicador de Máquina": "X1"} → "Identificador: T1, Indicador de Máquina: X1"
+      const pairs = Object.entries(idf as Record<string, unknown>)
+        .filter(([, v]) => v != null && v !== '')
+        .map(([k, v]) => `${k}: ${String(v)}`)
+      return pairs.length > 0 ? pairs.join(', ') : null
     })(),
   }))
 

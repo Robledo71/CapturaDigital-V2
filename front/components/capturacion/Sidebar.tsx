@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { logoutUser } from '@/app/actions/logout'
 import {
@@ -72,9 +73,13 @@ export function Sidebar({ user }: SidebarProps) {
     <aside className="w-52 flex-shrink-0 border-r border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] flex flex-col">
       {/* Brand header */}
       <div className="px-4 py-5 flex items-center gap-3 border-b border-slate-200 dark:border-[#1a2d4d]">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-bold text-sm">C</span>
-        </div>
+        <Image
+          src="/logoCheck.png"
+          alt="Quality Bolca"
+          width={32}
+          height={32}
+          className="rounded-lg flex-shrink-0"
+        />
         <div className="min-w-0">
           <p className="text-slate-900 dark:text-white font-bold text-sm leading-tight truncate">Captura Digital</p>
           <p className="text-[#64748b] text-xs leading-tight mt-0.5">Portal de capturación</p>

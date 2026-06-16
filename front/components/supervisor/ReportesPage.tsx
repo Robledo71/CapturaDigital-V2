@@ -5,26 +5,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, Plus, ChevronRight } from 'lucide-react'
 import type { ReporteRow, ReporteEstatus } from '@/back/services/reportesService'
+import { getAvatarColor } from '@/front/lib/avatarColor'
 
 // ─── Avatar helpers ────────────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  'bg-blue-600',
-  'bg-violet-600',
-  'bg-teal-600',
-  'bg-indigo-600',
-  'bg-orange-600',
-  'bg-rose-600',
-]
 
 function getInitialsFromName(nombre: string): string {
   if (!nombre) return '?'
   const first = nombre.split(',')[0].trim()
   return first.split(' ').filter(Boolean).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase() || '?'
-}
-
-function getAvatarColor(nombre: string): string {
-  return AVATAR_COLORS[nombre.length % AVATAR_COLORS.length]
 }
 
 // ─── Status badge config ───────────────────────────────────────────────────────
@@ -109,7 +97,7 @@ interface ReportesPageProps {
   initialReportes: ReporteRow[]
 }
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 // ─── Main component ────────────────────────────────────────────────────────────
 

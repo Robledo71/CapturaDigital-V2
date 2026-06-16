@@ -488,12 +488,18 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const activeDocTypeRef = useRef<'hoe' | 'arranque-seguro' | null>(null)
   const [uploadingDocType, setUploadingDocType] = useState<'hoe' | 'arranque-seguro' | null>(null)
+  const [uploadSuccessVisible, setUploadSuccessVisible] = useState(false)
 
   useEffect(() => {
-    if (uploadState !== undefined) {
-      setUploadingDocType(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      if (uploadState.ok) router.refresh()
+    if (uploadState === undefined) return
+    setUploadingDocType(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (uploadState.ok) {
+      router.refresh()
+      // Muestra el mensaje de éxito y lo oculta automáticamente a los 4 s.
+      setUploadSuccessVisible(true)
+      const t = setTimeout(() => setUploadSuccessVisible(false), 4000)
+      return () => clearTimeout(t)
     }
   }, [uploadState, router])
 
@@ -723,7 +729,7 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                     {uploadState.error}
                   </p>
                 )}
-                {uploadState?.ok && (
+                {uploadState?.ok && uploadSuccessVisible && (
                   <p className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-300">
                     Documento &quot;{uploadState.docType === 'hoe' ? 'HOE' : 'Arranque Seguro'}&quot; subido correctamente.
                   </p>

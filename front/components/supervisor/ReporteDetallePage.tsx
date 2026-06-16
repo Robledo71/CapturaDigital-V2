@@ -1037,8 +1037,8 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
         )}
 
         <div className="grid grid-cols-12 gap-5">
-            <div className="col-span-3 flex flex-col gap-5">
-              <div className="flex flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+            <div className="col-span-3 flex flex-col">
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Datos del servicio</h2>
                 <dl className="flex flex-col gap-2.5">
                   {(
@@ -1061,33 +1061,10 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
                   ))}
                 </dl>
               </div>
-
-              <div className="flex flex-col gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Asignacion</h2>
-                {hasOperadores ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                        {operadoresInitials}
-                      </div>
-                      <div className="flex min-w-0 flex-col">
-                        <span className="truncate text-sm font-medium text-slate-900 dark:text-white">{operadores}</span>
-                        <span className="text-xs text-slate-500">{turno}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 pl-0.5">
-                      <TabletSmartphone size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />
-                      <span className="text-xs text-slate-500">{tabletAlias}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500">Sin asignacion</p>
-                )}
-              </div>
             </div>
 
-            <div className="col-span-6">
-              <div className="flex flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+            <div className="col-span-6 flex flex-col gap-5">
+              <div className="flex flex-1 flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                     Resumen de piezas inspeccionadas
@@ -1129,10 +1106,33 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
                   </>
                 )}
               </div>
+
+              <div className="flex flex-col gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Asignacion</h2>
+                {hasOperadores ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                        {operadoresInitials}
+                      </div>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate text-sm font-medium text-slate-900 dark:text-white">{operadores}</span>
+                        <span className="text-xs text-slate-500">{turno}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 pl-0.5">
+                      <TabletSmartphone size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />
+                      <span className="text-xs text-slate-500">{tabletAlias}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">Sin asignacion</p>
+                )}
+              </div>
             </div>
 
-            <div className="col-span-3">
-              <div className="flex flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+            <div className="col-span-3 flex flex-col">
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
                 <div className="flex items-center gap-1.5">
                   <Clock size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Historial</h2>

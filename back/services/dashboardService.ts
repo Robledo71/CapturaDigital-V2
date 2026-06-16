@@ -82,15 +82,18 @@ export async function getDashboardBandeja(accessToken: string): Promise<BandejaR
       plant_name: string
       operadores: string
     }> = json?.data?.bandeja ?? []
-    return bandeja.map((row) => ({
-      id: String(row.id),
-      part: row.part_number,
-      client: row.client_name,
-      plant: row.plant_name,
-      operadores: row.operadores,
-      initials: getInitials(row.operadores),
-      time: timeAgo(row.created_at),
-    }))
+    return [...bandeja]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 6)
+      .map((row) => ({
+        id: String(row.id),
+        part: row.part_number,
+        client: row.client_name,
+        plant: row.plant_name,
+        operadores: row.operadores,
+        initials: getInitials(row.operadores),
+        time: timeAgo(row.created_at),
+      }))
   } catch {
     return []
   }

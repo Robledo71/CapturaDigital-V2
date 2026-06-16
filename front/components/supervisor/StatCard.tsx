@@ -8,26 +8,41 @@ interface StatCardProps {
 
 const DOT_CLASSES: Record<StatCardProps['dotColor'], string> = {
   yellow: 'bg-yellow-400',
-  blue: 'bg-blue-400',
-  green: 'bg-green-400',
-  none: '',
+  blue:   'bg-blue-400',
+  green:  'bg-green-400',
+  none:   '',
 }
 
-const BAR_HEIGHTS = ['40%', '55%', '35%', '70%', '45%', '80%', '60%']
+// Heights and matching opacity suffixes for the gradient-opacity bars
+const BAR_HEIGHTS   = ['40%', '55%', '35%', '70%', '45%', '80%', '60%']
+const BAR_OPACITIES = [
+  'bg-blue-600/30',
+  'bg-blue-600/50',
+  'bg-blue-600/70',
+  'bg-blue-600',
+  'bg-blue-600/80',
+  'bg-blue-600',
+  'bg-blue-600/60',
+]
 
 export function StatCard({ label, value, subtitle, dotColor, chart }: StatCardProps) {
   return (
     <div className="rounded-xl bg-white p-5 flex flex-col gap-3 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-[#0f2038] dark:border-[#1a2d4d] dark:shadow-none transition-all duration-200 hover:shadow-lg hover:scale-[1.02]">
+
       {/* Label row */}
       <div className="flex items-center gap-2">
         {dotColor !== 'none' && (
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${DOT_CLASSES[dotColor]}`} />
         )}
-        <span className="text-xs text-slate-500 dark:text-slate-400">{label}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          {label}
+        </span>
       </div>
 
       {/* Value */}
-      <p className="text-3xl font-bold text-slate-900 dark:text-white leading-none">{value}</p>
+      <p className={`font-bold text-slate-900 dark:text-white leading-none ${chart ? 'text-2xl' : 'text-4xl'}`}>
+        {value}
+      </p>
 
       {/* Subtitle or chart */}
       {chart ? (
@@ -35,13 +50,15 @@ export function StatCard({ label, value, subtitle, dotColor, chart }: StatCardPr
           {BAR_HEIGHTS.map((height, i) => (
             <div
               key={i}
-              className="flex-1 bg-blue-600 rounded-sm"
+              className={`flex-1 rounded-sm ${BAR_OPACITIES[i]}`}
               style={{ height }}
             />
           ))}
         </div>
       ) : (
-        subtitle && <p className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</p>
+        subtitle && (
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">{subtitle}</p>
+        )
       )}
     </div>
   )

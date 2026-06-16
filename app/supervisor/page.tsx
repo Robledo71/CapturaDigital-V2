@@ -58,43 +58,51 @@ export default async function SupervisorPage() {
           </div>
         </div>
 
-        {/* 4 stat cards */}
-        <div className="grid grid-cols-4 gap-4">
-          <StatCard
-            label="Pendientes en piso"
-            value={String(stats.pendientesEnPiso)}
-            subtitle={`${stats.pendientesEnPiso} reporte${stats.pendientesEnPiso !== 1 ? 's' : ''} en proceso`}
-            dotColor="yellow"
-          />
-          <StatCard
-            label="Esperan tu revisión"
-            value={String(stats.esperanRevision)}
-            subtitle={stats.esperanRevision === 0 ? 'Sin reportes pendientes' : `${stats.esperanRevision} reporte${stats.esperanRevision !== 1 ? 's' : ''} por revisar`}
-            dotColor="blue"
-          />
-          <StatCard
-            label="Publicados hoy"
-            value={String(stats.publicadosHoy)}
-            subtitle={stats.publicadosHoy === 0 ? 'Sin publicaciones hoy' : `${stats.publicadosHoy} reporte${stats.publicadosHoy !== 1 ? 's' : ''} publicados`}
-            dotColor="green"
-          />
-          <StatCard
-            label="% NG acumulado · semana"
-            value={stats.pctNGSemana}
-            subtitle=""
-            dotColor="none"
-            chart
-          />
-        </div>
+        {/* Two-column layout: left (cards + table) | right (production panel) */}
+        <div className="flex gap-6">
 
-        {/* Bottom row: quality table + production panel */}
-        <div className="flex gap-4 flex-1 min-h-0">
-          <div className="flex-1 min-w-0">
+          {/* Left column */}
+          <div className="flex-1 min-w-0 flex flex-col gap-6">
+
+            {/* 4 stat cards */}
+            <div className="grid grid-cols-4 gap-4">
+              <StatCard
+                label="Pendientes en piso"
+                value={String(stats.pendientesEnPiso)}
+                subtitle={`${stats.pendientesEnPiso} reporte${stats.pendientesEnPiso !== 1 ? 's' : ''} en proceso`}
+                dotColor="yellow"
+              />
+              <StatCard
+                label="Esperan tu revisión"
+                value={String(stats.esperanRevision)}
+                subtitle={stats.esperanRevision === 0 ? 'Sin reportes pendientes' : `${stats.esperanRevision} reporte${stats.esperanRevision !== 1 ? 's' : ''} por revisar`}
+                dotColor="blue"
+              />
+              <StatCard
+                label="Publicados hoy"
+                value={String(stats.publicadosHoy)}
+                subtitle={stats.publicadosHoy === 0 ? 'Sin publicaciones hoy' : `${stats.publicadosHoy} reporte${stats.publicadosHoy !== 1 ? 's' : ''} publicados`}
+                dotColor="green"
+              />
+              <StatCard
+                label="% NG acumulado · semana"
+                value={stats.pctNGSemana}
+                subtitle=""
+                dotColor="none"
+                chart
+              />
+            </div>
+
+            {/* Quality table */}
             <QualityTable rows={bandeja} />
+
           </div>
-          <div className="w-[380px] flex-shrink-0">
+
+          {/* Right column — full height alongside both cards and table */}
+          <div className="w-80 flex-shrink-0 min-h-0">
             <ProductionPanel items={produccion} />
           </div>
+
         </div>
 
         <AutoRefresh />

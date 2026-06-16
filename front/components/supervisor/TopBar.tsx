@@ -19,8 +19,8 @@ export function TopBar({ crumb }: TopBarProps) {
         </Link>
         {crumb && (
           <>
-            <ChevronRight size={13} className="text-slate-600 flex-shrink-0" />
-            <span className="text-slate-700 dark:text-slate-200">{crumb}</span>
+            <ChevronRight size={13} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />
+            <span className="text-white dark:text-slate-200">{crumb}</span>
           </>
         )}
       </nav>

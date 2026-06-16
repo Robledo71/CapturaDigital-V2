@@ -112,6 +112,13 @@ export function SearchCotizacionModal({ onClose, onOrderFound }: Props) {
               required
               placeholder="Ej. OA-1000"
               autoFocus
+              autoCapitalize="characters"
+              // Convierte a MAYÚSCULAS mientras se escribe (la búsqueda de órdenes
+              // es sensible a mayúsculas; en minúsculas no la encuentra).
+              onChange={(e) => {
+                e.currentTarget.value = e.currentTarget.value.toUpperCase()
+              }}
+              style={{ textTransform: 'uppercase' }}
               className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
             />
           </label>
