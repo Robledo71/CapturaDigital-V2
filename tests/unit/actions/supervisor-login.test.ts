@@ -250,6 +250,25 @@ describe('loginSupervisor', () => {
     )
   })
 
+  // 12b. permisos del login (qb_sync) se propagan a createSession
+  it('createSession recibe los permisos que devuelve qb_sync', async () => {
+    const body = makeSuccessBody({ rol: 'servicio_cliente' })
+    ;(body.data as { permisos?: string[] }).permisos = [
+      'servicio_cliente.ver',
+      'cotizaciones.desbloquear',
+    ]
+    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse(body))
+
+    await loginSupervisor(undefined, makeFormData({ employee_number: 'EMP999' }))
+
+    expect(createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rol: 'servicio_cliente',
+        permisos: ['servicio_cliente.ver', 'cotizaciones.desbloquear'],
+      }),
+    )
+  })
+
   // 13. Respuesta con body no parseable → trata como error
   it('fetch con json malformado → errors.general', async () => {
     vi.mocked(fetch).mockResolvedValue({

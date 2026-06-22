@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 
 export type DesbloquearCotizacionState =
   | { ok: true }
@@ -13,7 +14,7 @@ export async function desbloquearCotizacionAction(
   formData: FormData,
 ): Promise<DesbloquearCotizacionState> {
   const session = await getSession()
-  if (!session || !['admin', 'supervisor', 'capturacion'].includes(session.rol)) {
+  if (!session) {
     return { ok: false, error: 'Sesión expirada o permisos insuficientes.' }
   }
 
@@ -21,6 +22,13 @@ export async function desbloquearCotizacionAction(
   if (isNaN(id)) return { ok: false, error: 'ID inválido.' }
 
   const desbloqueado = formData.get('desbloqueado') === 'true'
+
+  // Frontera real de seguridad: cada rama del toggle exige su permiso de acción fina.
+  // Desbloquear (desbloqueado=true) → 'cotizaciones.desbloquear'; bloquear → 'cotizaciones.bloquear'.
+  const permiso = desbloqueado ? 'cotizaciones.desbloquear' : 'cotizaciones.bloquear'
+  if (!can(session, permiso)) {
+    return { ok: false, error: 'Sesión expirada o permisos insuficientes.' }
+  }
 
   let res: Response
   try {

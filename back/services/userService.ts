@@ -11,7 +11,7 @@ export type CreateUsuarioInput = {
   codigoEmpleado: string
   puesto: string
   plantaId: number | null
-  rol: 'supervisor' | 'capturacion' | 'admin' | 'lider' | 'cliente'
+  rol: 'supervisor' | 'capturacion' | 'admin' | 'lider' | 'servicio_cliente' | 'cliente'
   correo: string
   contrasena: string
 }
@@ -26,7 +26,7 @@ export type UpdateUsuarioInput = {
   codigoEmpleado: string
   puesto: string
   plantaId: number | null
-  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
+  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente'
   correo: string
 }
 

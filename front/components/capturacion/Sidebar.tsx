@@ -12,11 +12,14 @@ import {
   Lock,
 } from 'lucide-react'
 import { ThemeToggle } from '@/front/components/ui/ThemeToggle'
+import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
 
 interface NavItem {
   label: string
   href: string
   icon: React.ReactNode
+  /** Permiso requerido para ver el link. Si se omite, siempre visible. */
+  permiso?: Permiso
 }
 
 const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
@@ -32,11 +35,13 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         label: 'Mis descargas',
         href: '/capturacion/descargas',
         icon: <Download size={16} />,
+        permiso: 'ordenes.descargar',
       },
       {
         label: 'Desbloquear Cotización',
         href: '/capturacion/desbloquear',
         icon: <Lock size={16} />,
+        permiso: 'cotizaciones.desbloquear',
       }
     ],
   },
@@ -46,6 +51,7 @@ interface SidebarProps {
   user: {
     nombreCompleto: string
     rol: string
+    permisos?: string[] | null
   }
 }
 
@@ -68,6 +74,7 @@ const ROL_LABEL: Record<string, string> = {
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const session: SessionLike = { rol: user.rol, permisos: user.permisos }
 
   return (
     <aside className="w-52 flex-shrink-0 border-r border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] flex flex-col">
@@ -88,12 +95,17 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5">
-        {NAV_SECTIONS.map((section) => (
+        {NAV_SECTIONS.map((section) => {
+          const visibleItems = section.items.filter(
+            (item) => !item.permiso || can(session, item.permiso),
+          )
+          if (visibleItems.length === 0) return null
+          return (
           <div key={section.heading} className="flex flex-col gap-1">
             <p className="text-xs text-slate-500 dark:text-slate-500 font-semibold tracking-wider uppercase px-3 mb-1">
               {section.heading}
             </p>
-            {section.items.map((item) => {
+            {visibleItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -111,7 +123,8 @@ export function Sidebar({ user }: SidebarProps) {
               )
             })}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Theme toggle row */}

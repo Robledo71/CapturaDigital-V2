@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { createClientUser as serviceCreateClientUser } from '@/back/services/clientService'
 
 export type CreateClientUserState = {
@@ -29,7 +30,7 @@ export async function createClientUser(
   formData: FormData,
 ): Promise<CreateClientUserState> {
   const session = await getSession()
-  if (!session || (session.rol !== 'admin' && session.rol !== 'supervisor')) {
+  if (!session || !can(session, 'usuarios.crear_cliente')) {
     return { errors: { general: ['No autorizado'] } }
   }
 

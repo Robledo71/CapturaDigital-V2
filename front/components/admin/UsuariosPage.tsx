@@ -3,15 +3,16 @@
 import { useState, useEffect, useActionState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toggleUserStatusAction, type ToggleUserStatusState } from '@/app/actions/toggle-user-status'
-import { Search, Plus, Pencil, Power, AlertTriangle } from 'lucide-react'
+import { Search, Plus, Pencil, Power, AlertTriangle, ShieldCheck } from 'lucide-react'
 import { NuevoUsuarioModal } from './NuevoUsuarioModal'
 import { EditarUsuarioModal } from './EditarUsuarioModal'
+import { PermisosUsuarioModal } from './PermisosUsuarioModal'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
+type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente'
 type UserEstado = 'activo' | 'inactivo'
 
 interface Usuario {
@@ -46,6 +47,15 @@ interface UsuariosPageProps {
 }
 
 const PAGE_SIZE = 12
+
+// Roles cuyos permisos se pueden personalizar por usuario (revoke-only). admin (acceso
+// total) y cliente (portal aparte) se excluyen — coincide con qb_sync EDITABLE_ROLES.
+const ROLES_PERSONALIZABLES: ReadonlySet<string> = new Set([
+  'supervisor',
+  'lider',
+  'capturacion',
+  'servicio_cliente',
+])
 
 // ─── Mapper (outside component for stable reference) ──────────────────────────
 
@@ -118,6 +128,13 @@ function RolBadge({ rol }: { rol: UserRol }) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-700 border border-teal-300 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20">
         Cliente
+      </span>
+    )
+  }
+  if (rol === 'servicio_cliente') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20">
+        Servicio al Cliente
       </span>
     )
   }
@@ -215,6 +232,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null)
   const [showNuevoModal, setShowNuevoModal] = useState(false)
   const [editTarget, setEditTarget] = useState<Usuario | null>(null)
+  const [permisosTarget, setPermisosTarget] = useState<Usuario | null>(null)
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false,
@@ -294,6 +312,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
     { key: 'supervisor',  label: 'Supervisores',    count: usuarios.filter((u) => u.rol === 'supervisor').length },
     { key: 'lider',       label: 'Líderes',         count: usuarios.filter((u) => u.rol === 'lider').length },
     { key: 'capturacion', label: 'Capturación',     count: usuarios.filter((u) => u.rol === 'capturacion').length },
+    { key: 'servicio_cliente', label: 'Servicio al Cliente', count: usuarios.filter((u) => u.rol === 'servicio_cliente').length },
     { key: 'cliente',     label: 'Clientes',        count: usuarios.filter((u) => u.rol === 'cliente').length },
     { key: 'inactivos',   label: 'Inactivos',       count: usuarios.filter((u) => u.estado === 'inactivo').length },
   ]
@@ -362,6 +381,14 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
           plantas={plantas}
           onClose={() => setEditTarget(null)}
           onSuccess={onUserUpdated}
+        />
+      )}
+
+      {/* Modal de permisos por usuario (revoke-only) */}
+      {permisosTarget && (
+        <PermisosUsuarioModal
+          user={{ id: permisosTarget.id, nombre: permisosTarget.nombre, rol: permisosTarget.rol }}
+          onClose={() => setPermisosTarget(null)}
         />
       )}
 
@@ -532,6 +559,17 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
                               >
                                 <Pencil size={14} />
                               </button>
+                              {ROLES_PERSONALIZABLES.has(user.rol) && (
+                                <button
+                                  type="button"
+                                  aria-label={`Permisos de ${user.nombre}`}
+                                  title="Personalizar permisos"
+                                  onClick={() => setPermisosTarget(user)}
+                                  className="p-1.5 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+                                >
+                                  <ShieldCheck size={14} />
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 aria-label={

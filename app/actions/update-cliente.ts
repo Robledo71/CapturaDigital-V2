@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { ClienteRow } from '@/shared/types/cliente'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { updateCliente as serviceUpdateCliente } from '@/back/services/clientService'
 
 export type UpdateClienteState = {
@@ -24,7 +25,7 @@ export async function updateCliente(
   formData: FormData,
 ): Promise<UpdateClienteState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'clientes.crud')) {
     return { errors: { general: ['No autorizado'] } }
   }
 

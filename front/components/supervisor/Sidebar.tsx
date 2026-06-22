@@ -8,14 +8,12 @@ import { logoutUser } from '@/app/actions/logout'
 import {
   LayoutDashboard,
   FileText,
-  Plus,
   Tablet,
-  Building2,
-  MapPin,
-  Users,
   ChevronDown,
   UserCheck,
+  History,
 } from 'lucide-react'
+import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
 
 interface NavItem {
   label: string
@@ -25,6 +23,8 @@ interface NavItem {
   badgeVariant?: 'blue' | 'slate'
   /** exact: true → activo solo si pathname === href; false → activo si pathname empieza con href */
   exact?: boolean
+  /** Permiso requerido para ver el link. Si se omite, siempre visible. */
+  permiso?: Permiso
 }
 
 interface NavSection {
@@ -50,16 +50,25 @@ const NAV_SECTIONS: NavSection[] = [
         href: '/supervisor/reportes',
         badge: '',
         badgeVariant: 'slate',
+        permiso: 'reportes.ver',
       },
       {
         label: 'Carga de trabajo',
         icon: <UserCheck size={16} />,
         href: '/supervisor/carga-trabajo',
+        permiso: 'ordenes.ver',
       },
       {
         label: 'Tablets',
         icon: <Tablet size={16} />,
         href: '/supervisor/tablets',
+        permiso: 'tablets.ver',
+      },
+      {
+        label: 'Historial de cambios',
+        icon: <History size={16} />,
+        href: '/supervisor/historial',
+        permiso: 'historial.ver',
       },
     ],
   }
@@ -69,6 +78,7 @@ interface SidebarProps {
   user: {
     nombreCompleto: string
     rol: string
+    permisos?: string[] | null
   }
 }
 
@@ -88,6 +98,7 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const initials = getInitials(user.nombreCompleto)
   const rolDisplay = user.rol.charAt(0).toUpperCase() + user.rol.slice(1)
+  const session: SessionLike = { rol: user.rol, permisos: user.permisos }
 
   function isActive(item: NavItem): boolean {
     if (item.exact) return pathname === item.href
@@ -113,12 +124,17 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5" aria-label="Menú principal">
-        {NAV_SECTIONS.map((section) => (
+        {NAV_SECTIONS.map((section) => {
+          const visibleItems = section.items.filter(
+            (item) => !item.permiso || can(session, item.permiso),
+          )
+          if (visibleItems.length === 0) return null
+          return (
           <div key={section.heading} className="flex flex-col gap-1">
             <p className="text-xs text-blue-300 dark:text-slate-500 font-semibold tracking-wider uppercase px-3 mb-1">
               {section.heading}
             </p>
-            {section.items.map((item) => {
+            {visibleItems.map((item) => {
               const active = isActive(item)
               return (
                 <Link
@@ -148,7 +164,8 @@ export function Sidebar({ user }: SidebarProps) {
               )
             })}
           </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Session section */}

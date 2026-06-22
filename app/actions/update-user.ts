@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { updateUsuario } from '@/back/services/userService'
 
 export type UpdateUserState = {
@@ -25,7 +26,7 @@ const UpdateUserSchema = z
     codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
     puesto: z.string().min(1, 'El puesto es requerido').trim(),
     plantaId: z.number().int().positive().nullable(),
-    rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'cliente'], {
+    rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'servicio_cliente', 'cliente'], {
       error: 'Rol no válido',
     }),
     correo: z.string().email('El correo no es válido').trim(),
@@ -41,7 +42,7 @@ export async function updateUser(
   formData: FormData,
 ): Promise<UpdateUserState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'usuarios.crud')) {
     return { errors: { general: ['No autorizado'] } }
   }
   const accessToken = session.accessToken

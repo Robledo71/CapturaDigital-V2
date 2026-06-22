@@ -26,9 +26,14 @@ import {
   updateInspectionItemAction,
   type UpdateInspectionItemState,
 } from '@/app/actions/update-inspection-item'
+import { can, type SessionLike } from '@/front/lib/permisos'
+import { SAMPLING_RULES } from '@/front/lib/sampling'
 
 interface ReporteDetallePageProps {
   reporte: ReporteDetalleData
+  /** Permisos efectivos del usuario, para decidir qué acciones de workflow mostrar. */
+  rol: string
+  permisos?: string[] | null
 }
 
 const STATUS_CONFIG: Record<string, { dot: string; label: string; pill: string; text: string }> = {
@@ -306,6 +311,7 @@ function EditItemModal({
   action: (formData: FormData) => void
   onClose: () => void
 }) {
+  const [motivo, setMotivo] = useState('')
   const [values, setValues] = useState({
     ok: String(item.ok),
     ng: String(item.ng),
@@ -338,7 +344,6 @@ function EditItemModal({
   const computedScrap = Math.max(0, ngVal - recoveredVal)
 
   const sumMismatch = okVal + ngVal !== item.inspected
-  const ngChangedFromOriginal = ngVal !== item.ng
   const totalIncidents = Object.values(incidentCounts).reduce(
     (acc, v) => acc + Math.max(0, Math.floor(Number(v) || 0)),
     0,
@@ -397,9 +402,17 @@ function EditItemModal({
               { name: 'ok', label: 'Piezas OK' },
               { name: 'ng', label: 'Piezas NG' },
               { name: 'recovered', label: 'Recuperadas' },
-            ] as const).map(({ name, label }) => (
+            ] as const).map(({ name, label }) => {
+              // Con incidencias, el NG se DERIVA de su suma (read-only): se ajusta bajando/
+              // subiendo las incidencias, no el campo directo. Evita que ambos caminos se
+              // desincronicen (causa del falso "actualiza las incidencias").
+              const ngDerived = name === 'ng' && item.incidents.length > 0
+              return (
               <label key={name} className="flex flex-col gap-1.5">
-                <span className="text-xs text-slate-600 dark:text-slate-300">{label}</span>
+                <span className="text-xs text-slate-600 dark:text-slate-300">
+                  {label}
+                  {ngDerived && <span className="ml-1 text-[10px] text-slate-400">(según incidencias)</span>}
+                </span>
                 <input
                   type="number"
                   name={name}
@@ -407,10 +420,16 @@ function EditItemModal({
                   step={1}
                   value={values[name]}
                   onChange={handleChange}
-                  className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                  readOnly={ngDerived}
+                  className={`rounded-md border px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 ${
+                    ngDerived
+                      ? 'cursor-not-allowed border-slate-300 bg-slate-100 text-slate-500 dark:border-[#31476f] dark:bg-[#0c1426]'
+                      : 'border-slate-300 bg-white text-slate-900 dark:border-[#31476f] dark:bg-[#0c1426] dark:text-white'
+                  }`}
                 />
               </label>
-            ))}
+              )
+            })}
             <div className="flex flex-col gap-1.5">
               <span className="text-xs text-slate-600 dark:text-slate-300">Scrap (NG - Recuperadas)</span>
               <div className="cursor-not-allowed rounded-md border border-slate-300 bg-slate-100 dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-500 select-none">
@@ -448,6 +467,13 @@ function EditItemModal({
             </div>
           )}
 
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs text-slate-600 dark:text-slate-300">Motivo de edición <span className="text-red-400">*</span></span>
+            <textarea name="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} required
+              placeholder="Explica por qué editas este ítem..."
+              className="min-h-16 rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 focus:border-blue-500" />
+          </label>
+
           {state && !state.ok && (
             <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
               {state.error}
@@ -460,11 +486,6 @@ function EditItemModal({
           {sumMismatch && (
             <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
               Las piezas OK ({okVal}) + NG ({ngVal}) = {okVal + ngVal}, pero deben sumar {item.inspected} (inspeccionadas).
-            </p>
-          )}
-          {ngChangedFromOriginal && item.incidents.length > 0 && !incidentsMismatch && (
-            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-              Cambiaste las piezas NG. Debes actualizar las incidencias para que la suma cuadre con el nuevo NG.
             </p>
           )}
           {incidentsMismatch && (
@@ -483,7 +504,7 @@ function EditItemModal({
           >
             Cancelar
           </button>
-          <EditItemSubmitButton disabled={isFormInvalid} />
+          <EditItemSubmitButton disabled={isFormInvalid || motivo.trim() === ''} />
         </div>
       </form>
     </div>
@@ -580,16 +601,18 @@ function SamplingModal({
     const defects = Math.max(0, Math.floor(Number(defectsByItem[item.id]) || 0))
     return defects <= item.maxDefects
   })
+  // Rangos de la tabla de muestreo que aplican a este reporte (según piezas inspeccionadas).
+  const applicableMins = new Set(reporte.samplingItems.map((item) => item.min))
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in">
       <form
         action={action}
-        className="w-full max-w-[640px] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
+        className="flex max-h-[90vh] flex-col w-full max-w-[640px] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="reportId" value={String(reporte.reportId)} />
 
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Registrar muestreo de liberacion</h2>
           <button
             type="button"
@@ -601,7 +624,7 @@ function SamplingModal({
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 px-5 py-5">
+        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 px-5 py-5">
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-xs text-slate-600 dark:text-slate-300">Piezas muestreadas</span>
@@ -643,7 +666,7 @@ function SamplingModal({
             {reporte.samplingItems.length === 0 ? (
               <p className="text-sm text-slate-400">No hay items con piezas suficientes para aplicar muestreo.</p>
             ) : (
-              <div className="flex max-h-60 flex-col gap-3 overflow-y-auto pr-1">
+              <div className="flex flex-col gap-3">
                 {reporte.samplingItems.map((item) => {
                   const defects = Math.max(0, Math.floor(Number(defectsByItem[item.id]) || 0))
                   const passes = defects <= item.maxDefects
@@ -690,6 +713,52 @@ function SamplingModal({
             </div>
           </div>
 
+          {/* Tabla de rangos de muestreo (referencia) */}
+          <div className="rounded-lg bg-slate-100 dark:bg-[#0c1426] p-4">
+            <p className="text-xs font-semibold text-slate-900 dark:text-white">Tabla de muestreo (rangos)</p>
+            <p className="mt-0.5 mb-3 text-xs text-slate-500 dark:text-slate-400">
+              Tamaño de muestra y máximo de defectos según las piezas inspeccionadas del lote.
+              {applicableMins.size > 0 && ' El rango resaltado aplica a este reporte.'}
+            </p>
+            <div className="rounded-md border border-slate-200 dark:border-[#25395f]">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-slate-200/80 dark:bg-[#0c1426]">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300">Rango (pzs)</th>
+                    <th className="px-3 py-2 text-right font-semibold text-slate-600 dark:text-slate-300">Muestrear</th>
+                    <th className="px-3 py-2 text-right font-semibold text-slate-600 dark:text-slate-300">Máx. defectos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {SAMPLING_RULES.map((rule) => {
+                    const aplica = applicableMins.has(rule.min)
+                    return (
+                      <tr
+                        key={rule.min}
+                        className={`border-t border-slate-200 dark:border-[#25395f] ${
+                          aplica
+                            ? 'bg-blue-500/10 font-medium text-slate-900 dark:text-white'
+                            : 'text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <td className="px-3 py-1.5 text-left">
+                          {rule.min.toLocaleString('es-MX')}–{rule.max.toLocaleString('es-MX')}
+                          {aplica && (
+                            <span className="ml-1.5 rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[10px] text-blue-600 dark:text-blue-300">
+                              aplica
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">{rule.sampleSize}</td>
+                        <td className="px-3 py-1.5 text-right">{rule.maxDefects}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-slate-600 dark:text-slate-300">Notas / motivo (si no aprueba)</span>
             <textarea
@@ -708,7 +777,7 @@ function SamplingModal({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
+        <div className="flex-shrink-0 flex items-center justify-between gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
           {!approves && (
             <p className="text-xs text-red-500 dark:text-red-300">
               El muestreo no cumple las condiciones. Edita los ítems antes de aprobar.
@@ -814,7 +883,15 @@ function toDate(v: Date | string | null): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
+export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePageProps) {
+  // Permisos efectivos del usuario → controlan qué botones de workflow se muestran.
+  // La frontera real de seguridad sigue siendo cada server action (que vuelve a validar).
+  const session: SessionLike = { rol, permisos }
+  const canMuestreo = can(session, 'reportes.muestreo')
+  const canFirmar = can(session, 'reportes.firmar')
+  const canPublicar = can(session, 'reportes.publicar')
+  const canEditar = can(session, 'reportes.editar')
+
   const [samplingOpen, setSamplingOpen] = useState(false)
   const [defectsByItem, setDefectsByItem] = useState<Record<number, string>>({})
   const [samplingNotes, setSamplingNotes] = useState('')
@@ -987,7 +1064,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
           <div className="flex flex-shrink-0 items-center gap-2">
 
             {/* submitted → registrar muestreo */}
-            {!isLegacy && status === 'submitted' && (
+            {!isLegacy && status === 'submitted' && canMuestreo && (
               <button
                 type="button"
                 onClick={openSamplingModal}
@@ -999,7 +1076,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
             )}
 
             {/* sampling → firmar */}
-            {!isLegacy && status === 'sampling' && (
+            {!isLegacy && status === 'sampling' && canFirmar && (
               <button
                 type="button"
                 onClick={() => setShowSignConfirm(true)}
@@ -1010,7 +1087,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
             )}
 
             {/* signed → publicar */}
-            {!isLegacy && status === 'signed' && (
+            {!isLegacy && status === 'signed' && canPublicar && (
               <button
                 type="button"
                 onClick={() => setShowPublishConfirm(true)}
@@ -1156,7 +1233,7 @@ export function ReporteDetallePage({ reporte }: ReporteDetallePageProps) {
           <InspectionItemsTable
             items={inspectionItems}
             totals={realTotals}
-            onEditItem={status === 'submitted' ? setEditItem : undefined}
+            onEditItem={status === 'submitted' && canEditar ? setEditItem : undefined}
           />
         )}
       </div>

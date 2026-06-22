@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { deleteCliente } from '@/back/services/clientService'
 
 export type DeleteClienteState = { ok?: true; error?: string } | undefined
@@ -11,7 +12,7 @@ export async function deleteClienteAction(
   formData: FormData,
 ): Promise<DeleteClienteState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'clientes.crud')) {
     return { error: 'No autorizado' }
   }
 

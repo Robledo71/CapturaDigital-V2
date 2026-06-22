@@ -1,6 +1,7 @@
 'use server'
 
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { releaseItemFromTablet } from '@/back/services/inspectionSessionService'
 
 export type ReleaseOrderItemState =
@@ -13,7 +14,7 @@ export async function releaseOrderItemAction(
   formData: FormData,
 ): Promise<ReleaseOrderItemState> {
   const session = await getSession()
-  if (!session || session.rol !== 'supervisor') {
+  if (!session || !can(session, 'ordenes.asignar')) {
     return { ok: false, error: 'No autorizado' }
   }
 

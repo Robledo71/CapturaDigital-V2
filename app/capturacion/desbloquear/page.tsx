@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
+import { canAny } from '@/front/lib/permisos'
 import { getCotizaciones } from '@/back/services/cotizacionesService'
 import { DesbloquearCotizacionesClient } from '@/front/components/capturacion/DesbloquearCotizacionesClient'
 
@@ -7,7 +8,9 @@ export const metadata = { title: 'Desbloquear Cotizaciones — Captura Digital' 
 
 export default async function DesbloquearCotizacionesPage() {
   const session = await getSession()
-  if (!session) redirect('/')
+  if (!session || !canAny(session, ['cotizaciones.bloquear', 'cotizaciones.desbloquear'])) {
+    redirect('/')
+  }
 
   const cotizaciones = await getCotizaciones(session.accessToken)
 

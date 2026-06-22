@@ -19,6 +19,7 @@ import {
 } from '@/app/actions/release-order-item'
 import { uploadOrderDocumentAction } from '@/app/actions/upload-order-document'
 import { SearchCotizacionModal } from './SearchCotizacionModal'
+import { can, type SessionLike } from '@/front/lib/permisos'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -29,6 +30,8 @@ const PAGE_SIZE = 10
 interface CargaDeTrabajoPageProps {
   orders: OrderWorkload[]
   tablets: TabletOption[]
+  rol: string
+  permisos?: string[] | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -399,9 +402,10 @@ interface OrderItemRowProps {
   /** Called with the full item object so the assign modal can embed QB hidden fields when item.id === 0. */
   onAssign: (item: OrderItemWorkload) => void
   onRelease: (itemId: number) => void
+  canAsignar: boolean
 }
 
-function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
+function OrderItemRow({ item, onAssign, onRelease, canAsignar }: OrderItemRowProps) {
   // Se puede asignar si el ítem no tiene tablet activa y NUNCA ha enviado reportes:
   // - 'pending'   → recién creado, sin asignar.
   // - 'completed' → liberado sin haber sido trabajado (sin reportes) → se permite reasignar.
@@ -444,7 +448,7 @@ function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
         {item.hasSubmittedReport && item.status !== 'completed' && (
           <span className="text-xs text-amber-500">Reporte enviado</span>
         )}
-        {canAssign && (
+        {canAsignar && canAssign && (
           <button
             type="button"
             onClick={() => onAssign(item)}
@@ -454,7 +458,7 @@ function OrderItemRow({ item, onAssign, onRelease }: OrderItemRowProps) {
           </button>
         )}
 
-        {canRelease && (
+        {canAsignar && canRelease && (
           <button
             type="button"
             onClick={() => onRelease(item.id)}
@@ -474,9 +478,11 @@ interface OrderDetailModalProps {
   order: OrderWorkload
   tablets: TabletOption[]
   onClose: () => void
+  canAsignar: boolean
+  canDocumentos: boolean
 }
 
-function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
+function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }: OrderDetailModalProps) {
   const router = useRouter()
   const overlayRef = useRef<HTMLDivElement>(null)
   // Store the full item object so AssignItemModal can embed QB hidden fields when item.id === 0
@@ -662,6 +668,7 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                       item={item}
                       onAssign={setAssignItem}
                       onRelease={setReleaseItemId}
+                      canAsignar={canAsignar}
                     />
                   ))}
                 </div>
@@ -669,6 +676,7 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
             </section>
 
             {/* Sección 4 — Documentos */}
+            {canDocumentos && (
             <section className="px-6 py-5">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Documentos
@@ -744,6 +752,7 @@ function OrderDetailModal({ order, tablets, onClose }: OrderDetailModalProps) {
                 onChange={handleFileChange}
               />
             </section>
+            )}
           </div>
         </div>
       </div>
@@ -942,8 +951,12 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps) {
+export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTrabajoPageProps) {
   const router = useRouter()
+  const session: SessionLike = { rol, permisos }
+  const canImportar = can(session, 'cotizaciones.importar')
+  const canAsignar = can(session, 'ordenes.asignar')
+  const canDocumentos = can(session, 'ordenes.documentos')
   const [selectedOrder, setSelectedOrder] = useState<OrderWorkload | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -991,6 +1004,7 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
               )}
             </p>
           </div>
+          {canImportar && (
           <button
             type="button"
             onClick={() => setSearchModalOpen(true)}
@@ -999,6 +1013,7 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
             <FileSearch size={15} aria-hidden="true" />
             Buscar cotización
           </button>
+          )}
         </div>
 
         <div className="relative">
@@ -1033,10 +1048,12 @@ export function CargaDeTrabajoPage({ orders, tablets }: CargaDeTrabajoPageProps)
           order={selectedOrder}
           tablets={tablets}
           onClose={() => setSelectedOrder(null)}
+          canAsignar={canAsignar}
+          canDocumentos={canDocumentos}
         />
       )}
 
-      {searchModalOpen && (
+      {searchModalOpen && canImportar && (
         <SearchCotizacionModal
           onClose={() => setSearchModalOpen(false)}
           onOrderFound={(order) => {

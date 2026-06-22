@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import {
   publishReporte,
   registerSamplingDecision,
@@ -37,7 +38,7 @@ export async function registerSamplingAction(
   formData: FormData,
 ): Promise<WorkflowActionState> {
   const session = await getSession()
-  if (!session || session.rol !== 'supervisor') {
+  if (!session || !can(session, 'reportes.muestreo')) {
     return { error: 'No autorizado' }
   }
 
@@ -83,7 +84,7 @@ export async function signReporteAction(
   formData: FormData,
 ): Promise<WorkflowActionState> {
   const session = await getSession()
-  if (!session || session.rol !== 'supervisor') {
+  if (!session || !can(session, 'reportes.firmar')) {
     return { error: 'No autorizado' }
   }
 
@@ -113,7 +114,7 @@ export async function publishReporteAction(
   formData: FormData,
 ): Promise<WorkflowActionState> {
   const session = await getSession()
-  if (!session || session.rol !== 'supervisor') {
+  if (!session || !can(session, 'reportes.publicar')) {
     return { error: 'No autorizado' }
   }
 

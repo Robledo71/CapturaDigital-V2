@@ -5,7 +5,7 @@ export type UsuarioRow = {
   puesto: string
   plantaId: number | null
   plantaNombre: string | null
-  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider'
+  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente'
   correo: string
   isActive: boolean
 }

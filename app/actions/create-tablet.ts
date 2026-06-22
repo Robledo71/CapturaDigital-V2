@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { TabletRow } from '@/shared/types/tablet'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { createTablet as serviceCreateTablet } from '@/back/services/tabletService'
 
 export type CreateTabletState = {
@@ -32,7 +33,7 @@ export async function createTablet(
   formData: FormData,
 ): Promise<CreateTabletState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'tablets.gestionar')) {
     return { errors: { general: ['No autorizado'] } }
   }
   const accessToken = session.accessToken

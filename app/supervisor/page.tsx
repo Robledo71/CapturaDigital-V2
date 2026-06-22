@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { Plus, Tablet } from 'lucide-react'
 import Link from 'next/link'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { getSupervisorDashboardStats, getDashboardBandeja, getDashboardProduccion } from '@/back/services/dashboardService'
 import type { BandejaReporteRow, ProduccionItem } from '@/back/services/dashboardService'
 import { TopBar } from '@/front/components/supervisor/TopBar'
@@ -10,6 +11,7 @@ import { QualityTable } from '@/front/components/supervisor/QualityTable'
 import { ProductionPanel } from '@/front/components/supervisor/ProductionPanel'
 import { LiveClock } from '@/front/components/supervisor/LiveClock'
 import { AutoRefresh } from '@/front/components/supervisor/AutoRefresh'
+import { AccesoRestringido } from '@/front/components/ui/AccesoRestringido'
 
 export default async function SupervisorPage() {
   const session = await getSession()
@@ -22,6 +24,9 @@ export default async function SupervisorPage() {
   ])
   const firstName = session.nombreCompleto.split(' ')[0]
   const plantaNombre = session.plantaNombre ?? null
+  const canVerReportes = can(session, 'reportes.ver')
+  const canVerOrdenes = can(session, 'ordenes.ver')
+  const canVerTablets = can(session, 'tablets.ver')
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -41,20 +46,24 @@ export default async function SupervisorPage() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/supervisor/tablets"
-              className="border border-black dark:border-[#1a2d4d] rounded-lg px-4 py-2 text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
-            >
-              <Tablet size={15} />
-              Tablets
-            </Link>
-            <Link
-              href="/supervisor/carga-trabajo"
-              className="bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
-            >
-              <Plus size={15} />
-              Carga de trabajo
-            </Link>
+            {canVerTablets && (
+              <Link
+                href="/supervisor/tablets"
+                className="border border-black dark:border-[#1a2d4d] rounded-lg px-4 py-2 text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+              >
+                <Tablet size={15} />
+                Tablets
+              </Link>
+            )}
+            {canVerOrdenes && (
+              <Link
+                href="/supervisor/carga-trabajo"
+                className="bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+              >
+                <Plus size={15} />
+                Carga de trabajo
+              </Link>
+            )}
           </div>
         </div>
 
@@ -93,8 +102,8 @@ export default async function SupervisorPage() {
               />
             </div>
 
-            {/* Quality table */}
-            <QualityTable rows={bandeja} />
+            {/* Quality table — bandeja de reportes (requiere ver reportes) */}
+            {canVerReportes ? <QualityTable rows={bandeja} /> : <AccesoRestringido mensaje="No tienes permiso para ver los reportes." />}
 
           </div>
 

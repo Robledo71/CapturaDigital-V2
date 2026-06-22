@@ -10,12 +10,16 @@ import { desbloquearCotizacionAction } from '@/app/actions/desbloquear-cotizacio
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeSession() {
+type Rol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente'
+
+function makeSession(rol: Rol = 'admin') {
   return {
     userId: 1,
-    rol: 'admin' as const,
-    codigoEmpleado: 'ADMIN001',
-    nombreCompleto: 'Admin User',
+    rol,
+    codigoEmpleado: 'EMP001',
+    nombreCompleto: 'Usuario Prueba',
+    plantaId: null,
+    plantaNombre: null,
     accessToken: 'admin-token',
     refreshToken: 'refresh-token',
     expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
@@ -51,6 +55,36 @@ describe('desbloquearCotizacionAction', () => {
     const result = await desbloquearCotizacionAction(undefined, fd)
     expect(result).toEqual({ ok: false, error: 'Sesión expirada o permisos insuficientes.' })
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('capturacion → desbloquear RECHAZADO (perdió el permiso en el flip)', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession('capturacion'))
+    const fd = makeFormData({ cotizacionId: '5', desbloqueado: 'true' })
+
+    const result = await desbloquearCotizacionAction(undefined, fd)
+    expect(result).toEqual({ ok: false, error: 'Sesión expirada o permisos insuficientes.' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('supervisor → desbloquear RECHAZADO (perdió el permiso en el flip)', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession('supervisor'))
+    const fd = makeFormData({ cotizacionId: '5', desbloqueado: 'true' })
+
+    const result = await desbloquearCotizacionAction(undefined, fd)
+    expect(result).toEqual({ ok: false, error: 'Sesión expirada o permisos insuficientes.' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('servicio_cliente → desbloquear PERMITIDO', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession('servicio_cliente'))
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true }), { status: 200 }),
+    )
+    const fd = makeFormData({ cotizacionId: '10', desbloqueado: 'true' })
+
+    const result = await desbloquearCotizacionAction(undefined, fd)
+    expect(result).toEqual({ ok: true })
+    expect(fetch).toHaveBeenCalledOnce()
   })
 
   it('cotizacionId inválido (NaN) → { ok: false, error: "ID inválido." }', async () => {

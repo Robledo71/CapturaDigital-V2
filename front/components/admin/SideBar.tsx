@@ -13,7 +13,9 @@ import {
   Building2,
   MapPin,
   Tablet,
+  ShieldCheck,
   ChevronDown,
+  History,
 } from 'lucide-react'
 
 interface NavItem {
@@ -72,6 +74,26 @@ const NAV_SECTIONS: NavSection[] = [
       },
     ],
   },
+  {
+    heading: 'CONFIGURACIÓN',
+    items: [
+      {
+        label: 'Permisos',
+        icon: <ShieldCheck size={16} />,
+        href: '/admin/permisos',
+      },
+    ],
+  },
+  {
+    heading: 'AUDITORÍA',
+    items: [
+      {
+        label: 'Historial de cambios',
+        icon: <History size={16} />,
+        href: '/admin/historial',
+      },
+    ],
+  },
 ]
 
 interface SideBarProps {
@@ -91,10 +113,11 @@ function getInitials(name: string): string {
 }
 
 const ROL_LABEL: Record<string, string> = {
-  admin:       'Acceso total',
-  supervisor:  'Supervisor',
-  lider:       'Líder',
-  capturacion: 'Capturación',
+  admin:            'Acceso total',
+  supervisor:       'Supervisor',
+  lider:            'Líder',
+  capturacion:      'Capturación',
+  servicio_cliente: 'Servicio al Cliente',
 }
 
 export function SideBar({ user }: SideBarProps) {

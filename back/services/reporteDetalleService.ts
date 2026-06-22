@@ -1,11 +1,8 @@
 import 'server-only'
+import { SAMPLING_RULES, getSamplingRule, type SamplingRule } from '@/front/lib/sampling'
 
-export type SamplingRule = {
-  min: number
-  max: number
-  sampleSize: number
-  maxDefects: number
-}
+// Re-export para conservar la API previa (los consumidores del service no cambian).
+export { SAMPLING_RULES, getSamplingRule, type SamplingRule }
 
 export type SamplingItemRule = SamplingRule & {
   id: number
@@ -75,26 +72,6 @@ export type ReporteDetalleData = {
   legacyCsvTable: unknown
 }
 
-export const SAMPLING_RULES: SamplingRule[] = [
-  { min: 2, max: 8, sampleSize: 2, maxDefects: 1 },
-  { min: 9, max: 15, sampleSize: 2, maxDefects: 1 },
-  { min: 16, max: 25, sampleSize: 2, maxDefects: 1 },
-  { min: 26, max: 50, sampleSize: 2, maxDefects: 1 },
-  { min: 51, max: 90, sampleSize: 2, maxDefects: 1 },
-  { min: 91, max: 150, sampleSize: 2, maxDefects: 1 },
-  { min: 151, max: 280, sampleSize: 5, maxDefects: 1 },
-  { min: 281, max: 500, sampleSize: 8, maxDefects: 1 },
-  { min: 501, max: 1200, sampleSize: 12, maxDefects: 2 },
-  { min: 1201, max: 3200, sampleSize: 20, maxDefects: 2 },
-  { min: 3201, max: 10000, sampleSize: 32, maxDefects: 3 },
-  { min: 10001, max: 35000, sampleSize: 50, maxDefects: 4 },
-  { min: 35001, max: 150000, sampleSize: 80, maxDefects: 5 },
-  { min: 150001, max: 500000, sampleSize: 125, maxDefects: 6 },
-]
-
-export function getSamplingRule(inspected: number): SamplingRule | null {
-  return SAMPLING_RULES.find((rule) => inspected >= rule.min && inspected <= rule.max) ?? null
-}
 
 export type SamplingDecisionInput = {
   reportId: number

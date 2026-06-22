@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { deletePlanta } from '@/back/services/plantService'
 
 export type DeletePlantaState = { ok?: true; error?: string } | undefined
@@ -11,7 +12,7 @@ export async function deletePlantaAction(
   formData: FormData,
 ): Promise<DeletePlantaState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'plantas.crud')) {
     return { error: 'No autorizado' }
   }
 

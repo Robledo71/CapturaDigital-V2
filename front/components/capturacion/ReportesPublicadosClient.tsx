@@ -30,6 +30,13 @@ function getPageNumbers(current: number, total: number): (number | '...')[] {
 interface ReportesPublicadosClientProps {
   stats: PublishedReportesStats
   rows: PublishedReporteRow[]
+  /** Título de la página. Por defecto, el de capturación. */
+  title?: string
+  subtitle?: string
+  /** Si se provee, las filas son clickeables y disparan esta acción (p.ej. abrir modal). */
+  onRowClick?: (row: PublishedReporteRow) => void
+  /** Muestra controles de descarga (botón bulk, checkboxes, acción por fila). */
+  canDescargar: boolean
 }
 
 function StatusBadge({ status }: { status: 'Pendiente' | 'Descargado' }) {
@@ -51,7 +58,14 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClientProps) {
+export function ReportesPublicadosClient({
+  stats,
+  rows,
+  title = 'Captura · Reportes publicados',
+  subtitle,
+  onRowClick,
+  canDescargar,
+}: ReportesPublicadosClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('todos')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -166,9 +180,9 @@ export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClie
       {/* Page header row */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Captura · Reportes publicados</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{title}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {sinDescargar} pendientes de descarga · Conectado a control interno
+            {subtitle ?? `${sinDescargar} pendientes de descarga · Conectado a control interno`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -188,16 +202,18 @@ export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClie
             />
           </div>
           {/* Download selection button */}
-          <button
-            type="button"
-            disabled={selectedIds.size === 0}
-            onClick={handleBulkDownload}
-            aria-label={`Descargar ${selectedIds.size} reportes seleccionados`}
-            className="flex items-center gap-2 border border-blue-200 dark:border-[#1a2d4d] rounded-lg px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <Download size={14} />
-            Descargar selección
-          </button>
+          {canDescargar && (
+            <button
+              type="button"
+              disabled={selectedIds.size === 0}
+              onClick={handleBulkDownload}
+              aria-label={`Descargar ${selectedIds.size} reportes seleccionados`}
+              className="flex items-center gap-2 border border-blue-200 dark:border-[#1a2d4d] rounded-lg px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <Download size={14} />
+              Descargar selección
+            </button>
+          )}
         </div>
       </div>
 
@@ -262,15 +278,17 @@ export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClie
         <table className="w-full">
           <thead>
             <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
-              <th className="w-10 px-4 py-3">
-                <input
-                  type="checkbox"
-                  ref={headerCheckboxRef}
-                  onChange={handleHeaderCheckboxChange}
-                  aria-label="Seleccionar todos los reportes visibles"
-                  className="accent-blue-500 cursor-pointer"
-                />
-              </th>
+              {canDescargar && (
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    ref={headerCheckboxRef}
+                    onChange={handleHeaderCheckboxChange}
+                    aria-label="Seleccionar todos los reportes visibles"
+                    className="accent-blue-500 cursor-pointer"
+                  />
+                </th>
+              )}
               <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
                 ID
               </th>
@@ -298,27 +316,30 @@ export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClie
               <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
                 Estado
               </th>
-              <th className="w-10 px-4 py-3" aria-label="Acciones" />
+              {canDescargar && <th className="w-10 px-4 py-3" aria-label="Acciones" />}
             </tr>
           </thead>
           <tbody>
             {pagedRows.map((row) => (
               <tr
                 key={row.id}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={`border-b border-slate-100 dark:border-[#1a2d4d]/60 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors ${
                   selectedIds.has(row.id) ? 'bg-blue-500/10' : ''
-                }`}
+                } ${onRowClick ? 'cursor-pointer' : ''}`}
               >
                 {/* Checkbox */}
-                <td className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(row.id)}
-                    onChange={() => handleRowCheckboxChange(row.id)}
-                    aria-label={`Seleccionar reporte ${row.id}`}
-                    className="accent-blue-500 cursor-pointer"
-                  />
-                </td>
+                {canDescargar && (
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={() => handleRowCheckboxChange(row.id)}
+                      aria-label={`Seleccionar reporte ${row.id}`}
+                      className="accent-blue-500 cursor-pointer"
+                    />
+                  </td>
+                )}
 
                 {/* ID */}
                 <td className="px-4 py-3">
@@ -371,23 +392,25 @@ export function ReportesPublicadosClient({ stats, rows }: ReportesPublicadosClie
                 </td>
 
                 {/* Download action */}
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(row)}
-                    aria-label={`Descargar reporte ${row.id}`}
-                    className="p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-[#1a2d4d] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                  >
-                    <Download size={14} />
-                  </button>
-                </td>
+                {canDescargar && (
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(row)}
+                      aria-label={`Descargar reporte ${row.id}`}
+                      className="p-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-[#1a2d4d] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                    >
+                      <Download size={14} />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
 
             {visibleRows.length === 0 && (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={canDescargar ? 11 : 9}
                   className="text-center text-slate-500 text-sm py-10"
                 >
                   Sin resultados para esa búsqueda

@@ -1,6 +1,7 @@
 'use server'
 
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { assignItemToTablet } from '@/back/services/inspectionSessionService'
 import type { OrderItemTree } from '@/back/services/inspectionSessionService'
 
@@ -68,7 +69,7 @@ export async function assignOrderItemAction(
   // 1. Sesión / autorización
   const session = await getSession()
   if (!session) return { ok: false, error: 'Sesión expirada. Por favor inicia sesión nuevamente.' }
-  if (session.rol !== 'supervisor' && session.rol !== 'admin') {
+  if (!can(session, 'ordenes.asignar')) {
     return { ok: false, error: 'No autorizado.' }
   }
 

@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { PlantaRow } from '@/shared/types/planta'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { createPlanta as serviceCreatePlanta } from '@/back/services/plantService'
 
 export type CreatePlantaState = {
@@ -25,7 +26,7 @@ export async function createPlanta(
   formData: FormData,
 ): Promise<CreatePlantaState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'plantas.crud')) {
     return { errors: { general: ['No autorizado'] } }
   }
   const accessToken = session.accessToken

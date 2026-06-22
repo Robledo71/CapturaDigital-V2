@@ -1,6 +1,7 @@
 'use server'
 
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 
 export type UploadOrderDocumentState =
   | { ok: true; docType: 'hoe' | 'arranque-seguro' }
@@ -12,7 +13,7 @@ export async function uploadOrderDocumentAction(
   formData: FormData,
 ): Promise<UploadOrderDocumentState> {
   const session = await getSession()
-  if (!session || (session.rol !== 'supervisor' && session.rol !== 'admin')) {
+  if (!session || !can(session, 'ordenes.documentos')) {
     return { ok: false, error: 'No autorizado' }
   }
 

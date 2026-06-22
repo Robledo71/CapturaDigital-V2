@@ -4,7 +4,10 @@ import { cookies } from 'next/headers'
 
 export type JWTPayload = {
   userId: number
-  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'cliente'
+  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente'
+  // Permisos efectivos que entrega qb_sync (acción fina). Opcional durante la
+  // migración: si no viene, el frontend cae a la matriz por defecto en front/lib/permisos.ts.
+  permisos?: string[]
   codigoEmpleado: string
   nombreCompleto: string
   plantaId: number | null

@@ -67,6 +67,22 @@ describe('updateInspectionItemAction', () => {
     expect(result).toEqual({ ok: false, error: 'Datos inválidos' })
   })
 
+  it('sin motivo → { ok: false, error: "El motivo de edición es obligatorio." }', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession())
+    const fd = makeFormData({ reportId: '1', itemId: '1', ok: '50', ng: '5', total: '55' })
+
+    const result = await updateInspectionItemAction(undefined, fd)
+    expect(result).toEqual({ ok: false, error: 'El motivo de edición es obligatorio.' })
+  })
+
+  it('motivo solo espacios → { ok: false, error: "El motivo de edición es obligatorio." }', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession())
+    const fd = makeFormData({ reportId: '1', itemId: '1', ok: '50', ng: '5', total: '55', motivo: '   ' })
+
+    const result = await updateInspectionItemAction(undefined, fd)
+    expect(result).toEqual({ ok: false, error: 'El motivo de edición es obligatorio.' })
+  })
+
   it('suma de piezas válida (ok + ng = total) → éxito', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession())
     vi.mocked(fetch).mockResolvedValueOnce(
@@ -81,6 +97,7 @@ describe('updateInspectionItemAction', () => {
       recovered: '3',
       total: '100',
       incidents: '[]',
+      motivo: 'Corrección de conteo por error del operador',
     })
 
     const result = await updateInspectionItemAction(undefined, fd)
@@ -94,12 +111,14 @@ describe('updateInspectionItemAction', () => {
       total_pieces: number
       recovered_pieces: number
       scrap_pieces: number
+      motivo: string
     }
     expect(body.ok_pieces).toBe(90)
     expect(body.ng_pieces).toBe(10)
     expect(body.total_pieces).toBe(100)
     expect(body.recovered_pieces).toBe(3)
     expect(body.scrap_pieces).toBe(7) // ng - recovered
+    expect(body.motivo).toBe('Corrección de conteo por error del operador')
   })
 
   it('qb_sync devuelve error → { ok: false, error: mensaje }', async () => {
@@ -117,6 +136,7 @@ describe('updateInspectionItemAction', () => {
       ok: '50',
       ng: '5',
       total: '55',
+      motivo: 'Ajuste por revisión de calidad',
     })
 
     const result = await updateInspectionItemAction(undefined, fd)
@@ -129,7 +149,7 @@ describe('updateInspectionItemAction', () => {
       new Response('{}', { status: 500 }),
     )
 
-    const fd = makeFormData({ reportId: '1', itemId: '1', ok: '0', ng: '0', total: '0' })
+    const fd = makeFormData({ reportId: '1', itemId: '1', ok: '0', ng: '0', total: '0', motivo: 'Error de sistema' })
 
     const result = await updateInspectionItemAction(undefined, fd)
     expect(result).toMatchObject({ ok: false, error: expect.any(String) })
@@ -148,6 +168,7 @@ describe('updateInspectionItemAction', () => {
       ng: '5',
       recovered: '10', // más que ng
       total: '85',
+      motivo: 'Re-clasificación de piezas recuperadas',
     })
 
     await updateInspectionItemAction(undefined, fd)

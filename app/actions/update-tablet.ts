@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { TabletRow } from '@/shared/types/tablet'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { updateTablet as serviceUpdateTablet } from '@/back/services/tabletService'
 
 export type UpdateTabletState = {
@@ -38,7 +39,7 @@ export async function updateTablet(
   formData: FormData,
 ): Promise<UpdateTabletState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'tablets.gestionar')) {
     return { errors: { general: ['No autorizado'] } }
   }
   const accessToken = session.accessToken

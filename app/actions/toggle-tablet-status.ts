@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 
 export type ToggleTabletStatusState =
   | { ok: true }
@@ -13,7 +14,7 @@ export async function toggleTabletStatusAction(
   formData: FormData,
 ): Promise<ToggleTabletStatusState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'tablets.gestionar')) {
     return { ok: false, error: 'No autorizado.' }
   }
 

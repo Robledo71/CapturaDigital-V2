@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 
 export type IncidentInput = { description: string; count: number }
 
@@ -15,7 +16,7 @@ export async function updateInspectionItemAction(
   formData: FormData,
 ): Promise<UpdateInspectionItemState> {
   const session = await getSession()
-  if (!session || !['supervisor', 'admin', 'lider'].includes(session.rol)) {
+  if (!session || !can(session, 'reportes.editar')) {
     return { ok: false, error: 'No autorizado' }
   }
 
@@ -38,6 +39,9 @@ export async function updateInspectionItemAction(
   const rawTotal = parseInt(String(formData.get('total') ?? ''), 10)
   const total_pieces = isNaN(rawTotal) ? ok_pieces + ng_pieces : Math.max(ok_pieces + ng_pieces, rawTotal)
 
+  const motivo = String(formData.get('motivo') ?? '').trim()
+  if (!motivo) return { ok: false, error: 'El motivo de edición es obligatorio.' }
+
   let incidents: { incident_name: string; affected_pieces: number }[] = []
   try {
     const raw = JSON.parse(String(formData.get('incidents') ?? '[]')) as IncidentInput[]
@@ -55,7 +59,7 @@ export async function updateInspectionItemAction(
         'X-App-Token': process.env.X_APP_TOKEN ?? '',
         Authorization: `Bearer ${session.accessToken}`,
       },
-      body: JSON.stringify({ total_pieces, ok_pieces, ng_pieces, scrap_pieces, recovered_pieces, incidents }),
+      body: JSON.stringify({ total_pieces, ok_pieces, ng_pieces, scrap_pieces, recovered_pieces, incidents, motivo }),
     },
   )
 

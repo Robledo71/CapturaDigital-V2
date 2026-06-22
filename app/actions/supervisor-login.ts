@@ -53,6 +53,7 @@ export async function loginSupervisor(
   let plantaNombre: string | null
   let accessToken: string
   let refreshToken: string
+  let permisos: string[] | undefined
 
   try {
     const res = await fetch(`${process.env.QSYNC_API_URL}/qb_sync/auth/login`, {
@@ -85,6 +86,9 @@ export async function loginSupervisor(
     plantaNombre = body.data.user.plantaNombre ?? null
     accessToken = body.data.accessToken
     refreshToken = body.data.refreshToken
+    // Permisos efectivos del rol (RBAC) que entrega qb_sync. Si aún no vienen,
+    // queda undefined y el frontend cae a la matriz SEED en front/lib/permisos.ts.
+    permisos = Array.isArray(body.data.permisos) ? body.data.permisos : undefined
   } catch {
     return {
       errors: { general: ['No se pudo conectar con el servidor. Intenta nuevamente.'] },
@@ -92,7 +96,7 @@ export async function loginSupervisor(
     }
   }
 
-  const validRoles = ['admin', 'supervisor', 'capturacion', 'lider', 'cliente'] as const
+  const validRoles = ['admin', 'supervisor', 'capturacion', 'lider', 'servicio_cliente', 'cliente'] as const
   type ValidRol = typeof validRoles[number]
   if (!validRoles.includes(rol as ValidRol)) {
     return {
@@ -104,6 +108,7 @@ export async function loginSupervisor(
   await createSession({
     userId,
     rol: rol as ValidRol,
+    permisos,
     codigoEmpleado,
     nombreCompleto,
     plantaId,
@@ -113,11 +118,12 @@ export async function loginSupervisor(
   })
 
   const redirectByRol: Record<ValidRol, string> = {
-    supervisor:  '/supervisor',
-    lider:       '/supervisor',
-    admin:       '/admin',
-    capturacion: '/capturacion',
-    cliente:     '/cliente',
+    supervisor:       '/supervisor',
+    lider:            '/supervisor',
+    admin:            '/admin',
+    capturacion:      '/capturacion',
+    servicio_cliente: '/servicio-cliente',
+    cliente:          '/cliente',
   }
   redirect(redirectByRol[rol as ValidRol])
 }

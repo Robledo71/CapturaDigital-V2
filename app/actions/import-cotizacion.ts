@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { searchOrder, searchCotizaciones, type QBOrderData, type QBCotizacion, type QBOrderItem } from '@/back/services/qb-api'
 import { type OrderWorkload, type OrderItemWorkload, type QuotationSummary } from '@/back/services/cargaDeTrabajoService'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { orderExists } from '@/back/services/qb_sync-api'
 
 const Schema = z.object({
@@ -112,7 +113,7 @@ export async function importCotizacionAction(
   formData: FormData,
 ): Promise<ImportCotizacionState> {
   const session = await getSession()
-  if (!session || (session.rol !== 'supervisor' && session.rol !== 'admin')) {
+  if (!session || !can(session, 'cotizaciones.importar')) {
     return { ok: false, error: 'No autorizado.' }
   }
 

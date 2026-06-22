@@ -220,6 +220,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
                   <option value="supervisor">Supervisor</option>
                   <option value="lider">Líder</option>
                   <option value="capturacion">Capturación</option>
+                  <option value="servicio_cliente">Servicio al Cliente</option>
                   <option value="cliente">Cliente</option>
                 </select>
                 {state?.errors?.rol && (

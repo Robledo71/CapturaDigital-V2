@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 
 export type ToggleUserStatusState =
   | { ok: true }
@@ -13,7 +14,7 @@ export async function toggleUserStatusAction(
   formData: FormData,
 ): Promise<ToggleUserStatusState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'usuarios.crud')) {
     return { ok: false, error: 'No autorizado.' }
   }
 

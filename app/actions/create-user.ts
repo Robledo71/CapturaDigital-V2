@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import { getSession } from '@/back/services/session'
+import { can } from '@/front/lib/permisos'
 import { createUsuario } from '@/back/services/userService'
 
 export type CreateUserState = {
@@ -27,7 +28,7 @@ const CreateUserSchema = z
     codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
     puesto: z.string().min(1, 'El puesto es requerido').trim(),
     plantaId: z.number().int().positive().nullable(),
-    rol: z.enum(['supervisor', 'capturacion', 'admin', 'lider', 'cliente'], {
+    rol: z.enum(['supervisor', 'capturacion', 'admin', 'lider', 'servicio_cliente', 'cliente'], {
       error: 'Rol no válido',
     }),
     correo: z.string().email('El correo no es válido').trim(),
@@ -49,7 +50,7 @@ export async function createUser(
   formData: FormData,
 ): Promise<CreateUserState> {
   const session = await getSession()
-  if (!session || session.rol !== 'admin') {
+  if (!session || !can(session, 'usuarios.crud')) {
     return { errors: { general: ['No autorizado'] } }
   }
   const accessToken = session.accessToken
