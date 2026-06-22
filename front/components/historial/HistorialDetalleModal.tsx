@@ -38,6 +38,11 @@ export function HistorialDetalleModal({ registro, onClose }: HistorialDetalleMod
   const { before, after } = registro.valores
   const sinDetalle = CAMPOS.every(({ key }) => before[key] === null && after[key] === null)
 
+  // Comparativo de incidencias por nombre (unión de antes + después).
+  const incBeforeMap = new Map(registro.incidencias.before.map((i) => [i.name, i.pieces]))
+  const incAfterMap = new Map(registro.incidencias.after.map((i) => [i.name, i.pieces]))
+  const incNames = Array.from(new Set([...incBeforeMap.keys(), ...incAfterMap.keys()]))
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -116,6 +121,61 @@ export function HistorialDetalleModal({ registro, onClose }: HistorialDetalleMod
                           }`}
                         >
                           <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{label}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
+                            {antes ?? '—'}
+                          </td>
+                          <td className="px-3 py-2 text-center text-slate-400">
+                            {cambio && <ArrowRight size={13} className="inline" aria-hidden="true" />}
+                          </td>
+                          <td
+                            className={`px-3 py-2 text-right tabular-nums font-medium ${
+                              cambio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            {despues ?? '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Comparativo de incidencias */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+              Incidencias (antes → después)
+            </p>
+            {incNames.length === 0 ? (
+              <p className="rounded-lg bg-slate-50 dark:bg-[#0f2138] px-3 py-3 text-sm text-slate-500 dark:text-slate-400">
+                Sin incidencias en esta edición.
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-[#0f2138] text-xs text-slate-500 dark:text-slate-400">
+                      <th className="px-3 py-2 text-left font-semibold">Incidencia</th>
+                      <th className="px-3 py-2 text-right font-semibold">Antes</th>
+                      <th className="px-3 py-2 text-center font-semibold"></th>
+                      <th className="px-3 py-2 text-right font-semibold">Después</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {incNames.map((name) => {
+                      const antes = incBeforeMap.has(name) ? incBeforeMap.get(name) ?? null : null
+                      const despues = incAfterMap.has(name) ? incAfterMap.get(name) ?? null : null
+                      const cambio = antes !== despues
+                      return (
+                        <tr
+                          key={name}
+                          className={`border-t border-slate-100 dark:border-slate-800 ${
+                            cambio ? 'bg-blue-500/5' : ''
+                          }`}
+                        >
+                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{name}</td>
                           <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">
                             {antes ?? '—'}
                           </td>

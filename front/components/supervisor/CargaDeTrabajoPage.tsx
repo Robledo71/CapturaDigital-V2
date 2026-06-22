@@ -3,7 +3,8 @@
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { Briefcase, ChevronLeft, ChevronRight, FileCheck, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
+import { AlertTriangle, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, FileCheck, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
+import { getOrderInventory, isIndefiniteInventoryPlant } from '@/front/lib/inventory'
 import type {
   OrderWorkload,
   OrderItemWorkload,
@@ -401,11 +402,13 @@ interface OrderItemRowProps {
   item: OrderItemWorkload
   /** Called with the full item object so the assign modal can embed QB hidden fields when item.id === 0. */
   onAssign: (item: OrderItemWorkload) => void
+  /** true cuando la planta no maneja inventario — muestra "Indefinido" en lugar de la cantidad. */
+  indefinite?: boolean
   onRelease: (itemId: number) => void
   canAsignar: boolean
 }
 
-function OrderItemRow({ item, onAssign, onRelease, canAsignar }: OrderItemRowProps) {
+function OrderItemRow({ item, onAssign, onRelease, canAsignar, indefinite = false }: OrderItemRowProps) {
   // Se puede asignar si el ítem no tiene tablet activa y NUNCA ha enviado reportes:
   // - 'pending'   → recién creado, sin asignar.
   // - 'completed' → liberado sin haber sido trabajado (sin reportes) → se permite reasignar.
@@ -430,7 +433,11 @@ function OrderItemRow({ item, onAssign, onRelease, canAsignar }: OrderItemRowPro
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-slate-500">
-          {item.inventario.toLocaleString('es-MX')} pzs
+          {indefinite ? (
+            <span className="italic text-slate-400">Indefinido</span>
+          ) : (
+            <>{item.inventario.toLocaleString('es-MX')} pzs</>
+          )}
         </span>
 
         <ItemStatusBadge status={item.status} />
@@ -669,6 +676,7 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
                       onAssign={setAssignItem}
                       onRelease={setReleaseItemId}
                       canAsignar={canAsignar}
+                      indefinite={isIndefiniteInventoryPlant(order.plantName)}
                     />
                   ))}
                 </div>
@@ -835,6 +843,9 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
               No. Parte
             </th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Inventario
+            </th>
             <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
               Items
             </th>
@@ -846,6 +857,8 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
         <tbody>
           {paged.map((order) => {
             const pending = countPendingUnassigned(order)
+            const inv = getOrderInventory(order.items, isIndefiniteInventoryPlant(order.plantName))
+            const invPct = Math.round(inv.pct * 100)
             return (
               <tr
                 key={order.id}
@@ -869,6 +882,32 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
                 <td className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">{order.plantName}</td>
                 <td className="px-4 py-3">
                   <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{order.partNumber}</span>
+                </td>
+                <td className="px-4 py-3">
+                  {inv.indefinite ? (
+                    <span className="text-xs italic text-slate-400">Indefinido</span>
+                  ) : inv.total === 0 ? (
+                    <span className="text-xs text-slate-400">—</span>
+                  ) : (
+                    <div className="flex items-center gap-1.5" title={`${inv.done.toLocaleString('es-MX')} de ${inv.total.toLocaleString('es-MX')} piezas (${invPct}%)`}>
+                      {inv.complete ? (
+                        <CheckCircle2 size={14} className="flex-shrink-0 text-green-500" aria-label="Inventario completado" />
+                      ) : inv.level === 'warning' ? (
+                        <AlertTriangle size={14} className="flex-shrink-0 text-amber-500" aria-label="Inventario por agotarse" />
+                      ) : null}
+                      <span
+                        className={`text-xs tabular-nums ${
+                          inv.complete
+                            ? 'font-semibold text-green-600 dark:text-green-400'
+                            : inv.level === 'warning'
+                              ? 'font-semibold text-amber-600 dark:text-amber-400'
+                              : 'text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        {inv.done.toLocaleString('es-MX')}/{inv.total.toLocaleString('es-MX')} ({invPct}%)
+                      </span>
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-slate-200 bg-slate-100 dark:border-[#25395f] dark:bg-[#111a30] px-2 text-xs text-slate-500 dark:text-slate-400">

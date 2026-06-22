@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { ThemeToggle } from '@/front/components/ui/ThemeToggle'
+import { NotificationsBell } from '@/front/components/supervisor/NotificationsBell'
 
 interface TopBarProps {
   crumb?: string
@@ -27,6 +28,7 @@ export function TopBar({ crumb }: TopBarProps) {
 
       {/* Actions */}
       <div className="flex items-center gap-3">
+        <NotificationsBell />
         <ThemeToggle />
       </div>
     </header>

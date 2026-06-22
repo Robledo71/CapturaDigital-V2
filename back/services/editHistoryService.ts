@@ -8,6 +8,12 @@ export type PiezasSnapshot = {
   recovered: number | null
 }
 
+/** Incidencia en un snapshot del historial. */
+export type IncidenciaSnapshot = {
+  name: string
+  pieces: number
+}
+
 export type EditHistoryRow = {
   id: number
   dailyReportId: number
@@ -18,6 +24,8 @@ export type EditHistoryRow = {
   createdAt: string
   /** Valores antes/después de la edición, para ver qué se modificó. */
   valores: { before: PiezasSnapshot; after: PiezasSnapshot }
+  /** Incidencias antes/después (lista vacía en registros previos a esta función). */
+  incidencias: { before: IncidenciaSnapshot[]; after: IncidenciaSnapshot[] }
 }
 
 function apiHeaders(accessToken: string): Record<string, string> {
