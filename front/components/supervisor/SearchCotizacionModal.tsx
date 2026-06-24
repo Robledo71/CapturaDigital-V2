@@ -80,7 +80,7 @@ export function SearchCotizacionModal({ onClose, onOrderFound }: Props) {
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
+        className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -8,10 +8,12 @@ import { logoutUser } from '@/app/actions/logout'
 import {
   LayoutDashboard,
   FileText,
+  Menu,
   Tablet,
   ChevronDown,
   UserCheck,
   History,
+  X,
 } from 'lucide-react'
 import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
 
@@ -95,6 +97,7 @@ function getInitials(nombreCompleto: string | undefined): string {
 
 export function Sidebar({ user }: SidebarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const initials = getInitials(user.nombreCompleto)
   const rolDisplay = user.rol.charAt(0).toUpperCase() + user.rol.slice(1)
@@ -105,8 +108,23 @@ export function Sidebar({ user }: SidebarProps) {
     return pathname === item.href || pathname.startsWith(item.href + '/')
   }
 
-  return (
-    <aside className="w-52 flex-shrink-0 border-r border-[#2d4f7c] dark:border-[#1a2d4d] bg-[#1e3a5f] dark:bg-[#0c1829] flex flex-col">
+  // Close drawer on route change (navigation)
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // Close drawer on Escape key
+  useEffect(() => {
+    if (!mobileOpen) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [mobileOpen])
+
+  const sidebarContent = (
+    <>
       {/* Brand header */}
       <div className="px-4 py-5 flex items-center gap-3 border-b border-[#2d4f7c] dark:border-[#1a2d4d]">
         <Image
@@ -120,6 +138,15 @@ export function Sidebar({ user }: SidebarProps) {
           <p className="text-white dark:text-white font-bold text-sm leading-tight truncate">Captura Digital QB</p>
           <p className="text-[#64748b] text-xs leading-tight mt-0.5">v2 · Servicio de inspección</p>
         </div>
+        {/* Close button — only visible in mobile drawer */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Cerrar menú"
+          className="ml-auto lg:hidden p-1 rounded-md text-blue-300 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -214,6 +241,45 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
         )}
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Hamburger button — only visible on mobile (<lg) */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Abrir menú"
+        aria-expanded={mobileOpen}
+        className="fixed top-2 left-2 z-50 flex h-9 w-9 items-center justify-center rounded-lg bg-[#1e3a5f] dark:bg-[#0c1829] border border-[#2d4f7c] dark:border-[#1a2d4d] text-white shadow-md lg:hidden"
+      >
+        <Menu size={18} />
+      </button>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        aria-label="Navegación principal"
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#2d4f7c] dark:border-[#1a2d4d] bg-[#1e3a5f] dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar — always visible on lg+ */}
+      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-[#2d4f7c] dark:border-[#1a2d4d] bg-[#1e3a5f] dark:bg-[#0c1829]">
+        {sidebarContent}
+      </aside>
+    </>
   )
 }

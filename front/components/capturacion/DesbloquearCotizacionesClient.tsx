@@ -101,8 +101,8 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">Desbloquear Cotizaciones</h1>
           <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-400">
@@ -130,6 +130,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
           </p>
         ) : (
           <>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-[#1a2d4d]">
@@ -183,6 +184,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial }: Props) 
                 ))}
               </tbody>
             </table>
+            </div>
 
             {/* Pagination */}
             <div className="flex items-center justify-between border-t border-slate-200 dark:border-[#1a2d4d] px-4 py-3">

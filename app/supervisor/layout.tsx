@@ -15,7 +15,7 @@ export default async function SupervisorLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-[#F5F5F7] dark:bg-[#070e1a]">
       <Sidebar user={{ nombreCompleto: session.nombreCompleto, rol: session.rol, permisos: session.permisos }} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {children}
       </div>
       <SupportButton />

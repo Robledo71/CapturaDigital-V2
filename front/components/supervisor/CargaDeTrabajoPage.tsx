@@ -183,7 +183,7 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
+        className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="orderItemId" value={String(orderItemId)} />
 
@@ -335,7 +335,7 @@ function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedR
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
+        className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="orderItemId" value={String(orderItemId)} />
 
@@ -609,7 +609,7 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Datos de la orden
               </h3>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
                 <div>
                   <dt className="text-xs text-slate-500">No. de parte</dt>
                   <dd className="font-mono text-sm text-slate-800 dark:text-slate-200">{order.partNumber}</dd>
@@ -828,6 +828,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:shadow-none">
+      <div className="overflow-x-auto">
       <table className="w-full table-auto text-sm">
         <thead>
           <tr className="border-b border-blue-200 dark:border-[#1a2d4d] dark:bg-[#0a1628]">
@@ -928,6 +929,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
           })}
         </tbody>
       </table>
+      </div>
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-1 pt-3 pb-4 px-4">
@@ -1026,7 +1028,7 @@ export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTr
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
+      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
 
         <div className="flex items-start justify-between gap-4">
           <div>

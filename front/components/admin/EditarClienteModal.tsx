@@ -55,10 +55,10 @@ export function EditarClienteModal({ cliente, onClose, onSuccess }: EditarClient
       aria-labelledby="modal-editar-cliente-titulo"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
     >
-      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-md mx-4 animate-scale-in">
+      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-md mx-4 animate-scale-in max-h-[90vh] overflow-y-auto flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-blue-200 dark:border-[#1a2d4d]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-blue-200 dark:border-[#1a2d4d] flex-shrink-0">
           <h2 id="modal-editar-cliente-titulo" className="text-blue-950 dark:text-white font-semibold text-base">
             Editar cliente
           </h2>
@@ -73,10 +73,10 @@ export function EditarClienteModal({ cliente, onClose, onSuccess }: EditarClient
         </div>
 
         {/* Form */}
-        <form action={dispatch}>
+        <form action={dispatch} className="flex flex-col flex-1 min-h-0">
           <input type="hidden" name="id" value={String(cliente.id)} />
 
-          <div className="p-6 flex flex-col gap-4">
+          <div className="p-6 flex flex-col gap-4 overflow-y-auto flex-1">
 
             {/* Error general */}
             {state?.errors?.general && (
@@ -112,7 +112,7 @@ export function EditarClienteModal({ cliente, onClose, onSuccess }: EditarClient
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-blue-200 dark:border-[#1a2d4d]">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-blue-200 dark:border-[#1a2d4d] flex-shrink-0">
             <button
               type="button"
               onClick={onClose}

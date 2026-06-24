@@ -153,10 +153,10 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Scrollable area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 flex flex-col gap-5">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-5">
 
         {/* Page header */}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">Reportes de inspección</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
@@ -165,7 +165,7 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
           </div>
           <div className="flex items-center gap-3">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <Search
                 size={15}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
@@ -177,14 +177,14 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 aria-label="Buscar reportes"
-                className="pl-9 pr-4 py-2 text-sm rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-800 dark:text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700/40 w-52 transition-colors"
+                className="pl-9 pr-4 py-2 text-sm rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-800 dark:text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-700 focus:ring-1 focus:ring-blue-700/40 w-full sm:w-52 transition-colors"
               />
             </div>
 
             {/* New report */}
             <Link
               href="/supervisor/carga-trabajo"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors flex-shrink-0"
             >
               <Plus size={15} />
               Nuevo
@@ -196,7 +196,7 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
         <div
           role="tablist"
           aria-label="Filtrar por estatus"
-          className="flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d]"
+          className="flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto"
         >
           {TABS.map((tab) => {
             const isActive = activeTab === tab.key

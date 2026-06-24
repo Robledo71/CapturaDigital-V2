@@ -152,10 +152,10 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
       : `${tabletsOffline} dispositivo${tabletsOffline !== 1 ? 's' : ''} offline`
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-6">
 
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">Bienvenido, Administrador</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Sistema de administración · Quality Bolca</p>
@@ -163,8 +163,8 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
         <p className="text-sm text-slate-500 whitespace-nowrap capitalize">{today}</p>
       </div>
 
-      {/* KPI grid — 3 × 2 */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* KPI grid — 1 col mobile, 2 sm, 3 lg */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <AdminStatCard
           label="Usuarios activos"
           value={String(stats.usuariosActivos)}
@@ -214,7 +214,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
         <h2 id="acciones-heading" className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
           Acciones rápidas
         </h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <QuickAction
             label="Nuevo usuario"
             href="/admin/usuarios"

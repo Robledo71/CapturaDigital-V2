@@ -68,7 +68,7 @@ export function ReporteDetalleModal({ reporteId, onClose }: ReporteDetalleModalP
       role="dialog"
       aria-modal="true"
       aria-labelledby="reporte-detalle-titulo"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-6 backdrop-blur-sm animate-fade-in sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       {/* Contenedor: alto acotado a 85vh; el cuerpo hace scroll, header/footer quedan fijos */}

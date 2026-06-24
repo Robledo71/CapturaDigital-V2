@@ -128,10 +128,10 @@ export function PermisosMatrix({ permissions, matrix, editableRoles }: PermisosM
   }
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Encabezado */}
-        <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 mb-4">
           <div>
             <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <ShieldCheck size={20} className="text-blue-600 dark:text-blue-400" />

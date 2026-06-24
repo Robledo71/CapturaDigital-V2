@@ -367,7 +367,7 @@ function EditItemModal({
     >
       <form
         action={action}
-        className="w-full max-w-md overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="reportId" value={String(reportId)} />
         <input type="hidden" name="itemId" value={String(item.id)} />
@@ -837,7 +837,7 @@ function ConfirmWorkflowModal({
     >
       <form
         action={action}
-        className="w-full max-w-sm overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
+        className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="reportId" value={String(reportId)} />
 
@@ -1042,8 +1042,8 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
-        <div className="flex items-start justify-between gap-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-3">
               <Link
@@ -1061,7 +1061,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
             </p>
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
 
             {/* submitted → registrar muestreo */}
             {!isLegacy && status === 'submitted' && canMuestreo && (
@@ -1113,8 +1113,8 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
           </div>
         )}
 
-        <div className="grid grid-cols-12 gap-5">
-            <div className="col-span-3 flex flex-col">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-5">
+            <div className="sm:col-span-1 lg:col-span-3 flex flex-col">
               <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Datos del servicio</h2>
                 <dl className="flex flex-col gap-2.5">
@@ -1140,7 +1140,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
               </div>
             </div>
 
-            <div className="col-span-6 flex flex-col gap-5">
+            <div className="sm:col-span-2 lg:col-span-6 flex flex-col gap-5">
               <div className="flex flex-1 flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -1159,7 +1159,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <MiniStatCard label="Piezas OK" value={realTotals.ok} valueClass="text-green-500" />
                       <MiniStatCard label="Piezas NG" value={realTotals.ng} valueClass="text-orange-400" warning={realTotals.ng > 0} />
                       <MiniStatCard label="Scrap" value={realTotals.scrap} />
@@ -1208,7 +1208,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
               </div>
             </div>
 
-            <div className="col-span-3 flex flex-col">
+            <div className="sm:col-span-1 lg:col-span-3 flex flex-col">
               <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
                 <div className="flex items-center gap-1.5">
                   <Clock size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />

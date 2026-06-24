@@ -35,7 +35,7 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
     : rows
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden p-6 gap-4">
+    <div className="flex flex-1 flex-col overflow-hidden p-4 sm:p-6 gap-4">
       {/* Search */}
       <div className="flex items-center gap-3">
         <div className="relative max-w-xs w-full">

@@ -20,7 +20,7 @@ export default async function CapturacionLayout({
           permisos: session.permisos,
         }}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
+      <div className="flex-1 flex flex-col overflow-hidden pt-14 lg:pt-0">{children}</div>
     </div>
   )
 }

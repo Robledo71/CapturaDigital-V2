@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, Eye, EyeOff } from 'lucide-react'
 import { createUser } from '@/app/actions/create-user'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import type { PlantaRow } from '@/shared/types/planta'
@@ -63,6 +63,8 @@ const inputCls =
 export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioModalProps) {
   const [state, dispatch] = useActionState(createUser, undefined)
   const [values, setValues] = useState<FormValues>(EMPTY_VALUES)
+  const [showPwd, setShowPwd] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -84,10 +86,10 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
       aria-labelledby="modal-titulo"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
     >
-      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-lg mx-4 animate-scale-in">
+      <div className="bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#1a2d4d] rounded-xl shadow-2xl w-full max-w-lg mx-4 animate-scale-in max-h-[90vh] overflow-y-auto flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-blue-200 dark:border-[#1a2d4d]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-blue-200 dark:border-[#1a2d4d] flex-shrink-0">
           <h2 id="modal-titulo" className="text-blue-950 dark:text-white font-semibold text-base">
             Nuevo usuario
           </h2>
@@ -102,8 +104,8 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
         </div>
 
         {/* Form */}
-        <form action={dispatch}>
-          <div className="p-6 flex flex-col gap-4">
+        <form action={dispatch} className="flex flex-col flex-1 min-h-0">
+          <div className="p-6 flex flex-col gap-4 overflow-y-auto flex-1">
 
             {/* Error general */}
             {state?.errors?.general && (
@@ -253,16 +255,27 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
                 <label htmlFor="contrasena" className="text-xs font-medium text-black dark:text-slate-400">
                   Contraseña
                 </label>
-                <input
-                  id="contrasena"
-                  name="contrasena"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Mínimo 8 caracteres"
-                  value={values.contrasena}
-                  onChange={handleChange}
-                  className={inputCls}
-                />
+                <div className="relative">
+                  <input
+                    id="contrasena"
+                    name="contrasena"
+                    type={showPwd ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Mínimo 8 caracteres"
+                    value={values.contrasena}
+                    onChange={handleChange}
+                    className={`${inputCls} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd((v) => !v)}
+                    aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-pressed={showPwd}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  >
+                    {showPwd ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                  </button>
+                </div>
                 {state?.errors?.contrasena && (
                   <p className="text-red-400 text-xs">{state.errors.contrasena[0]}</p>
                 )}
@@ -273,16 +286,27 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
                 <label htmlFor="confirmContrasena" className="text-xs font-medium text-black dark:text-slate-400">
                   Confirmar contraseña
                 </label>
-                <input
-                  id="confirmContrasena"
-                  name="confirmContrasena"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Repite la contraseña"
-                  value={values.confirmContrasena}
-                  onChange={handleChange}
-                  className={inputCls}
-                />
+                <div className="relative">
+                  <input
+                    id="confirmContrasena"
+                    name="confirmContrasena"
+                    type={showConfirm ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    placeholder="Repite la contraseña"
+                    value={values.confirmContrasena}
+                    onChange={handleChange}
+                    className={`${inputCls} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    aria-pressed={showConfirm}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  >
+                    {showConfirm ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+                  </button>
+                </div>
                 {state?.errors?.confirmContrasena && (
                   <p className="text-red-400 text-xs">{state.errors.confirmContrasena[0]}</p>
                 )}
@@ -292,7 +316,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-blue-200 dark:border-[#1a2d4d]">
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-blue-200 dark:border-[#1a2d4d] flex-shrink-0">
             <button
               type="button"
               onClick={onClose}

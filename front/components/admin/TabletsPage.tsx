@@ -238,10 +238,10 @@ export function TabletsPage({ initialTablets, plantas }: TabletsPageProps) {
       )}
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
 
           {/* Page header */}
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-white">Tablets</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
@@ -250,7 +250,7 @@ export function TabletsPage({ initialTablets, plantas }: TabletsPageProps) {
             </div>
             <div className="flex items-center gap-3">
               {/* Search */}
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <Search
                   size={15}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
@@ -262,14 +262,14 @@ export function TabletsPage({ initialTablets, plantas }: TabletsPageProps) {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   aria-label="Buscar tablets"
-                  className="pl-9 pr-4 py-2 text-sm rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 w-52 transition-colors"
+                  className="pl-9 pr-4 py-2 text-sm rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 w-full sm:w-52 transition-colors"
                 />
               </div>
               {/* Add button */}
               <button
                 type="button"
                 onClick={() => setShowNuevoModal(true)}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap"
               >
                 <Plus size={15} />
                 Registrar tablet
@@ -281,7 +281,7 @@ export function TabletsPage({ initialTablets, plantas }: TabletsPageProps) {
           <div
             role="tablist"
             aria-label="Filtrar por estado"
-            className="flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d]"
+            className="flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto"
           >
             {tabs.map((tab) => {
               const isActive = activeTab === tab.key

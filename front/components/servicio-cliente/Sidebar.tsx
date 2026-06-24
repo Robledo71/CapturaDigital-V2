@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -10,6 +10,8 @@ import {
   ClipboardList,
   Lock,
   ChevronDown,
+  Menu,
+  X,
 } from 'lucide-react'
 import { ThemeToggle } from '@/front/components/ui/ThemeToggle'
 import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
@@ -76,10 +78,26 @@ const ROL_LABEL: Record<string, string> = {
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const session: SessionLike = { rol: user.rol, permisos: user.permisos }
 
-  return (
-    <aside className="w-52 flex-shrink-0 border-r border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] flex flex-col">
+  // Close drawer on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // Close drawer on Escape key
+  useEffect(() => {
+    if (!mobileOpen) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMobileOpen(false)
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [mobileOpen])
+
+  const sidebarContent = (
+    <>
       {/* Brand header */}
       <div className="px-4 py-5 flex items-center gap-3 border-b border-slate-200 dark:border-[#1a2d4d]">
         <Image
@@ -93,10 +111,19 @@ export function Sidebar({ user }: SidebarProps) {
           <p className="text-slate-900 dark:text-white font-bold text-sm leading-tight truncate">Captura Digital</p>
           <p className="text-[#64748b] text-xs leading-tight mt-0.5">Servicio al cliente</p>
         </div>
+        {/* Close button — only visible in mobile drawer */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          aria-label="Cerrar menú"
+          className="ml-auto lg:hidden p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5" aria-label="Menú principal">
         {NAV_SECTIONS.map((section) => {
           const visibleItems = section.items.filter(
             (item) => !item.permiso || can(session, item.permiso),
@@ -113,6 +140,7 @@ export function Sidebar({ user }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
                     className={
                       isActive
                         ? 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-900 dark:text-white bg-slate-100 dark:bg-[#1a3a5c] w-full text-left'
@@ -180,6 +208,45 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
         )}
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Hamburger button — only visible on mobile (<lg) */}
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Abrir menú"
+        aria-expanded={mobileOpen}
+        className="fixed top-2 left-2 z-50 flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-[#0c1829] border border-slate-200 dark:border-[#1a2d4d] text-slate-700 dark:text-white shadow-md lg:hidden"
+      >
+        <Menu size={18} />
+      </button>
+
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          aria-hidden="true"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        aria-label="Navegación principal"
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop sidebar — always visible on lg+ */}
+      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829]">
+        {sidebarContent}
+      </aside>
+    </>
   )
 }
