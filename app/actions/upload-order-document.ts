@@ -4,7 +4,7 @@ import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 
 export type UploadOrderDocumentState =
-  | { ok: true; docType: 'hoe' | 'arranque-seguro' }
+  | { ok: true; docType: 'hoe' | 'arranque-seguro'; orderItemId: number }
   | { ok: false; error: string }
   | undefined
 
@@ -17,12 +17,13 @@ export async function uploadOrderDocumentAction(
     return { ok: false, error: 'No autorizado' }
   }
 
-  const orderId = String(formData.get('orderId') ?? '').trim()
+  const orderItemIdRaw = String(formData.get('orderItemId') ?? '').trim()
   const docType = String(formData.get('docType') ?? '').trim()
   const file = formData.get('file') as File | null
 
-  if (!orderId || isNaN(parseInt(orderId, 10))) {
-    return { ok: false, error: 'ID de orden inválido' }
+  const orderItemId = parseInt(orderItemIdRaw, 10)
+  if (!orderItemIdRaw || isNaN(orderItemId) || orderItemId <= 0) {
+    return { ok: false, error: 'ID de item inválido' }
   }
   if (docType !== 'hoe' && docType !== 'arranque-seguro') {
     return { ok: false, error: 'Tipo de documento inválido' }
@@ -39,7 +40,7 @@ export async function uploadOrderDocumentAction(
   body.append(fieldName, file)
 
   const res = await fetch(
-    `${process.env.QSYNC_API_URL}/qb_sync/orders/${orderId}/documents/${docType}`,
+    `${process.env.QSYNC_API_URL}/qb_sync/order-items/${orderItemId}/documents/${docType}`,
     {
       method: 'POST',
       headers: {
@@ -58,5 +59,5 @@ export async function uploadOrderDocumentAction(
     }
   }
 
-  return { ok: true, docType: docType as 'hoe' | 'arranque-seguro' }
+  return { ok: true, docType: docType as 'hoe' | 'arranque-seguro', orderItemId }
 }

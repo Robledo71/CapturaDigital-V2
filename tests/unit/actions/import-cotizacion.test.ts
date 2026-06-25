@@ -14,10 +14,16 @@ vi.mock('@/back/services/qb_sync-api', () => ({
   orderExists: vi.fn(),
 }))
 
+vi.mock('@/back/services/cargaDeTrabajoService', () => ({
+  getOrderWorkloadById: vi.fn(),
+}))
+
 import { getSession } from '@/back/services/session'
 import { searchOrder, searchCotizaciones } from '@/back/services/qb-api'
 import { orderExists } from '@/back/services/qb_sync-api'
+import { getOrderWorkloadById } from '@/back/services/cargaDeTrabajoService'
 import { importCotizacionAction } from '@/app/actions/import-cotizacion'
+import type { OrderWorkload, OrderItemWorkload } from '@/back/services/cargaDeTrabajoService'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -154,8 +160,66 @@ describe('importCotizacionAction', () => {
     expect(result).toEqual({ ok: false, error: 'Orden no encontrada en QB.' })
   })
 
-  // 5. Orden ya existe en DB → error de duplicado
-  it('orden ya existe en DB → { ok: false, error: "Esta orden ya fue importada..." }', async () => {
+  // 4b. Orden cerrada → bloqueada (no admite nuevas asignaciones)
+  it('orden cerrada en QB → { ok:false } y no consulta cotizaciones', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(searchOrder).mockResolvedValue({
+      ok: true,
+      found: true,
+      data: { ...makeQBOrder(), state: 'closed' },
+    } as never)
+
+    const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Esta orden está cerrada y no admite nuevas asignaciones.',
+    })
+    expect(searchCotizaciones).not.toHaveBeenCalled()
+    expect(orderExists).not.toHaveBeenCalled()
+  })
+
+  // 5. Orden ya existe en DB — merge: items persistidos se fusionan con los de QB
+  it('orden ya existe en DB → merge items persistidos + QB, retorna ok:true', async () => {
+    const persistedItem: OrderItemWorkload = {
+      id: 42,
+      partNumber: 'HN-5540',
+      partName: 'Panel Lateral',
+      status: 'in_progress',
+      inventario: 50,
+      inventarioTerminado: 0,
+      assignedAt: null,
+      assignedTablet: { id: 7, alias: 'T-07', serialNumber: null },
+      quotationConsecutive: 'COT-001',
+      hasSubmittedReport: false,
+      hoe: null,
+      arranqueSeguro: null,
+    }
+    const persistedOrder: OrderWorkload = {
+      id: 999,
+      consecutiveNumber: 'ORD-001',
+      clientName: 'Honda México',
+      plantName: 'Honda Celaya',
+      plantId: 5,
+      partNumber: 'HN-5540',
+      partName: 'Panel Lateral',
+      serviceType: 'Inspección',
+      orderStatus: 'open',
+      regionName: null,
+      serviceTypeDetail: null,
+      piecesPerHour: null,
+      authorizedHours: null,
+      pricePerHour: null,
+      language: null,
+      userName: null,
+      clientContactName: null,
+      clientContactEmail: null,
+      quotations: [],
+      items: [persistedItem],
+      hoe: null,
+      arranqueSeguro: null,
+    }
+
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
     vi.mocked(searchOrder).mockResolvedValue({
       ok: true,
@@ -163,11 +227,220 @@ describe('importCotizacionAction', () => {
       data: makeQBOrder(),
     })
     vi.mocked(orderExists).mockResolvedValue(true)
+    vi.mocked(searchCotizaciones).mockResolvedValue({
+      ok: true,
+      data: [makeQBCotizacion()],
+    })
+    vi.mocked(getOrderWorkloadById).mockResolvedValue(persistedOrder)
 
     const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
 
-    expect(result).toMatchObject({ ok: false })
-    expect((result as { ok: false; error: string }).error).toContain('ya fue importada')
+    expect(result).toMatchObject({ ok: true })
+    const { order } = result as { ok: true; order: OrderWorkload }
+    // The persisted DB id must be used (not the QB id)
+    expect(order.id).toBe(999)
+    // The item that existed in DB must carry its persisted state (id=42, tablet assigned)
+    expect(order.items).toHaveLength(1)
+    expect(order.items[0].id).toBe(42)
+    expect(order.items[0].status).toBe('in_progress')
+    expect(order.items[0].assignedTablet).not.toBeNull()
+  })
+
+  // 5b. Merge: QB tiene un item nuevo (no persistido) → aparece como id=0 pending
+  it('merge — QB trae un item nuevo no persistido → aparece con id=0 y status pending', async () => {
+    const persistedItem: OrderItemWorkload = {
+      id: 42,
+      partNumber: 'HN-5540',
+      partName: 'Panel Lateral',
+      status: 'in_progress',
+      inventario: 50,
+      inventarioTerminado: 0,
+      assignedAt: null,
+      assignedTablet: { id: 7, alias: 'T-07', serialNumber: null },
+      quotationConsecutive: 'COT-001',
+      hasSubmittedReport: false,
+      hoe: null,
+      arranqueSeguro: null,
+    }
+    const persistedOrder: OrderWorkload = {
+      id: 999,
+      consecutiveNumber: 'ORD-001',
+      clientName: 'Honda México',
+      plantName: 'Honda Celaya',
+      plantId: 5,
+      partNumber: 'HN-5540',
+      partName: 'Panel Lateral',
+      serviceType: 'Inspección',
+      orderStatus: 'open',
+      regionName: null,
+      serviceTypeDetail: null,
+      piecesPerHour: null,
+      authorizedHours: null,
+      pricePerHour: null,
+      language: null,
+      userName: null,
+      clientContactName: null,
+      clientContactEmail: null,
+      quotations: [],
+      items: [persistedItem],
+      hoe: null,
+      arranqueSeguro: null,
+    }
+
+    // QB cotizacion has two items: the already-persisted one AND a new one
+    const qbCotizacionWithTwoItems = {
+      ...makeQBCotizacion(),
+      order_items: [
+        {
+          inventory: '50',
+          inventory_done: '0',
+          part_number: 'HN-5540',
+          part_name: 'Panel Lateral',
+          incidents: null,
+          plant_name: 'Honda Celaya',
+        },
+        {
+          inventory: '30',
+          inventory_done: '0',
+          part_number: 'HN-9900',
+          part_name: 'Tapa Motor',
+          incidents: null,
+          plant_name: 'Honda Celaya',
+        },
+      ],
+    }
+
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(searchOrder).mockResolvedValue({
+      ok: true,
+      found: true,
+      data: makeQBOrder(),
+    })
+    vi.mocked(orderExists).mockResolvedValue(true)
+    vi.mocked(searchCotizaciones).mockResolvedValue({
+      ok: true,
+      data: [qbCotizacionWithTwoItems],
+    })
+    vi.mocked(getOrderWorkloadById).mockResolvedValue(persistedOrder)
+
+    const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
+
+    expect(result).toMatchObject({ ok: true })
+    const { order } = result as { ok: true; order: OrderWorkload }
+    expect(order.items).toHaveLength(2)
+
+    const alreadyAssigned = order.items.find((i) => i.partNumber === 'HN-5540')
+    expect(alreadyAssigned?.id).toBe(42)
+    expect(alreadyAssigned?.status).toBe('in_progress')
+
+    const newItem = order.items.find((i) => i.partNumber === 'HN-9900')
+    expect(newItem?.id).toBe(0)
+    expect(newItem?.status).toBe('pending')
+    expect(newItem?.assignedTablet).toBeNull()
+  })
+
+  // 5c. Merge: persisted tiene item que QB ya no lista → se conserva en el resultado
+  it('merge — item persistido ausente en QB se conserva para no perder items asignados', async () => {
+    const persistedItem: OrderItemWorkload = {
+      id: 42,
+      partNumber: 'HN-5540',
+      partName: 'Panel Lateral',
+      status: 'completed',
+      inventario: 50,
+      inventarioTerminado: 50,
+      assignedAt: null,
+      assignedTablet: null,
+      quotationConsecutive: 'COT-001',
+      hasSubmittedReport: true,
+      hoe: null,
+      arranqueSeguro: null,
+    }
+    const persistedOrder: OrderWorkload = {
+      id: 999,
+      consecutiveNumber: 'ORD-001',
+      clientName: 'Honda México',
+      plantName: 'Honda Celaya',
+      plantId: 5,
+      partNumber: 'HN-5540',
+      partName: 'Panel Lateral',
+      serviceType: 'Inspección',
+      orderStatus: 'open',
+      regionName: null,
+      serviceTypeDetail: null,
+      piecesPerHour: null,
+      authorizedHours: null,
+      pricePerHour: null,
+      language: null,
+      userName: null,
+      clientContactName: null,
+      clientContactEmail: null,
+      quotations: [],
+      items: [persistedItem],
+      hoe: null,
+      arranqueSeguro: null,
+    }
+
+    // QB cotizacion has a DIFFERENT item (the old one was removed from QB)
+    const qbCotizacionDifferentItem = {
+      ...makeQBCotizacion(),
+      order_items: [
+        {
+          inventory: '30',
+          inventory_done: '0',
+          part_number: 'HN-9900',
+          part_name: 'Tapa Motor',
+          incidents: null,
+          plant_name: 'Honda Celaya',
+        },
+      ],
+    }
+
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(searchOrder).mockResolvedValue({
+      ok: true,
+      found: true,
+      data: makeQBOrder(),
+    })
+    vi.mocked(orderExists).mockResolvedValue(true)
+    vi.mocked(searchCotizaciones).mockResolvedValue({
+      ok: true,
+      data: [qbCotizacionDifferentItem],
+    })
+    vi.mocked(getOrderWorkloadById).mockResolvedValue(persistedOrder)
+
+    const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
+
+    expect(result).toMatchObject({ ok: true })
+    const { order } = result as { ok: true; order: OrderWorkload }
+    // Both items must be present: the new QB item AND the old persisted one
+    expect(order.items).toHaveLength(2)
+    const preserved = order.items.find((i) => i.partNumber === 'HN-5540')
+    expect(preserved?.id).toBe(42)
+    expect(preserved?.status).toBe('completed')
+  })
+
+  // 5d. Merge: getOrderWorkloadById retorna null (inconsistencia) → cae back a datos QB
+  it('merge — getOrderWorkloadById retorna null → retorna datos QB (fallback)', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(searchOrder).mockResolvedValue({
+      ok: true,
+      found: true,
+      data: makeQBOrder(),
+    })
+    vi.mocked(orderExists).mockResolvedValue(true)
+    vi.mocked(searchCotizaciones).mockResolvedValue({
+      ok: true,
+      data: [makeQBCotizacion()],
+    })
+    vi.mocked(getOrderWorkloadById).mockResolvedValue(null)
+
+    const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
+
+    expect(result).toMatchObject({ ok: true })
+    const { order } = result as { ok: true; order: OrderWorkload }
+    // Falls back to QB data: QB order id, item with id=0
+    expect(order.id).toBe(1001)
+    expect(order.items[0].id).toBe(0)
   })
 
   // 6. Filtro de planta: supervisor con planta distinta → rechazado

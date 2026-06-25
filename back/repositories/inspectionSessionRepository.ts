@@ -34,10 +34,31 @@ export type SessionPayload = {
 
 // order / quotation / orderItem are QB pass-through data forwarded to qb_sync
 // verbatim, so they are typed as already-wire-shaped records.
+
+export type OtherItemEntry = {
+  quotation: {
+    consecutive_number: string | number
+    client_email?: string | null
+    status?: string | null
+    purchase_order_number?: string | null
+    contact_emails?: string | null
+    order_user_name?: string | null
+  }
+  orderItem: {
+    part_number?: string | null
+    part_name?: string
+    inventory?: number
+    inventory_done?: number
+    plant_name?: string
+  }
+}
+
 export type OrderItemTree = {
   order: Record<string, unknown>
   quotation: Record<string, unknown>
   orderItem: Record<string, unknown>
+  /** Other items in the same order (not the one being assigned). Only sent on first-time upsert (orderItemId === 0). */
+  otherItems?: OtherItemEntry[]
 }
 
 function inspectionSessionBody(s: SessionPayload) {
@@ -94,15 +115,19 @@ export async function createItemWithSession(
   accessToken: string,
 ): Promise<SessionApiResult> {
   try {
+    const payload: Record<string, unknown> = {
+      order: tree.order,
+      quotation: tree.quotation,
+      orderItem: tree.orderItem,
+      inspectionSession: inspectionSessionBody(session),
+    }
+    if (tree.otherItems && tree.otherItems.length > 0) {
+      payload.otherItems = tree.otherItems
+    }
     const res = await fetch(`${baseUrl()}/qb_sync/order-items`, {
       method: 'POST',
       headers: apiHeaders(accessToken),
-      body: JSON.stringify({
-        order: tree.order,
-        quotation: tree.quotation,
-        orderItem: tree.orderItem,
-        inspectionSession: inspectionSessionBody(session),
-      }),
+      body: JSON.stringify(payload),
     })
     return interpret(res)
   } catch {

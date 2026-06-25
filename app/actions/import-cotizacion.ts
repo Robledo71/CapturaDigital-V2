@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { searchOrder, searchCotizaciones, type QBOrderData, type QBCotizacion, type QBOrderItem } from '@/back/services/qb-api'
-import { type OrderWorkload, type OrderItemWorkload, type QuotationSummary } from '@/back/services/cargaDeTrabajoService'
+import { type OrderWorkload, type OrderItemWorkload, type QuotationSummary, getOrderWorkloadById } from '@/back/services/cargaDeTrabajoService'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { orderExists } from '@/back/services/qb_sync-api'
@@ -50,8 +50,19 @@ function toItemArray(value: unknown): QBOrderItem[] {
  */
 function buildOrderWorkloadFromQB(
   qbOrder: QBOrderData,
-  cotizaciones: QBCotizacion[],
+  rawCotizaciones: QBCotizacion[],
 ): OrderWorkload {
+  // SysQB puede devolver la MISMA cotización más de una vez. Si no la deduplicamos,
+  // tanto las cotizaciones (key q.id) como sus items se renderizarían duplicados
+  // (warning de React "two children with the same key").
+  const seenCotIds = new Set<number>()
+  const cotizaciones = rawCotizaciones.filter((cotizacion) => {
+    const cid = Number(cotizacion.id)
+    if (seenCotIds.has(cid)) return false
+    seenCotIds.add(cid)
+    return true
+  })
+
   const items: OrderItemWorkload[] = cotizaciones.flatMap((cotizacion) =>
     toItemArray(cotizacion.order_items).map((item) => ({
       // id is 0 as a sentinel — the real DB id is assigned after the upsert in assign-order-item
@@ -65,6 +76,9 @@ function buildOrderWorkloadFromQB(
       assignedTablet: null,
       quotationConsecutive: cotizacion.consecutive_number ?? null,
       hasSubmittedReport: false,
+      // QB items are never persisted yet — no documents uploaded
+      hoe: null,
+      arranqueSeguro: null,
     }))
   )
 
@@ -132,15 +146,19 @@ export async function importCotizacionAction(
     return { ok: false, error: ERROR_MESSAGES['not_found'] }
   }
 
-  // --- Step 1b: block re-import if order already exists in DB (vía qb_sync API) ---
-  const orderId = Number(orderResult.data.id)
-  const existsInDb = await orderExists(orderId, session.accessToken)
-  if (existsInDb) {
+  // --- Step 1a-bis: bloquear órdenes cerradas/canceladas — no admiten nuevas asignaciones.
+  // (Evita además que el fallback del merge muestre sus ítems como asignables.)
+  const rawState = (orderResult.data.state ?? '').trim().toLowerCase()
+  if (['closed', 'cerrada', 'cancelled', 'cancelada'].includes(rawState)) {
     return {
       ok: false,
-      error: 'Esta orden ya fue importada. Búscala directamente en la tabla de carga de trabajo.',
+      error: 'Esta orden está cerrada y no admite nuevas asignaciones.',
     }
   }
+
+  // --- Step 1b: check if order already exists in DB (vía qb_sync API) ---
+  const orderId = Number(orderResult.data.id)
+  const existsInDb = await orderExists(orderId, session.accessToken)
 
   // --- Step 1c: filtro estricto por planta — admin ve todo, el resto solo su planta ---
   if (session.rol !== 'admin') {
@@ -161,7 +179,64 @@ export async function importCotizacionAction(
   }
 
   // --- Step 3: map raw QB data to OrderWorkload shape, ready for the modal ---
-  const order = buildOrderWorkloadFromQB(orderResult.data, cotizacionesResult.data)
+  const qbOrder = buildOrderWorkloadFromQB(orderResult.data, cotizacionesResult.data)
+
+  // --- Step 4: merge with persisted items if the order already exists in DB ---
+  // Re-buscar una orden ya importada debe mostrar TODOS sus items: los ya asignados
+  // con su id real + estado, y los que faltan por trabajar como id=0 (asignables).
+  if (!existsInDb) {
+    return { ok: true, order: qbOrder }
+  }
+
+  const persisted = await getOrderWorkloadById(orderId, session.accessToken)
+  if (!persisted) {
+    // El flag de existencia era true pero el workload no devolvió la orden → usar QB.
+    return { ok: true, order: qbOrder }
+  }
+
+  // Clave de cruce: cotización|part_number (así identifica qb_sync un order_item).
+  // OJO: SysQB NO expone id único por item, así que puede haber VARIOS items con la
+  // misma clave (misma parte/lote). Por eso consumimos los persistidos 1:1 (no por
+  // lookup compartido) — si no, varios items de QB tomarían el MISMO objeto persistido
+  // y se duplicarían las keys de React (items que parpadean/desaparecen).
+  const itemKey = (item: OrderItemWorkload): string =>
+    `${item.quotationConsecutive ?? ''}|${item.partNumber ?? ''}`
+
+  // Dedup defensivo: si el workload devolviera el mismo item (mismo id) más de una vez
+  // (p.ej. qb_sync sin reiniciar con el dedup), no lo propagamos → evita keys duplicadas.
+  const seenIds = new Set<number>()
+  const uniquePersisted = persisted.items.filter((item) => {
+    if (seenIds.has(item.id)) return false
+    seenIds.add(item.id)
+    return true
+  })
+
+  // Cola de items persistidos por clave (para consumir cada uno una sola vez).
+  const persistedQueues = new Map<string, OrderItemWorkload[]>()
+  for (const item of uniquePersisted) {
+    const k = itemKey(item)
+    const q = persistedQueues.get(k)
+    if (q) q.push(item)
+    else persistedQueues.set(k, [item])
+  }
+
+  // Por cada item de QB: consume UNA coincidencia persistida (id real + estado);
+  // si no queda ninguna para esa clave, se deja el de QB (id=0, asignable).
+  const mergedFromQB = qbOrder.items.map((qbItem) => {
+    const q = persistedQueues.get(itemKey(qbItem))
+    if (q && q.length > 0) return q.shift() as OrderItemWorkload
+    return qbItem
+  })
+
+  // Persistidos que no cruzaron con ningún item de QB → se agregan (no perder trabajo).
+  const leftoverPersisted = [...persistedQueues.values()].flat()
+
+  const order: OrderWorkload = {
+    ...qbOrder,
+    id: persisted.id,
+    plantId: persisted.plantId ?? qbOrder.plantId,
+    items: [...mergedFromQB, ...leftoverPersisted],
+  }
 
   return { ok: true, order }
 }

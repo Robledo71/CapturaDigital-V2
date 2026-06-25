@@ -3,7 +3,7 @@
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { assignItemToTablet } from '@/back/services/inspectionSessionService'
-import type { OrderItemTree } from '@/back/services/inspectionSessionService'
+import type { OrderItemTree, OtherItemEntry } from '@/back/services/inspectionSessionService'
 
 export type AssignOrderItemState =
   | { ok: true }
@@ -21,11 +21,28 @@ function mapOrderState(raw: string): 'open' | 'closed' | 'cancelled' {
 }
 
 /**
+ * Parse the optional `otherItems` JSON field from formData.
+ * Returns undefined if the field is absent, empty, or malformed.
+ */
+function parseOtherItems(formData: FormData): OtherItemEntry[] | undefined {
+  const raw = getStr(formData, 'otherItems')
+  if (!raw) return undefined
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed) || parsed.length === 0) return undefined
+    return parsed as OtherItemEntry[]
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Build the QB pass-through tree (order + quotation + orderItem) from the form.
  * Form-field names (qb_*) → qb_sync wire field names. This is form decoding, so
  * it lives in the action, not in the service/repository.
  */
 function buildTree(formData: FormData): OrderItemTree {
+  const otherItems = parseOtherItems(formData)
   return {
     order: {
       consecutive_number:   getStr(formData, 'qb_order_consecutive'),
@@ -59,6 +76,7 @@ function buildTree(formData: FormData): OrderItemTree {
       plant_name:     getStr(formData, 'qb_item_plant_name'),
       incidents:      getStr(formData, 'qb_item_incidents'),
     },
+    ...(otherItems ? { otherItems } : {}),
   }
 }
 

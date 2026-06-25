@@ -29,6 +29,8 @@ interface RawItem {
   assignedTablet: RawAssignedTablet | null
   hasSubmittedReport: boolean
   quotationConsecutive: string | null
+  hoe: string | null
+  arranqueSeguro: string | null
 }
 
 interface RawQuotation {
@@ -94,6 +96,8 @@ export type OrderItemWorkload = {
   assignedTablet: AssignedTablet | null
   quotationConsecutive: string | null
   hasSubmittedReport: boolean
+  hoe: string | null
+  arranqueSeguro: string | null
 }
 
 export type OrderWorkload = {
@@ -158,6 +162,8 @@ function mapWorkloadOrder(raw: RawOrder): OrderWorkload {
       : null,
     quotationConsecutive: item.quotationConsecutive ?? null,
     hasSubmittedReport: item.hasSubmittedReport ?? false,
+    hoe: item.hoe ?? null,
+    arranqueSeguro: item.arranqueSeguro ?? null,
   }))
 
   const firstItem = items[0]

@@ -229,7 +229,7 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
 
           {/* Page header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-white">Plantas</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
@@ -268,8 +268,8 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
-            <div className="overflow-x-auto overflow-y-hidden">
+          <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
+            <div className="overflow-x-auto overflow-y-hidden scrollbar-thin">
               <table className="w-full text-sm" aria-label="Tabla de plantas">
                 <thead>
                   <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
@@ -334,7 +334,7 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
 
           {/* Paginación — solo frontend, sin requests al servidor */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between gap-4 pt-1">
+            <div className="shrink-0 flex items-center justify-between gap-3 pt-1">
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Mostrando{' '}
                 <span className="font-medium text-slate-900 dark:text-white">
@@ -344,17 +344,17 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
                 <span className="font-medium text-slate-900 dark:text-white">{filtered.length}</span>{' '}
                 registros
               </p>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage <= 1}
                   aria-label="Página anterior"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 dark:border-[#1a2d4d] text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft size={15} />
+                  <ChevronLeft size={16} aria-hidden="true" />
                 </button>
-                <span className="px-2 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                   {currentPage} / {totalPages}
                 </span>
                 <button
@@ -362,9 +362,9 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage >= totalPages}
                   aria-label="Página siguiente"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 dark:border-[#1a2d4d] text-slate-500 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] hover:text-slate-900 dark:hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <ChevronRight size={15} />
+                  <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>
             </div>

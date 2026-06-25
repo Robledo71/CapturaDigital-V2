@@ -55,3 +55,33 @@ body {
 .animate-slide-up   { animation: slide-up    0.3s ease-out both; }
 .animate-slide-in-right { animation: slide-in-right 0.3s ease-out both; }
 .animate-pulse-dot  { animation: pulse-dot   1.5s ease-in-out infinite; }
+
+/* Scrollbar sutil: barra delgada y translúcida (evita el scrollbar grueso por defecto,
+   sobre todo en Windows). Visible al hacer scroll pero discreta. */
+.scrollbar-thin {
+  scrollbar-width: thin;                          /* Firefox */
+  scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.35);    /* slate-500 @ 35% */
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.6);
+}
+
+/* Scrollbar oculto pero con scroll funcional (para swipe en móvil). */
+.scrollbar-none {
+  scrollbar-width: none;                          /* Firefox */
+  -ms-overflow-style: none;                       /* IE/Edge */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;                                  /* WebKit */
+}

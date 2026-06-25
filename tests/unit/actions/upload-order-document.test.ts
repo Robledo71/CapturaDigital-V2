@@ -84,7 +84,7 @@ describe('uploadOrderDocumentAction', () => {
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '10', docType: 'hoe', file: SMALL_FILE }),
+      makeFormData({ orderItemId: '10', docType: 'hoe', file: SMALL_FILE }),
     )
 
     expect(result).toEqual({ ok: false, error: 'No autorizado' })
@@ -99,22 +99,34 @@ describe('uploadOrderDocumentAction', () => {
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '10', docType: 'hoe', file: SMALL_FILE }),
+      makeFormData({ orderItemId: '10', docType: 'hoe', file: SMALL_FILE }),
     )
 
     expect(result).toEqual({ ok: false, error: 'No autorizado' })
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('orderId inválido (NaN) → { ok: false, error: "ID de orden inválido" }', async () => {
+  it('orderItemId inválido (NaN) → { ok: false, error: "ID de item inválido" }', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: 'abc', docType: 'hoe', file: SMALL_FILE }),
+      makeFormData({ orderItemId: 'abc', docType: 'hoe', file: SMALL_FILE }),
     )
 
-    expect(result).toEqual({ ok: false, error: 'ID de orden inválido' })
+    expect(result).toEqual({ ok: false, error: 'ID de item inválido' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('orderItemId = 0 (item no persistido) → { ok: false, error: "ID de item inválido" }', async () => {
+    vi.mocked(getSession).mockResolvedValue(supervisorSession())
+
+    const result = await uploadOrderDocumentAction(
+      undefined,
+      makeFormData({ orderItemId: '0', docType: 'hoe', file: SMALL_FILE }),
+    )
+
+    expect(result).toEqual({ ok: false, error: 'ID de item inválido' })
     expect(fetch).not.toHaveBeenCalled()
   })
 
@@ -123,7 +135,7 @@ describe('uploadOrderDocumentAction', () => {
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '10', docType: 'contrato', file: SMALL_FILE }),
+      makeFormData({ orderItemId: '10', docType: 'contrato', file: SMALL_FILE }),
     )
 
     expect(result).toEqual({ ok: false, error: 'Tipo de documento inválido' })
@@ -135,7 +147,7 @@ describe('uploadOrderDocumentAction', () => {
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '10', docType: 'hoe', file: ZERO_FILE }),
+      makeFormData({ orderItemId: '10', docType: 'hoe', file: ZERO_FILE }),
     )
 
     expect(result).toEqual({ ok: false, error: 'No se seleccionó ningún archivo' })
@@ -147,52 +159,67 @@ describe('uploadOrderDocumentAction', () => {
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '10', docType: 'hoe', file: LARGE_FILE }),
+      makeFormData({ orderItemId: '10', docType: 'hoe', file: LARGE_FILE }),
     )
 
     expect(result).toEqual({ ok: false, error: 'El archivo excede el límite de 20 MB' })
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('docType "hoe" → POST a URL con /documents/hoe → { ok: true, docType: "hoe" }', async () => {
+  it('docType "hoe" → POST a URL con /order-items/:id/documents/hoe → { ok: true, docType: "hoe", orderItemId: 10 }', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
     vi.mocked(fetch).mockResolvedValue(okResponse())
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '10', docType: 'hoe', file: SMALL_FILE }),
+      makeFormData({ orderItemId: '10', docType: 'hoe', file: SMALL_FILE }),
     )
 
-    expect(result).toEqual({ ok: true, docType: 'hoe' })
+    expect(result).toEqual({ ok: true, docType: 'hoe', orderItemId: 10 })
     const [url] = vi.mocked(fetch).mock.calls[0]
-    expect(String(url)).toContain('/qb_sync/orders/10/documents/hoe')
+    expect(String(url)).toContain('/qb_sync/order-items/10/documents/hoe')
   })
 
-  it('docType "arranque-seguro" → POST a URL con /documents/arranque-seguro → { ok: true, docType: "arranque-seguro" }', async () => {
+  it('docType "arranque-seguro" → POST a URL con /order-items/:id/documents/arranque-seguro → { ok: true, docType: "arranque-seguro", orderItemId: 55 }', async () => {
     vi.mocked(getSession).mockResolvedValue(adminSession())
     vi.mocked(fetch).mockResolvedValue(okResponse())
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '55', docType: 'arranque-seguro', file: SMALL_FILE }),
+      makeFormData({ orderItemId: '55', docType: 'arranque-seguro', file: SMALL_FILE }),
     )
 
-    expect(result).toEqual({ ok: true, docType: 'arranque-seguro' })
+    expect(result).toEqual({ ok: true, docType: 'arranque-seguro', orderItemId: 55 })
     const [url] = vi.mocked(fetch).mock.calls[0]
-    expect(String(url)).toContain('/qb_sync/orders/55/documents/arranque-seguro')
+    expect(String(url)).toContain('/qb_sync/order-items/55/documents/arranque-seguro')
+  })
+
+  it('URL no contiene /orders/ (ruta de-nivel-orden) — usa solo /order-items/', async () => {
+    vi.mocked(getSession).mockResolvedValue(supervisorSession())
+    vi.mocked(fetch).mockResolvedValue(okResponse())
+
+    await uploadOrderDocumentAction(
+      undefined,
+      makeFormData({ orderItemId: '42', docType: 'hoe', file: SMALL_FILE }),
+    )
+
+    const [url] = vi.mocked(fetch).mock.calls[0]
+    // Must NOT be the old order-level route
+    expect(String(url)).not.toContain('/qb_sync/orders/')
+    expect(String(url)).toContain('/qb_sync/order-items/42/documents/hoe')
   })
 
   it('qb_sync error → { ok: false, error: mensaje del servidor }', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ message: 'Orden no encontrada' }), { status: 404 }),
+      new Response(JSON.stringify({ message: 'Item no encontrado' }), { status: 404 }),
     )
 
     const result = await uploadOrderDocumentAction(
       undefined,
-      makeFormData({ orderId: '10', docType: 'hoe', file: SMALL_FILE }),
+      makeFormData({ orderItemId: '10', docType: 'hoe', file: SMALL_FILE }),
     )
 
-    expect(result).toEqual({ ok: false, error: 'Orden no encontrada' })
+    expect(result).toEqual({ ok: false, error: 'Item no encontrado' })
   })
 })

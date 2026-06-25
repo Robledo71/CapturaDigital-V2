@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, ChevronRight } from 'lucide-react'
+import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { ReporteRow, ReporteEstatus } from '@/back/services/reportesService'
 import { getAvatarColor } from '@/front/lib/avatarColor'
 
@@ -156,7 +156,7 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-5">
 
         {/* Page header */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">Reportes de inspección</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
@@ -196,7 +196,7 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
         <div
           role="tablist"
           aria-label="Filtrar por estatus"
-          className="flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto"
+          className="shrink-0 flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto scrollbar-thin"
         >
           {TABS.map((tab) => {
             const isActive = activeTab === tab.key
@@ -227,8 +227,8 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829]">
-          <div className="overflow-x-auto overflow-y-hidden">
+        <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
+          <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full text-sm" aria-label="Tabla de reportes de inspección">
               <thead>
                 <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
@@ -326,63 +326,45 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
             </table>
           </div>
 
-          {total > 0 && (
-            <div className="flex items-center justify-between border-t border-blue-200 dark:border-[#1a2d4d] px-4 py-3">
-              <span className="text-xs text-slate-500">
-                {total.toLocaleString('es-MX')} resultado{total !== 1 ? 's' : ''} · página {currentPage} de {totalPages}
-              </span>
-
-              {totalPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={currentPage <= 1}
-                    onClick={() => setPage(currentPage - 1)}
-                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    ← Anterior
-                  </button>
-
-                  <div className="flex items-center gap-1 mx-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-                      const isCurrentPage = p === currentPage
-                      const show = p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1
-                      if (!show) {
-                        const isGap = p === 2 || p === totalPages - 1
-                        return isGap ? (
-                          <span key={p} className="px-1 text-xs text-slate-400">…</span>
-                        ) : null
-                      }
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPage(p)}
-                          className={`min-w-[28px] px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                            isCurrentPage
-                              ? 'bg-blue-600 text-white'
-                              : 'border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setPage(currentPage + 1)}
-                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Siguiente →
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="shrink-0 flex items-center justify-between gap-3 pt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Mostrando{' '}
+              <span className="font-medium text-slate-900 dark:text-white">
+                {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)}
+              </span>{' '}
+              de{' '}
+              <span className="font-medium text-slate-900 dark:text-white">{filtered.length}</span>{' '}
+              registros
+            </p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                aria-label="Página anterior"
+                className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} aria-hidden="true" />
+              </button>
+              <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Página siguiente"
+                className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 

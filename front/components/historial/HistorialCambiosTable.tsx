@@ -36,6 +36,14 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden p-4 sm:p-6 gap-4">
+      {/* Header */}
+      <div className="shrink-0">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Historial de cambios</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          {rows.length} {rows.length === 1 ? 'registro' : 'registros'}
+        </p>
+      </div>
+
       {/* Search */}
       <div className="flex items-center gap-3">
         <div className="relative max-w-xs w-full">
@@ -52,9 +60,6 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
             className="w-full rounded-lg border border-slate-300 bg-white dark:border-[#1a2d4d] dark:bg-[#0c1829] pl-8 pr-3 py-2 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
           />
         </div>
-        <span className="text-xs text-slate-500 tabular-nums">
-          {filtered.length} {filtered.length === 1 ? 'registro' : 'registros'}
-        </span>
       </div>
 
       {/* Table */}

@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, FileCheck, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
+import { AlertTriangle, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Eye, FileCheck, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
 import { getOrderInventory, isIndefiniteInventoryPlant } from '@/front/lib/inventory'
 import type {
   OrderWorkload,
@@ -18,7 +18,7 @@ import {
   releaseOrderItemAction,
   type ReleaseOrderItemState,
 } from '@/app/actions/release-order-item'
-import { uploadOrderDocumentAction } from '@/app/actions/upload-order-document'
+import { uploadOrderDocumentAction, type UploadOrderDocumentState } from '@/app/actions/upload-order-document'
 import { SearchCotizacionModal } from './SearchCotizacionModal'
 import { can, type SessionLike } from '@/front/lib/permisos'
 
@@ -33,6 +33,12 @@ interface CargaDeTrabajoPageProps {
   tablets: TabletOption[]
   rol: string
   permisos?: string[] | null
+}
+
+/** Identifies a specific item+doc combination that is currently uploading. */
+interface UploadTarget {
+  itemId: number
+  docType: 'hoe' | 'arranque-seguro'
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -137,6 +143,58 @@ function AssignSubmitButton() {
   )
 }
 
+// ─── Document Chip ────────────────────────────────────────────────────────────
+
+interface DocChipProps {
+  label: string
+  isUploaded: boolean
+  isUploading: boolean
+  disabled: boolean
+  onClick: () => void
+  /** Cuando el documento está cargado, URL del proxy para ver/descargar el archivo. */
+  viewHref?: string
+}
+
+function DocChip({ label, isUploaded, isUploading, disabled, onClick, viewHref }: DocChipProps) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onClick}
+        aria-label={isUploaded ? `Reemplazar ${label}` : `Agregar ${label}`}
+        className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+          isUploaded
+            ? 'border-green-500/40 bg-green-500/10 text-green-400 hover:bg-green-500/20'
+            : 'border-slate-600/50 bg-transparent text-slate-400 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-400'
+        }`}
+      >
+        {isUploading ? (
+          <Loader2 size={11} className="animate-spin flex-shrink-0" aria-hidden="true" />
+        ) : isUploaded ? (
+          <FileCheck size={11} className="flex-shrink-0" aria-hidden="true" />
+        ) : (
+          <Upload size={11} className="flex-shrink-0" aria-hidden="true" />
+        )}
+        {isUploading ? 'Subiendo…' : isUploaded ? `${label} ✓` : `${label}`}
+      </button>
+
+      {isUploaded && !isUploading && viewHref && (
+        <a
+          href={viewHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Ver ${label}`}
+          className="inline-flex items-center gap-1 rounded-md border border-slate-300 dark:border-slate-600/50 px-1.5 py-1 text-xs text-slate-500 dark:text-slate-400 transition-colors hover:border-blue-500/50 hover:text-blue-500 dark:hover:text-blue-400"
+        >
+          <Eye size={11} className="flex-shrink-0" aria-hidden="true" />
+          ver
+        </a>
+      )}
+    </span>
+  )
+}
+
 // ─── Assign Item Modal ────────────────────────────────────────────────────────
 
 interface AssignItemModalProps {
@@ -159,6 +217,37 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
   const parentQuotation = order.quotations.find(
     (q) => q.consecutiveNumber === item.quotationConsecutive
   ) ?? order.quotations[0]
+
+  // Build the list of OTHER items (all items in the order except the one being assigned).
+  // Used only when orderItemId === 0 (first-time upsert) so qb_sync can persist the full order.
+  // Identity is determined by reference — `item` is the exact object from `order.items`.
+  const otherItemsJson: string | null = orderItemId === 0
+    ? (() => {
+        const others = order.items
+          .filter((i) => i !== item)
+          .map((i) => {
+            const q = order.quotations.find((q) => q.consecutiveNumber === i.quotationConsecutive)
+            return {
+              quotation: {
+                consecutive_number: i.quotationConsecutive ?? '',
+                client_email: q?.clientEmail ?? null,
+                status: q?.status ?? null,
+                purchase_order_number: q?.purchaseOrderNumber ?? null,
+                contact_emails: q?.contactEmails ?? null,
+                order_user_name: q?.orderUserName ?? null,
+              },
+              orderItem: {
+                part_number: i.partNumber === '—' ? null : i.partNumber,
+                part_name: i.partName === '—' ? '' : i.partName,
+                inventory: i.inventario,
+                inventory_done: i.inventarioTerminado,
+                plant_name: order.plantName ?? '',
+              },
+            }
+          })
+        return others.length > 0 ? JSON.stringify(others) : null
+      })()
+    : null
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
@@ -189,6 +278,10 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
 
         {/* When the item is not yet in DB (id=0), embed raw QB data so the
             server action can persist Order → Quotation → OrderItem first. */}
+        {orderItemId === 0 && otherItemsJson !== null && (
+          <input type="hidden" name="otherItems" value={otherItemsJson} />
+        )}
+
         {orderItemId === 0 && (
           <>
             {/* Order fields */}
@@ -396,9 +489,10 @@ function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedR
   )
 }
 
-// ─── Order Item Row ───────────────────────────────────────────────────────────
+// ─── Order Item Card ──────────────────────────────────────────────────────────
+// Redesigned layout — four rows, breathing room, doc chips at the bottom.
 
-interface OrderItemRowProps {
+interface OrderItemCardProps {
   item: OrderItemWorkload
   /** Called with the full item object so the assign modal can embed QB hidden fields when item.id === 0. */
   onAssign: (item: OrderItemWorkload) => void
@@ -406,40 +500,66 @@ interface OrderItemRowProps {
   indefinite?: boolean
   onRelease: (itemId: number) => void
   canAsignar: boolean
+  canDocumentos: boolean
+  uploadingTarget: UploadTarget | null
+  onUploadDoc: (item: OrderItemWorkload, docType: 'hoe' | 'arranque-seguro') => void
+  uploadError: { itemId: number; error: string } | null
 }
 
-function OrderItemRow({ item, onAssign, onRelease, canAsignar, indefinite = false }: OrderItemRowProps) {
-  // Se puede asignar si el ítem no tiene tablet activa y NUNCA ha enviado reportes:
-  // - 'pending'   → recién creado, sin asignar.
-  // - 'completed' → liberado sin haber sido trabajado (sin reportes) → se permite reasignar.
-  // Si ya envió reportes (hasSubmittedReport), queda como estado terminal y NO se reasigna.
+function OrderItemCard({
+  item,
+  onAssign,
+  onRelease,
+  canAsignar,
+  indefinite = false,
+  canDocumentos,
+  uploadingTarget,
+  onUploadDoc,
+  uploadError,
+}: OrderItemCardProps) {
   const canAssign =
     item.assignedTablet === null &&
     !item.hasSubmittedReport &&
     (item.status === 'pending' || item.status === 'completed')
   const canRelease = item.status === 'assigned' || item.status === 'in_progress'
 
+  // Document chips are only shown for persisted items (id !== 0)
+  const showDocs = canDocumentos && item.id !== 0
+  const hoeUploading = uploadingTarget?.itemId === item.id && uploadingTarget?.docType === 'hoe'
+  const arranqueUploading = uploadingTarget?.itemId === item.id && uploadingTarget?.docType === 'arranque-seguro'
+  const anyUploading = uploadingTarget !== null
+  const thisItemError = uploadError?.itemId === item.id ? uploadError.error : null
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-[#1a2d4d] px-4 py-3 last:border-b-0">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="font-mono text-xs font-medium text-slate-800 dark:text-slate-200">{item.partNumber}</span>
-        <span className="text-xs text-slate-400">{item.partName}</span>
-        {item.quotationConsecutive && (
-          <span className="text-xs text-slate-500">
-            Cotización: <span className="font-mono text-slate-400">{item.quotationConsecutive}</span>
-          </span>
-        )}
+    <div className="flex flex-col gap-3 border-b border-slate-200 dark:border-[#1a2d4d] px-4 py-4 last:border-b-0">
+
+      {/* Row 1 — part number + part name */}
+      <div className="flex flex-col gap-0.5">
+        <span className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-100 leading-tight">
+          {item.partNumber}
+        </span>
+        <span className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{item.partName}</span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-slate-500">
+      {/* Row 2 — cotización + inventory */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+        {item.quotationConsecutive && (
+          <span>
+            Cotización:{' '}
+            <span className="font-mono text-slate-400 dark:text-slate-300">{item.quotationConsecutive}</span>
+          </span>
+        )}
+        <span>
           {indefinite ? (
             <span className="italic text-slate-400">Indefinido</span>
           ) : (
             <>{item.inventario.toLocaleString('es-MX')} pzs</>
           )}
         </span>
+      </div>
 
+      {/* Row 3 — status badge + tablet chip */}
+      <div className="flex flex-wrap items-center gap-2">
         <ItemStatusBadge status={item.status} />
 
         {item.assignedTablet ? (
@@ -448,33 +568,73 @@ function OrderItemRow({ item, onAssign, onRelease, canAsignar, indefinite = fals
             {item.assignedTablet.alias}
           </span>
         ) : (
-          <span className="text-xs text-slate-600">Sin asignar</span>
+          <span className="text-xs text-slate-600 dark:text-slate-500">Sin asignar</span>
         )}
-
 
         {item.hasSubmittedReport && item.status !== 'completed' && (
           <span className="text-xs text-amber-500">Reporte enviado</span>
         )}
-        {canAsignar && canAssign && (
-          <button
-            type="button"
-            onClick={() => onAssign(item)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
-          >
-            Asignar tablet
-          </button>
-        )}
-
-        {canAsignar && canRelease && (
-          <button
-            type="button"
-            onClick={() => onRelease(item.id)}
-            className="inline-flex items-center rounded-lg border border-red-500/30 px-2.5 py-1 text-xs text-red-400 transition-colors hover:border-red-400 hover:bg-red-500/10"
-          >
-            Liberar
-          </button>
-        )}
       </div>
+
+      {/* Row 4 — actions: assign/release + doc chips (separated by a subtle divider) */}
+      {(canAsignar || showDocs) && (
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-[#1a2d4d]">
+          {/* Assign / release buttons */}
+          {canAsignar && canAssign && (
+            <button
+              type="button"
+              onClick={() => onAssign(item)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
+            >
+              Asignar tablet
+            </button>
+          )}
+
+          {canAsignar && canRelease && (
+            <button
+              type="button"
+              onClick={() => onRelease(item.id)}
+              className="inline-flex items-center rounded-lg border border-red-500/30 px-2.5 py-1 text-xs text-red-400 transition-colors hover:border-red-400 hover:bg-red-500/10"
+            >
+              Liberar
+            </button>
+          )}
+
+          {/* Subtle spacer between action buttons and doc chips when both are present */}
+          {canAsignar && (canAssign || canRelease) && showDocs && (
+            <span className="h-4 w-px bg-slate-300 dark:bg-slate-700 flex-shrink-0" aria-hidden="true" />
+          )}
+
+          {/* Document chips — only for persisted items */}
+          {showDocs && (
+            <>
+              <DocChip
+                label="HOE"
+                isUploaded={!!item.hoe}
+                isUploading={hoeUploading}
+                disabled={anyUploading}
+                onClick={() => onUploadDoc(item, 'hoe')}
+                viewHref={`/api/order-items/${item.id}/documents/hoe`}
+              />
+              <DocChip
+                label="Arranque"
+                isUploaded={!!item.arranqueSeguro}
+                isUploading={arranqueUploading}
+                disabled={anyUploading}
+                onClick={() => onUploadDoc(item, 'arranque-seguro')}
+                viewHref={`/api/order-items/${item.id}/documents/arranque-seguro`}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Per-item upload error */}
+      {thisItemError && (
+        <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-300">
+          {thisItemError}
+        </p>
+      )}
     </div>
   )
 }
@@ -498,39 +658,51 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
   const [assignState, assignAction] = useActionState(assignOrderItemAction, undefined)
   const [releaseState, releaseAction] = useActionState(releaseOrderItemAction, undefined)
   const [uploadState, uploadAction] = useActionState(uploadOrderDocumentAction, undefined)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const activeDocTypeRef = useRef<'hoe' | 'arranque-seguro' | null>(null)
-  const [uploadingDocType, setUploadingDocType] = useState<'hoe' | 'arranque-seguro' | null>(null)
-  const [uploadSuccessVisible, setUploadSuccessVisible] = useState(false)
 
+  // Single hidden file input; the pending target tells us which item+doc it's for.
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const pendingUploadRef = useRef<{ item: OrderItemWorkload; docType: 'hoe' | 'arranque-seguro' } | null>(null)
+
+  // Per-item upload tracking (replaces single uploadingDocType)
+  const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null)
+  const [uploadError, setUploadError] = useState<{ itemId: number; error: string } | null>(null)
+
+  // React to upload action result
   useEffect(() => {
     if (uploadState === undefined) return
-    setUploadingDocType(null)
+    setUploadingTarget(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+
     if (uploadState.ok) {
+      setUploadError(null)
       router.refresh()
-      // Muestra el mensaje de éxito y lo oculta automáticamente a los 4 s.
-      setUploadSuccessVisible(true)
-      const t = setTimeout(() => setUploadSuccessVisible(false), 4000)
-      return () => clearTimeout(t)
+    } else {
+      // Surface error near the relevant item
+      const targetItemId = pendingUploadRef.current?.item.id ?? null
+      if (targetItemId !== null) {
+        setUploadError({ itemId: targetItemId, error: uploadState.error })
+      }
     }
   }, [uploadState, router])
 
-  function handleUploadClick(docType: 'hoe' | 'arranque-seguro') {
-    activeDocTypeRef.current = docType
+  function handleUploadDoc(item: OrderItemWorkload, docType: 'hoe' | 'arranque-seguro') {
+    pendingUploadRef.current = { item, docType }
     fileInputRef.current?.click()
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    const docType = activeDocTypeRef.current
-    if (!file || !docType) return
+    const pending = pendingUploadRef.current
+    if (!file || !pending) return
+
     const fd = new FormData()
-    fd.set('orderId', String(order.id))
-    fd.set('docType', docType)
+    fd.set('orderItemId', String(pending.item.id))
+    fd.set('docType', pending.docType)
     fd.set('file', file)
+
     startTransition(() => {
-      setUploadingDocType(docType)
+      setUploadingTarget({ itemId: pending.item.id, docType: pending.docType })
+      setUploadError(null)
       uploadAction(fd)
     })
   }
@@ -575,13 +747,13 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
         role="dialog"
         aria-modal="true"
         aria-labelledby="order-modal-titulo"
-        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-8 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/60 px-3 py-4 sm:px-4 sm:py-8 backdrop-blur-sm animate-fade-in"
         onClick={handleOverlayClick}
       >
-        <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#0c1829] shadow-2xl animate-scale-in">
+        <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#0c1829] shadow-2xl animate-scale-in sm:max-h-[90vh]">
 
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-slate-200 dark:border-[#1a2d4d] px-6 py-5">
+          <div className="flex shrink-0 items-start justify-between border-b border-slate-200 dark:border-[#1a2d4d] px-4 py-3.5 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-1">
               <h2 id="order-modal-titulo" className="font-mono text-lg font-bold text-slate-900 dark:text-white">
                 {order.consecutiveNumber}
@@ -602,10 +774,10 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
             </button>
           </div>
 
-          <div className="flex flex-col gap-0 divide-y divide-slate-200 dark:divide-[#1a2d4d]">
+          <div className="flex flex-1 flex-col gap-0 divide-y divide-slate-200 overflow-y-auto scrollbar-thin dark:divide-[#1a2d4d]">
 
             {/* Sección 1 — Datos de la orden */}
-            <section className="px-6 py-5">
+            <section className="px-4 py-4 sm:px-6 sm:py-5">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Datos de la orden
               </h3>
@@ -630,7 +802,7 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
             </section>
 
             {/* Sección 2 — Cotizaciones */}
-            <section className="px-6 py-5">
+            <section className="px-4 py-4 sm:px-6 sm:py-5">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Cotizaciones
               </h3>
@@ -657,7 +829,7 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
             </section>
 
             {/* Sección 3 — Items de trabajo */}
-            <section className="px-6 py-5">
+            <section className="px-4 py-4 sm:px-6 sm:py-5">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Items de trabajo
                 <span className="ml-2 font-normal normal-case text-slate-600">
@@ -669,99 +841,35 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
               ) : (
                 <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628]">
                   {order.items.map((item, idx) => (
-                    <OrderItemRow
+                    <OrderItemCard
                       // Use idx as part of key when id is 0 (items from QB search not yet persisted)
                       key={item.id !== 0 ? item.id : `pending-${idx}`}
                       item={item}
                       onAssign={setAssignItem}
                       onRelease={setReleaseItemId}
                       canAsignar={canAsignar}
+                      canDocumentos={canDocumentos}
                       indefinite={isIndefiniteInventoryPlant(order.plantName)}
+                      uploadingTarget={uploadingTarget}
+                      onUploadDoc={handleUploadDoc}
+                      uploadError={uploadError}
                     />
                   ))}
                 </div>
               )}
             </section>
 
-            {/* Sección 4 — Documentos */}
-            {canDocumentos && (
-            <section className="px-6 py-5">
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Documentos
-              </h3>
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={uploadingDocType !== null}
-                    onClick={() => handleUploadClick('hoe')}
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                      order.hoe
-                        ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
-                        : 'border-slate-300 text-slate-600 dark:border-[#31476f] dark:text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-300'
-                    }`}
-                  >
-                    {uploadingDocType === 'hoe' ? (
-                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-                    ) : order.hoe ? (
-                      <FileCheck size={14} aria-hidden="true" />
-                    ) : (
-                      <Upload size={14} aria-hidden="true" />
-                    )}
-                    {uploadingDocType === 'hoe'
-                      ? 'Subiendo...'
-                      : order.hoe
-                        ? 'HOE cargado'
-                        : 'Agregar HOE'}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={uploadingDocType !== null}
-                    onClick={() => handleUploadClick('arranque-seguro')}
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                      order.arranqueSeguro
-                        ? 'border-green-500/30 bg-green-500/10 text-green-300 hover:bg-green-500/20'
-                        : 'border-slate-300 text-slate-600 dark:border-[#31476f] dark:text-slate-300 hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-300'
-                    }`}
-                  >
-                    {uploadingDocType === 'arranque-seguro' ? (
-                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-                    ) : order.arranqueSeguro ? (
-                      <FileCheck size={14} aria-hidden="true" />
-                    ) : (
-                      <Upload size={14} aria-hidden="true" />
-                    )}
-                    {uploadingDocType === 'arranque-seguro'
-                      ? 'Subiendo...'
-                      : order.arranqueSeguro
-                        ? 'Arranque Seguro cargado'
-                        : 'Agregar Arranque Seguro'}
-                  </button>
-                </div>
-
-                {uploadState && !uploadState.ok && (
-                  <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                    {uploadState.error}
-                  </p>
-                )}
-                {uploadState?.ok && uploadSuccessVisible && (
-                  <p className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-300">
-                    Documento &quot;{uploadState.docType === 'hoe' ? 'HOE' : 'Arranque Seguro'}&quot; subido correctamente.
-                  </p>
-                )}
-              </div>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.xlsx,.xls"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </section>
-            )}
           </div>
+
+          {/* Hidden file input — shared across all items; pendingUploadRef tracks which item */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.xlsx,.xls"
+            className="hidden"
+            onChange={handleFileChange}
+            aria-hidden="true"
+          />
         </div>
       </div>
 
@@ -812,22 +920,8 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
   const from = orders.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const to = Math.min(page * PAGE_SIZE, orders.length)
 
-  function getPageNumbers(): (number | '…')[] {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1)
-    }
-    const pages: (number | '…')[] = [1]
-    if (page > 3) pages.push('…')
-    const start = Math.max(2, page - 1)
-    const end = Math.min(totalPages - 1, page + 1)
-    for (let i = start; i <= end; i++) pages.push(i)
-    if (page < totalPages - 2) pages.push('…')
-    pages.push(totalPages)
-    return pages
-  }
-
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:shadow-none">
+    <div className="shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:shadow-none">
       <div className="overflow-x-auto">
       <table className="w-full table-auto text-sm">
         <thead>
@@ -932,56 +1026,35 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-1 pt-3 pb-4 px-4">
-          <span className="text-xs text-slate-500">
-            Mostrando {from}–{to} de {orders.length} órdenes
-          </span>
-
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Mostrando{' '}
+            <span className="font-medium text-slate-900 dark:text-white">{from}–{to}</span>{' '}
+            de{' '}
+            <span className="font-medium text-slate-900 dark:text-white">{orders.length}</span>{' '}
+            registros
+          </p>
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               aria-label="Página anterior"
-              className="rounded-md px-2.5 py-1 text-xs text-slate-500 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:text-white"
+              className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft size={16} aria-hidden="true" />
             </button>
-
-            {getPageNumbers().map((p, idx) =>
-              p === '…' ? (
-                <span
-                  key={`ellipsis-${idx}`}
-                  className="px-1 text-xs text-slate-400 dark:text-slate-500"
-                >
-                  …
-                </span>
-              ) : (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPage(p)}
-                  aria-label={`Página ${p}`}
-                  aria-current={page === p ? 'page' : undefined}
-                  className={
-                    page === p
-                      ? 'rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white'
-                      : 'rounded-md px-2.5 py-1 text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                  }
-                >
-                  {p}
-                </button>
-              ),
-            )}
-
+            <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+              {page} / {totalPages}
+            </span>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
               aria-label="Página siguiente"
-              className="rounded-md px-2.5 py-1 text-xs text-slate-500 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-400 dark:hover:text-white"
+              className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <ChevronRight size={14} />
+              <ChevronRight size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -1013,7 +1086,7 @@ export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTr
     )
   }, [orders, searchQuery])
 
-  // Sync selectedOrder when server data refreshes after assign/release
+  // Sync selectedOrder when server data refreshes after assign/release/upload
   useEffect(() => {
     if (selectedOrder === null) return
     const updated = orders.find((o) => o.id === selectedOrder.id)
@@ -1030,7 +1103,7 @@ export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTr
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
 
-        <div className="flex items-start justify-between gap-4">
+        <div className="shrink-0 flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">Carga de trabajo</h1>
             <p className="mt-0.5 text-sm text-slate-400">
@@ -1057,7 +1130,7 @@ export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTr
           )}
         </div>
 
-        <div className="relative">
+        <div className="shrink-0 relative">
           <Search
             size={15}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"

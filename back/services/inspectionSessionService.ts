@@ -7,7 +7,7 @@ import {
   type SessionApiResult,
 } from '@/back/repositories/inspectionSessionRepository'
 
-export type { OrderItemTree } from '@/back/repositories/inspectionSessionRepository'
+export type { OrderItemTree, OtherItemEntry } from '@/back/repositories/inspectionSessionRepository'
 
 // ---------------------------------------------------------------------------
 // Types

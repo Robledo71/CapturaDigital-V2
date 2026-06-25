@@ -3,7 +3,7 @@
 import { useState, useEffect, useActionState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toggleUserStatusAction, type ToggleUserStatusState } from '@/app/actions/toggle-user-status'
-import { Search, Plus, Pencil, Power, AlertTriangle, ShieldCheck } from 'lucide-react'
+import { Search, Plus, Pencil, Power, AlertTriangle, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import { NuevoUsuarioModal } from './NuevoUsuarioModal'
 import { EditarUsuarioModal } from './EditarUsuarioModal'
 import { PermisosUsuarioModal } from './PermisosUsuarioModal'
@@ -408,14 +408,14 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
 
           {/* Page header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-white">Gestión de usuarios</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                 {usuarios.length} usuarios registrados
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {/* Search */}
               <div className="relative flex-1 sm:flex-none">
                 <Search
@@ -448,7 +448,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
           <div
             role="tablist"
             aria-label="Filtrar por tipo"
-            className="flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto"
+            className="shrink-0 flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto scrollbar-thin"
           >
             {tabs.map((tab) => {
               const isActive = activeTab === tab.key
@@ -481,8 +481,8 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
           </div>
 
           {/* Table */}
-          <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${currentPage} de usuarios`}>
-            <div className="overflow-x-auto">
+          <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden" aria-label={`Página ${currentPage} de usuarios`}>
+            <div className="overflow-x-auto scrollbar-thin">
               <table className="w-full text-sm" aria-label="Tabla de usuarios">
                 <thead>
                   <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
@@ -601,7 +601,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between gap-4 pt-1">
+            <div className="shrink-0 flex items-center justify-between gap-3 pt-1">
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Mostrando{' '}
                 <span className="font-medium text-slate-900 dark:text-white">
@@ -611,15 +611,15 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
                 <span className="font-medium text-slate-900 dark:text-white">{filtered.length}</span>{' '}
                 registros
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   aria-label="Página anterior"
-                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Anterior
+                  <ChevronLeft size={16} aria-hidden="true" />
                 </button>
                 <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">
                   {currentPage} / {totalPages}
@@ -629,9 +629,9 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
                   disabled={currentPage >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   aria-label="Página siguiente"
-                  className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center h-8 w-8 rounded-lg border border-blue-200 dark:border-[#1a2d4d] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Siguiente
+                  <ChevronRight size={16} aria-hidden="true" />
                 </button>
               </div>
             </div>

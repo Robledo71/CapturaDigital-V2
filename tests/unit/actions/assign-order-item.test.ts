@@ -278,4 +278,89 @@ describe('assignOrderItemAction', () => {
     const result = await assignOrderItemAction(undefined, existingItemForm(1))
     expect(result).toEqual({ ok: false, error: 'No se pudo conectar con el servidor. Intenta nuevamente.' })
   })
+
+  // ── otherItems — primera asignación (orderItemId === 0) ───────────────────
+
+  it('ítem nuevo con otherItems → los incluye en el body del POST', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession())
+    mockOk()
+
+    const otherItems = [
+      {
+        quotation: {
+          consecutive_number: 'OV-86068-CO-99999',
+          client_email: 'cliente@bimbo.com',
+          status: 'cotizacion_pendiente',
+          purchase_order_number: 'PO-001',
+          contact_emails: 'contacto@bimbo.com',
+          order_user_name: 'Juan Perez',
+        },
+        orderItem: {
+          part_number: '12345-AB',
+          part_name: 'BRACKET SOPORTE',
+          inventory: 200,
+          inventory_done: 0,
+          plant_name: 'Honda Celaya',
+        },
+      },
+    ]
+
+    const fd = newItemForm({ otherItems: JSON.stringify(otherItems) })
+    await assignOrderItemAction(undefined, fd)
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string) as {
+      otherItems: typeof otherItems
+    }
+    expect(body.otherItems).toHaveLength(1)
+    expect(body.otherItems[0].quotation.consecutive_number).toBe('OV-86068-CO-99999')
+    expect(body.otherItems[0].quotation.client_email).toBe('cliente@bimbo.com')
+    expect(body.otherItems[0].orderItem.part_number).toBe('12345-AB')
+    expect(body.otherItems[0].orderItem.inventory).toBe(200)
+    expect(body.otherItems[0].orderItem.plant_name).toBe('Honda Celaya')
+  })
+
+  it('ítem nuevo sin otherItems → el body NO contiene la clave otherItems', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession())
+    mockOk()
+    await assignOrderItemAction(undefined, newItemForm()) // sin campo otherItems
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string) as Record<string, unknown>
+    expect(body).not.toHaveProperty('otherItems')
+  })
+
+  it('ítem nuevo con otherItems vacío ([]) → el body NO contiene la clave otherItems', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession())
+    mockOk()
+    const fd = newItemForm({ otherItems: '[]' })
+    await assignOrderItemAction(undefined, fd)
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string) as Record<string, unknown>
+    expect(body).not.toHaveProperty('otherItems')
+  })
+
+  it('ítem nuevo con otherItems JSON inválido → se ignora y el body NO contiene la clave otherItems', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession())
+    mockOk()
+    const fd = newItemForm({ otherItems: '{not valid json' })
+    await assignOrderItemAction(undefined, fd)
+
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string) as Record<string, unknown>
+    expect(body).not.toHaveProperty('otherItems')
+  })
+
+  it('ítem EXISTENTE (id!=0) con otherItems en form → el body NO contiene la clave otherItems', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession())
+    mockOk()
+
+    // Ítem existente usa POST /order-items/:id/session, no el upsert → otherItems nunca aplica
+    const fd = existingItemForm(42)
+    fd.append('otherItems', JSON.stringify([{ quotation: { consecutive_number: 'CO-001' }, orderItem: {} }]))
+    await assignOrderItemAction(undefined, fd)
+
+    // La ruta usada es la de sesión individual, no el upsert
+    const [url, options] = vi.mocked(fetch).mock.calls[0]
+    expect(String(url)).toContain('/qb_sync/order-items/42/session')
+    const body = JSON.parse((options as RequestInit).body as string) as Record<string, unknown>
+    expect(body).not.toHaveProperty('otherItems')
+  })
 })
