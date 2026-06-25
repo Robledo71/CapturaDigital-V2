@@ -26,9 +26,10 @@ function adminSession() {
   return { ...supervisorSession(), rol: 'admin' as const, accessToken: 'admin-token' }
 }
 
-const SMALL_FILE = { size: 1024, name: 'test.pdf' } as unknown as File
-const LARGE_FILE = { size: 21 * 1024 * 1024, name: 'big.pdf' } as unknown as File
-const ZERO_FILE = { size: 0, name: 'empty.pdf' } as unknown as File
+const SMALL_FILE = { size: 1024, name: 'test.pdf', type: 'application/pdf' } as unknown as File
+const LARGE_FILE = { size: 26 * 1024 * 1024, name: 'big.pdf', type: 'application/pdf' } as unknown as File
+const ZERO_FILE = { size: 0, name: 'empty.pdf', type: 'application/pdf' } as unknown as File
+const NON_PDF_FILE = { size: 1024, name: 'sheet.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } as unknown as File
 
 /**
  * Builds a FormData where string fields are appended normally and File fields
@@ -154,7 +155,7 @@ describe('uploadOrderDocumentAction', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it('archivo > 20MB → { ok: false, error: "El archivo excede el límite de 20 MB" }', async () => {
+  it('archivo > 25MB → { ok: false, error: "El archivo excede el límite de 25 MB" }', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
 
     const result = await uploadOrderDocumentAction(
@@ -162,7 +163,19 @@ describe('uploadOrderDocumentAction', () => {
       makeFormData({ orderItemId: '10', docType: 'hoe', file: LARGE_FILE }),
     )
 
-    expect(result).toEqual({ ok: false, error: 'El archivo excede el límite de 20 MB' })
+    expect(result).toEqual({ ok: false, error: 'El archivo excede el límite de 25 MB' })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('archivo no-PDF → { ok: false, error: "Solo se permiten archivos PDF" }', async () => {
+    vi.mocked(getSession).mockResolvedValue(supervisorSession())
+
+    const result = await uploadOrderDocumentAction(
+      undefined,
+      makeFormData({ orderItemId: '10', docType: 'hoe', file: NON_PDF_FILE }),
+    )
+
+    expect(result).toEqual({ ok: false, error: 'Solo se permiten archivos PDF' })
     expect(fetch).not.toHaveBeenCalled()
   })
 

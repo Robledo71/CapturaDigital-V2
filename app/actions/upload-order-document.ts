@@ -31,8 +31,11 @@ export async function uploadOrderDocumentAction(
   if (!file || file.size === 0) {
     return { ok: false, error: 'No se seleccionó ningún archivo' }
   }
-  if (file.size > 20 * 1024 * 1024) {
-    return { ok: false, error: 'El archivo excede el límite de 20 MB' }
+  if (file.type !== 'application/pdf') {
+    return { ok: false, error: 'Solo se permiten archivos PDF' }
+  }
+  if (file.size > 25 * 1024 * 1024) {
+    return { ok: false, error: 'El archivo excede el límite de 25 MB' }
   }
 
   const fieldName = docType === 'hoe' ? 'hoe' : 'arranque_seguro'
