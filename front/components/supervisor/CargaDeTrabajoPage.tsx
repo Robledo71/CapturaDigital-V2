@@ -194,6 +194,65 @@ function DocChip({ label, isUploaded, isUploading, disabled, onClick, onView }: 
   )
 }
 
+// ─── Document Viewer Modal ────────────────────────────────────────────────────
+// Embeds the PDF (served inline by the proxy) in an iframe so el documento se ve
+// dentro de la app sin descargarse. Incluye opción de descargar.
+
+interface DocViewerModalProps {
+  href: string
+  title: string
+  onClose: () => void
+}
+
+function DocViewerModal({ href, title, onClose }: DocViewerModalProps) {
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-[60] flex flex-col bg-black/70 p-2 backdrop-blur-sm animate-fade-in sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="mx-auto flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl dark:border-[#25395f] dark:bg-[#0c1829] animate-scale-in">
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 dark:border-[#1a2d4d] px-4 py-3">
+          <h3 className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h3>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href={href}
+              download
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-2.5 py-1.5 text-xs text-slate-600 transition-colors hover:bg-slate-100 dark:border-[#31476f] dark:text-slate-300 dark:hover:bg-white/10"
+            >
+              <Download size={13} aria-hidden="true" />
+              <span className="hidden sm:inline">Descargar</span>
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar"
+              className="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+            >
+              <X size={17} />
+            </button>
+          </div>
+        </div>
+        {/* PDF embebido */}
+        <iframe src={href} title={title} className="h-full w-full flex-1 bg-white" />
+      </div>
+    </div>
+  )
+}
+
 // ─── Assign Item Modal ────────────────────────────────────────────────────────
 
 interface AssignItemModalProps {
@@ -502,6 +561,7 @@ interface OrderItemCardProps {
   canDocumentos: boolean
   uploadingTarget: UploadTarget | null
   onUploadDoc: (item: OrderItemWorkload, docType: 'hoe' | 'arranque-seguro') => void
+  onViewDoc: (item: OrderItemWorkload, docType: 'hoe' | 'arranque-seguro') => void
   uploadError: { itemId: number; error: string } | null
 }
 
@@ -514,6 +574,7 @@ function OrderItemCard({
   canDocumentos,
   uploadingTarget,
   onUploadDoc,
+  onViewDoc,
   uploadError,
 }: OrderItemCardProps) {
   const canAssign =
@@ -614,7 +675,7 @@ function OrderItemCard({
                 isUploading={hoeUploading}
                 disabled={anyUploading}
                 onClick={() => onUploadDoc(item, 'hoe')}
-                viewHref={`/api/order-items/${item.id}/documents/hoe`}
+                onView={() => onViewDoc(item, 'hoe')}
               />
               <DocChip
                 label="Arranque"
@@ -622,7 +683,7 @@ function OrderItemCard({
                 isUploading={arranqueUploading}
                 disabled={anyUploading}
                 onClick={() => onUploadDoc(item, 'arranque-seguro')}
-                viewHref={`/api/order-items/${item.id}/documents/arranque-seguro`}
+                onView={() => onViewDoc(item, 'arranque-seguro')}
               />
             </>
           )}
@@ -666,6 +727,17 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
   // Per-item upload tracking (replaces single uploadingDocType)
   const [uploadingTarget, setUploadingTarget] = useState<UploadTarget | null>(null)
   const [uploadError, setUploadError] = useState<{ itemId: number; error: string } | null>(null)
+
+  // Document viewer modal (embeds the PDF served by the proxy)
+  const [viewDoc, setViewDoc] = useState<{ href: string; title: string } | null>(null)
+
+  function handleViewDoc(item: OrderItemWorkload, docType: 'hoe' | 'arranque-seguro') {
+    const label = docType === 'hoe' ? 'HOE' : 'Arranque Seguro'
+    setViewDoc({
+      href: `/api/order-items/${item.id}/documents/${docType}`,
+      title: `${label} · ${item.partNumber}`,
+    })
+  }
 
   // React to upload action result
   useEffect(() => {
@@ -730,14 +802,14 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && assignItem === null && releaseItemId === null) onClose()
+      if (e.key === 'Escape' && assignItem === null && releaseItemId === null && viewDoc === null) onClose()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose, assignItem, releaseItemId])
+  }, [onClose, assignItem, releaseItemId, viewDoc])
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current && assignItem === null && releaseItemId === null) onClose()
+    if (e.target === overlayRef.current && assignItem === null && releaseItemId === null && viewDoc === null) onClose()
   }
 
   return (
@@ -852,6 +924,7 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
                       indefinite={isIndefiniteInventoryPlant(order.plantName)}
                       uploadingTarget={uploadingTarget}
                       onUploadDoc={handleUploadDoc}
+                      onViewDoc={handleViewDoc}
                       uploadError={uploadError}
                     />
                   ))}
@@ -865,7 +938,7 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.xlsx,.xls"
+            accept="application/pdf,.pdf"
             className="hidden"
             onChange={handleFileChange}
             aria-hidden="true"
@@ -894,6 +967,14 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
           state={releaseState}
           action={releaseAction}
           onClose={() => setReleaseItemId(null)}
+        />
+      )}
+
+      {viewDoc !== null && (
+        <DocViewerModal
+          href={viewDoc.href}
+          title={viewDoc.title}
+          onClose={() => setViewDoc(null)}
         />
       )}
     </>
