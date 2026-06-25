@@ -16,27 +16,27 @@ function LoginView({ onForgot }: { onForgot: () => void }) {
   return (
     <>
       {/* Icon */}
-      <div className="mb-6 flex justify-center">
+      <div className="mb-4 flex justify-center sm:mb-6">
         <Image
           src="/logoCheck.png"
           alt="Quality Bolca"
           width={100}
           height={100}
-          className="rounded-xl"
+          className="h-20 w-20 rounded-xl sm:h-24 sm:w-24"
           priority
         />
       </div>
 
       {/* Header */}
-      <h1 className="mb-2 text-center text-2xl font-bold text-blue-950 dark:text-white">
-        Bienvenido!
+      <h1 className="mb-2 text-center text-xl font-bold text-blue-950 dark:text-white sm:text-2xl">
+        Bienvenido
       </h1>
-      <p className="mb-8 text-center text-sm leading-relaxed text-blue-600 dark:text-slate-400">
+      <p className="mb-6 text-center text-sm leading-relaxed text-blue-600 dark:text-slate-400 sm:mb-8">
         Ingresa tus credenciales para acceder al panel de supervisión
       </p>
 
       {/* Form */}
-      <form action={action} className="flex flex-col gap-5">
+      <form action={action} className="flex flex-col gap-4 sm:gap-5">
         {state?.errors?.general && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
             {state.errors.general.map((msg) => (
@@ -89,22 +89,22 @@ function ForgotView({ onBack }: { onBack: () => void }) {
   return (
     <>
       {/* Icon */}
-      <div className="mb-6 flex justify-center">
+      <div className="mb-4 flex justify-center sm:mb-6">
         <Image
           src="/logoCheck.png"
           alt="Quality Bolca"
           width={100}
           height={100}
-          className="rounded-xl"
+          className="h-20 w-20 rounded-xl sm:h-24 sm:w-24"
           priority
         />
       </div>
 
       {/* Header */}
-      <h1 className="mb-2 text-center text-2xl font-bold text-blue-950 dark:text-white">
+      <h1 className="mb-2 text-center text-xl font-bold text-blue-950 dark:text-white sm:text-2xl">
         Recuperar contraseña
       </h1>
-      <p className="mb-8 text-center text-sm leading-relaxed text-blue-600 dark:text-slate-400">
+      <p className="mb-6 text-center text-sm leading-relaxed text-blue-600 dark:text-slate-400 sm:mb-8">
         Te enviaremos las instrucciones para restablecer tu contraseña
       </p>
 
@@ -131,7 +131,7 @@ function ForgotView({ onBack }: { onBack: () => void }) {
         </div>
       ) : (
         /* Forgot form */
-        <form action={action} className="flex flex-col gap-5">
+        <form action={action} className="flex flex-col gap-4 sm:gap-5">
           <Input
             id="email"
             name="email"

@@ -55,6 +55,7 @@ export async function getSupervisorDashboardStats(accessToken: string): Promise<
 
 export type BandejaReporteRow = {
   id: string
+  cotizacion: string
   part: string
   client: string
   plant: string
@@ -78,6 +79,7 @@ export async function getDashboardBandeja(accessToken: string): Promise<BandejaR
       id: number
       created_at: string
       part_number: string
+      quotation_consecutive: string | null
       client_name: string
       plant_name: string
       operadores: string
@@ -87,6 +89,7 @@ export async function getDashboardBandeja(accessToken: string): Promise<BandejaR
       .slice(0, 6)
       .map((row) => ({
         id: String(row.id),
+        cotizacion: row.quotation_consecutive ?? '—',
         part: row.part_number,
         client: row.client_name,
         plant: row.plant_name,

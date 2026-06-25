@@ -17,7 +17,7 @@ export default async function ReporteDetallePageRoute({
   params: Promise<{ id: string }>
 }) {
   const session = await getSession()
-  if (!session) redirect('/login')
+  if (!session) redirect('/')
   if (!can(session, 'reportes.ver')) {
     return (
       <div className="flex flex-col flex-1 overflow-hidden">

@@ -18,10 +18,18 @@
   --foreground: #ededed;
 }
 
+html, body {
+  /* Evita el rebote/overscroll de iOS (el "zoom" raro al hacer swipe hacia abajo)
+     y el encadenamiento de pull-to-refresh sobre el shell de altura fija. */
+  overscroll-behavior: none;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans);
+  /* Quita el zoom por doble-tap y el retardo de 300 ms en táctil. */
+  touch-action: manipulation;
 }
 
 /* ─── Animaciones de UI ─────────────────────────────────────────────────────── */

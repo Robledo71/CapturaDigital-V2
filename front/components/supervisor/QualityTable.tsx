@@ -39,7 +39,7 @@ export function QualityTable({ rows }: QualityTableProps) {
         <table className="w-full">
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/30 border-b border-slate-200 dark:border-[#1a2d4d]">
-              {['REPORTE', 'CLIENTE · PLANTA', 'INSPECTOR', 'RECIBIDO', ''].map((col, idx) => (
+              {['COTIZACIÓN', 'CLIENTE · PLANTA', 'INSPECTOR', 'RECIBIDO', ''].map((col, idx) => (
                 <th
                   key={idx}
                   scope="col"
@@ -63,9 +63,9 @@ export function QualityTable({ rows }: QualityTableProps) {
                 onClick={() => router.push(`/supervisor/reportes/${row.id}`)}
                 className="group border-b border-slate-100 dark:border-[#1a2d4d]/50 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/50 cursor-pointer transition-colors"
               >
-                {/* REPORTE */}
+                {/* COTIZACIÓN */}
                 <td className="py-3 pr-4 pl-3">
-                  <p className="text-slate-900 dark:text-white text-sm font-medium">{row.id}</p>
+                  <p className="text-slate-900 dark:text-white text-sm font-medium font-mono">{row.cotizacion}</p>
                   <p className="text-slate-400 text-xs">{row.part}</p>
                 </td>
 

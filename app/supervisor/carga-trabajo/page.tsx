@@ -12,7 +12,7 @@ export const metadata = {
 
 export default async function CargaDeTrabajoRoute() {
   const session = await getSession()
-  if (!session) redirect('/login')
+  if (!session) redirect('/')
   if (!can(session, 'ordenes.ver')) {
     return (
       <div className="flex flex-col flex-1 overflow-hidden">

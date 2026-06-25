@@ -178,7 +178,7 @@ export function ReportesPublicadosClient({
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-6">
       {/* Page header row */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{title}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -218,7 +218,7 @@ export function ReportesPublicadosClient({
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total publicados"
           value={String(stats.total)}
@@ -247,7 +247,7 @@ export function ReportesPublicadosClient({
       </div>
 
       {/* Tab bar */}
-      <div className="border-b border-blue-200 dark:border-[#1a2d4d] flex gap-1">
+      <div className="shrink-0 border-b border-blue-200 dark:border-[#1a2d4d] flex gap-1 overflow-x-auto scrollbar-thin">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -274,7 +274,7 @@ export function ReportesPublicadosClient({
       </div>
 
       {/* Table card */}
-      <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
+      <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -424,7 +424,7 @@ export function ReportesPublicadosClient({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-1">
+        <div className="shrink-0 flex items-center justify-between px-1">
           {/* Info */}
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Mostrando{' '}

@@ -6,7 +6,7 @@ import { getSession } from '@/back/services/session'
 
 export default async function AdminPage() {
   const session = await getSession()
-  if (!session) redirect('/login')
+  if (!session) redirect('/')
 
   const { stats, recentUsuarios } = await getAdminDashboardData(session.accessToken)
 

@@ -605,10 +605,10 @@ function SamplingModal({
   const applicableMins = new Set(reporte.samplingItems.map((item) => item.min))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-3 py-4 sm:px-4 sm:py-6 backdrop-blur-sm animate-fade-in">
       <form
         action={action}
-        className="flex max-h-[90vh] flex-col w-full max-w-[640px] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
+        className="flex max-h-[85vh] flex-col w-full max-w-[640px] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in sm:max-h-[90vh]"
       >
         <input type="hidden" name="reportId" value={String(reporte.reportId)} />
 
@@ -720,9 +720,9 @@ function SamplingModal({
               Tamaño de muestra y máximo de defectos según las piezas inspeccionadas del lote.
               {applicableMins.size > 0 && ' El rango resaltado aplica a este reporte.'}
             </p>
-            <div className="rounded-md border border-slate-200 dark:border-[#25395f]">
+            <div className="rounded-md border border-slate-200 dark:border-[#25395f] max-h-[220px] overflow-y-auto">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-slate-200/80 dark:bg-[#0c1426]">
+                <thead className="sticky top-0 z-10 bg-slate-200 dark:bg-[#0c1426]">
                   <tr>
                     <th className="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300">Rango (pzs)</th>
                     <th className="px-3 py-2 text-right font-semibold text-slate-600 dark:text-slate-300">Muestrear</th>
@@ -1043,7 +1043,8 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap items-start gap-4">
+          {/* Left: back button + consecutive number + client-plant-quote */}
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-3">
               <Link
@@ -1054,14 +1055,15 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
                 <ArrowLeft size={16} />
               </Link>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{consecutiveNumber}</h1>
-              <StatusBadge status={status} />
             </div>
             <p className="pl-11 text-sm text-slate-500">
               {cliente} - {planta} - {cotizacion}
             </p>
           </div>
 
-          <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+          {/* Right: status badge + workflow buttons — ml-auto anchors to the right even when wrapping */}
+          <div className="ml-auto flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
+            <StatusBadge status={status} />
 
             {/* submitted → registrar muestreo */}
             {!isLegacy && status === 'submitted' && canMuestreo && (
