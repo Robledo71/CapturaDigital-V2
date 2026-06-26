@@ -144,7 +144,7 @@ function InspectionItemsTable({
   const colCount = onEditItem ? 13 : 12
 
   return (
-    <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+    <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
       <h2 className="mb-4 text-sm font-semibold text-slate-900 dark:text-white">
         Detalle por ítem inspeccionado
       </h2>
@@ -160,14 +160,14 @@ function InspectionItemsTable({
                   (col, i) => (
                     <th
                       key={col}
-                      className={`pb-2.5 text-xs font-medium text-slate-600 dark:text-slate-500 ${i < 3 ? 'text-left' : 'text-right'} ${i === 0 ? 'w-8 pr-4' : ''} ${i === 1 ? 'min-w-[100px] pr-4' : ''} ${i === 2 ? 'min-w-[140px] pr-4' : ''} ${i > 2 ? 'pl-4' : ''}`}
+                      className={`pb-2.5 text-xs font-bold text-black dark:text-white ${i < 3 ? 'text-left' : 'text-right'} ${i === 0 ? 'w-8 pr-4' : ''} ${i === 1 ? 'min-w-[100px] pr-4' : ''} ${i === 2 ? 'min-w-[140px] pr-4' : ''} ${i > 2 ? 'pl-4' : ''}`}
                     >
                       {col}
                     </th>
                   ),
                 )}
                 {onEditItem && (
-                  <th className="pb-2.5 pl-4 text-right text-xs font-medium text-slate-600 dark:text-slate-500">
+                  <th className="pb-2.5 pl-4 text-right text-xs font-bold text-black dark:text-white">
                     <span className="sr-only">Acciones</span>
                   </th>
                 )}
@@ -367,7 +367,7 @@ function EditItemModal({
     >
       <form
         action={action}
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#111a30] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
         <input type="hidden" name="reportId" value={String(reportId)} />
         <input type="hidden" name="itemId" value={String(item.id)} />
@@ -724,9 +724,9 @@ function SamplingModal({
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10 bg-slate-200 dark:bg-[#0c1426]">
                   <tr>
-                    <th className="px-3 py-2 text-left font-semibold text-slate-600 dark:text-slate-300">Rango (pzs)</th>
-                    <th className="px-3 py-2 text-right font-semibold text-slate-600 dark:text-slate-300">Muestrear</th>
-                    <th className="px-3 py-2 text-right font-semibold text-slate-600 dark:text-slate-300">Máx. defectos</th>
+                    <th className="px-3 py-2 text-left font-bold text-black dark:text-white">Rango (pzs)</th>
+                    <th className="px-3 py-2 text-right font-bold text-black dark:text-white">Muestrear</th>
+                    <th className="px-3 py-2 text-right font-bold text-black dark:text-white">Máx. defectos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1117,7 +1117,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-5">
             <div className="sm:col-span-1 lg:col-span-3 flex flex-col">
-              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Datos del servicio</h2>
                 <dl className="flex flex-col gap-2.5">
                   {(
@@ -1143,7 +1143,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
             </div>
 
             <div className="sm:col-span-2 lg:col-span-6 flex flex-col gap-5">
-              <div className="flex flex-1 flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+              <div className="flex flex-1 flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                     Resumen de piezas inspeccionadas
@@ -1186,7 +1186,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+              <div className="flex flex-col gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
                 <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Asignacion</h2>
                 {hasOperadores ? (
                   <div className="flex flex-col gap-2">
@@ -1211,7 +1211,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
             </div>
 
             <div className="sm:col-span-1 lg:col-span-3 flex flex-col">
-              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#1a2d4d] dark:shadow-none dark:bg-[#0c1829]">
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
                 <div className="flex items-center gap-1.5">
                   <Clock size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Historial</h2>

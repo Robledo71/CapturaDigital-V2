@@ -126,7 +126,7 @@ export function Sidebar({ user }: SidebarProps) {
   const sidebarContent = (
     <>
       {/* Brand header */}
-      <div className="px-4 py-5 flex items-center gap-3 border-b border-[#2d4f7c] dark:border-[#1a2d4d]">
+      <div className="px-4 py-5 flex items-center gap-3 border-b border-[#2d4f7c] dark:border-[#0C1829]">
         <Image
           src="/logoCheck.png"
           alt="Quality Bolca"
@@ -269,7 +269,7 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Mobile drawer */}
       <aside
         aria-label="Navegación principal"
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#2d4f7c] dark:border-[#1a2d4d] bg-[#1e3a5f] dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#1e3a5f] dark:border-[#0c1829] bg-[#1e3a5f] dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -277,7 +277,7 @@ export function Sidebar({ user }: SidebarProps) {
       </aside>
 
       {/* Desktop sidebar — always visible on lg+ */}
-      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-[#2d4f7c] dark:border-[#1a2d4d] bg-[#1e3a5f] dark:bg-[#0c1829]">
+      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-[#1e3a5f] dark:border-[#0c1829] bg-[#1e3a5f] dark:bg-[#0c1829]">
         {sidebarContent}
       </aside>
     </>

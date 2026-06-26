@@ -88,7 +88,7 @@ export function LegacyCsvTable({ items }: { items: unknown[] }) {
                   <th
                     key={h}
                     scope="col"
-                    className="pb-2 pr-4 text-left text-xs font-medium text-slate-500 last:pr-0"
+                    className="pb-2 pr-4 text-left text-xs font-bold text-black dark:text-white last:pr-0"
                   >
                     {h}
                   </th>

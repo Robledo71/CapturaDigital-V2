@@ -27,7 +27,7 @@ const BAR_OPACITIES = [
 
 export function StatCard({ label, value, subtitle, dotColor, chart }: StatCardProps) {
   return (
-    <div className="rounded-xl bg-white p-5 flex flex-col gap-3 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-[#0f2038] dark:border-[#1a2d4d] dark:shadow-none transition-all duration-200 hover:shadow-lg hover:scale-[1.02]">
+    <div className="rounded-xl bg-white p-5 flex flex-col gap-3 border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-[#0f2038] dark:border-[#0f2038] dark:shadow-none transition-all duration-200 hover:shadow-lg hover:scale-[1.02]">
 
       {/* Label row */}
       <div className="flex items-center gap-2">

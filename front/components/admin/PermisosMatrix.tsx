@@ -180,13 +180,13 @@ export function PermisosMatrix({ permissions, matrix, editableRoles }: PermisosM
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="text-left font-semibold text-slate-600 dark:text-slate-300 px-4 py-3 whitespace-nowrap">
+                <th className="text-left font-bold text-black dark:text-white px-4 py-3 whitespace-nowrap">
                   Permiso
                 </th>
                 {columns.map((rol) => (
                   <th
                     key={rol}
-                    className="px-3 py-3 text-center font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap min-w-[7rem]"
+                    className="px-3 py-3 text-center font-bold text-black dark:text-white whitespace-nowrap min-w-[7rem]"
                   >
                     {ROL_LABEL[rol] ?? rol}
                     {rol === 'admin' && (

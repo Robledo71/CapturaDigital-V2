@@ -90,7 +90,7 @@ function ItemsTable({ items, totals }: {
         <thead>
           <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
             {(['#', 'N° Parte', 'Nombre', 'Lote', 'Serie', 'Insp.', 'OK', 'NG', 'Scrap', 'Recup.', 'Inc.'] as const).map((col, i) => (
-              <th key={col} className={`pb-2.5 text-xs font-medium text-slate-600 dark:text-slate-500 ${i < 3 ? 'text-left pr-4' : 'text-right pl-4'}`}>
+              <th key={col} className={`pb-2.5 text-xs font-bold text-black dark:text-white ${i < 3 ? 'text-left pr-4' : 'text-right pl-4'}`}>
                 {col}
               </th>
             ))}

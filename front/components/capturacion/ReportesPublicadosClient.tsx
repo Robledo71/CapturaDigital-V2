@@ -8,7 +8,7 @@ import { upsertDownloadRecord, getDownloadedIds } from '@/front/lib/downloadHist
 
 type TabKey = 'todos' | 'sin-descargar' | 'descargados'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 10
 
 function getPageNumbers(current: number, total: number): (number | '...')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
@@ -290,31 +290,31 @@ export function ReportesPublicadosClient({
                   />
                 </th>
               )}
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                 ID
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                 Cliente · Planta
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                 Cotización
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                 # Parte
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-right px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-right px-4 py-3">
                 Piezas
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-right px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-right px-4 py-3">
                 % NG
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                 Publicado
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                 Supervisor
               </th>
-              <th className="text-xs text-slate-500 font-semibold uppercase tracking-wider text-left px-4 py-3">
+              <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                 Estado
               </th>
               {canDescargar && <th className="w-10 px-4 py-3" aria-label="Acciones" />}

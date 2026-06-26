@@ -9,19 +9,19 @@ interface TopBarProps {
 
 export function TopBar({ crumb }: TopBarProps) {
   return (
-    <header className="h-12 pl-12 pr-4 lg:px-6 flex items-center justify-between flex-shrink-0 bg-[#1e3a5f] dark:bg-[#0c1829] border-b border-blue-200 dark:border-[#1a2d4d]">
+    <header className="h-12 pl-12 pr-4 lg:px-6 flex items-center justify-between flex-shrink-0 bg-[#F5F5F7] dark:bg-[#070E1A] border-b border-[#F5F5F7] dark:border-[#070E1A]">
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm">
         <Link
           href="/supervisor"
-          className="text-slate-200 dark:text-slate-400 hover:text-slate-400 dark:hover:text-white transition-colors"
+          className="text-slate-600 dark:text-slate-400 hover:text-slate-400 dark:hover:text-white transition-colors"
         >
           Inicio
         </Link>
         {crumb && (
           <>
             <ChevronRight size={13} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />
-            <span className="text-white dark:text-slate-200">{crumb}</span>
+            <span className="text-slate-600 dark:text-slate-200">{crumb}</span>
           </>
         )}
       </nav>

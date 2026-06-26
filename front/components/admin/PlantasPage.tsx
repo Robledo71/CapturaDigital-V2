@@ -273,13 +273,13 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
               <table className="w-full text-sm" aria-label="Tabla de plantas">
                 <thead>
                   <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                       Nombre
                     </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                       Dirección
                     </th>
-                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-black dark:text-white uppercase tracking-wider">
                       <span className="sr-only">Acciones</span>
                     </th>
                   </tr>

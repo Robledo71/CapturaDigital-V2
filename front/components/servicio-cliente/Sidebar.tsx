@@ -7,7 +7,6 @@ import { usePathname } from 'next/navigation'
 import { logoutUser } from '@/app/actions/logout'
 import {
   LayoutDashboard,
-  ClipboardList,
   Lock,
   ChevronDown,
   Menu,
@@ -33,12 +32,6 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         href: '/servicio-cliente',
         icon: <LayoutDashboard size={16} />,
         permiso: 'servicio_cliente.ver',
-      },
-      {
-        label: 'Órdenes',
-        href: '/servicio-cliente/ordenes',
-        icon: <ClipboardList size={16} />,
-        permiso: 'ordenes.ver',
       },
       {
         label: 'Desbloquear Cotización',
@@ -236,7 +229,7 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Mobile drawer */}
       <aside
         aria-label="Navegación principal"
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-white dark:border-[#0c1829] bg-white dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -244,7 +237,7 @@ export function Sidebar({ user }: SidebarProps) {
       </aside>
 
       {/* Desktop sidebar — always visible on lg+ */}
-      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829]">
+      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-white dark:border-[#0c1829] bg-white dark:bg-[#0c1829]">
         {sidebarContent}
       </aside>
     </>

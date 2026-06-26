@@ -35,13 +35,13 @@ interface TabletCardProps {
 
 function TabletCard({ tablet }: TabletCardProps) {
   return (
-    <div className="rounded-xl bg-white border border-slate-200 dark:bg-[#0c1829] dark:border-[#1a2d4d] overflow-hidden">
+    <div className="rounded-xl bg-white border border-slate-200 dark:bg-[#0c1829] dark:border-[#0c1829] overflow-hidden">
       {/* Card header */}
       <div className="flex items-start justify-between px-4 pt-4 pb-3">
         <div className="flex items-start gap-3">
           {/* Tablet icon with online indicator */}
           <div className="relative shrink-0">
-            <div className="w-12 h-14 rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#070e1a] flex items-center justify-center text-blue-400">
+            <div className="w-12 h-14 rounded-lg border border-slate-200 bg-slate-20 dark:border-[#1a2d4d] dark:bg-[#070e1a] flex items-center justify-center text-blue-400">
               <TabletSmartphone size={24} strokeWidth={1.5} />
             </div>
             {/* Online dot */}

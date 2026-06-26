@@ -13,7 +13,7 @@ interface QualityTableProps {
 export function QualityTable({ rows }: QualityTableProps) {
   const router = useRouter()
   return (
-    <div className="rounded-xl bg-white border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-[#0f2038] dark:border-[#1a2d4d] dark:shadow-none p-5 flex flex-col gap-4">
+    <div className="rounded-xl bg-white border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-[#0f2038] dark:border-[#0f2038] dark:shadow-none p-5 flex flex-col gap-4">
 
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
@@ -43,7 +43,7 @@ export function QualityTable({ rows }: QualityTableProps) {
                 <th
                   key={idx}
                   scope="col"
-                  className="text-left text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 py-2.5 pr-4 last:pr-0 first:pl-3 last:pl-0"
+                  className="text-left text-[10px] font-bold uppercase tracking-wider text-black dark:text-white py-2.5 pr-4 last:pr-0 first:pl-3 last:pl-0"
                 >
                   {col}
                 </th>

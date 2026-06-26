@@ -1002,30 +1002,30 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
   const to = Math.min(page * PAGE_SIZE, orders.length)
 
   return (
-    <div className="shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:shadow-none">
+    <div className="shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:bg-[#0c1829] dark:shadow-none">
       <div className="overflow-x-auto">
       <table className="w-full table-auto text-sm">
         <thead>
           <tr className="border-b border-blue-200 dark:border-[#1a2d4d] dark:bg-[#0a1628]">
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               Consecutivo
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               Cliente
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               Planta
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               No. Parte
             </th>
-            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               Inventario
             </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               Items
             </th>
-            <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               Sin asignar
             </th>
           </tr>

@@ -155,7 +155,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-6">
 
       {/* Page header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="shrink-0 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-white">Bienvenido, Administrador</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Sistema de administración · Quality Bolca</p>
@@ -164,7 +164,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
       </div>
 
       {/* KPI grid — 1 col mobile, 2 sm, 3 lg */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <AdminStatCard
           label="Usuarios activos"
           value={String(stats.usuariosActivos)}
@@ -210,7 +210,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
       </div>
 
       {/* Quick actions */}
-      <section aria-labelledby="acciones-heading">
+      <section aria-labelledby="acciones-heading" className="shrink-0">
         <h2 id="acciones-heading" className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
           Acciones rápidas
         </h2>
@@ -239,7 +239,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
       </section>
 
       {/* Recent users table */}
-      <section aria-labelledby="usuarios-heading">
+      <section aria-labelledby="usuarios-heading" className="shrink-0">
         <div className="flex items-center justify-between mb-3">
           <h2 id="usuarios-heading" className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             Usuarios recientes
@@ -257,19 +257,19 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
             <table className="w-full text-sm" aria-label="Usuarios recientes">
               <thead>
                 <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                     Nombre
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                     Código
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                     Rol
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                     Planta
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                     Estado
                   </th>
                 </tr>

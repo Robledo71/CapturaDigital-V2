@@ -72,19 +72,19 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-medium text-slate-600 dark:text-slate-500">
+                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
                   Reporte
                 </th>
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-medium text-slate-600 dark:text-slate-500">
+                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
                   Ítem
                 </th>
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-medium text-slate-600 dark:text-slate-500">
+                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
                   Usuario
                 </th>
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-medium text-slate-600 dark:text-slate-500">
+                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
                   Motivo
                 </th>
-                <th className="px-5 pb-3 pt-4 text-right text-xs font-medium text-slate-600 dark:text-slate-500">
+                <th className="px-5 pb-3 pt-4 text-right text-xs font-bold text-black dark:text-white">
                   Fecha
                 </th>
               </tr>
