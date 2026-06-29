@@ -26,7 +26,7 @@ const UpdateUserSchema = z
     codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
     puesto: z.string().min(1, 'El puesto es requerido').trim(),
     plantaId: z.number().int().positive().nullable(),
-    rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'servicio_cliente', 'cliente'], {
+    rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'servicio_cliente', 'gerente', 'cliente'], {
       error: 'Rol no válido',
     }),
     correo: z.string().email('El correo no es válido').trim(),

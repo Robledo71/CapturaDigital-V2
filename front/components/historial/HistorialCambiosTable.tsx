@@ -63,7 +63,7 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-slate-100 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none overflow-x-auto">
+      <div className="rounded-xl border border-slate-100 dark:border-[#0c1829] bg-white dark:bg-[#0c1829] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none overflow-x-auto">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center py-16 px-6">
             <p className="text-sm text-slate-500 dark:text-slate-400">Sin cambios registrados</p>

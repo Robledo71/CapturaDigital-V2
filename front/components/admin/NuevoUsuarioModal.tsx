@@ -223,6 +223,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
                   <option value="lider">Líder</option>
                   <option value="capturacion">Capturación</option>
                   <option value="servicio_cliente">Servicio al Cliente</option>
+                  <option value="gerente">Gerencia</option>
                   <option value="cliente">Cliente</option>
                 </select>
                 {state?.errors?.rol && (

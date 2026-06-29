@@ -6,6 +6,7 @@ const ROLE_ROUTES: Record<string, string> = {
   '/admin': 'admin',
   '/supervisor': 'supervisor',
   '/capturacion': 'capturacion',
+  '/gerente': 'gerente',
 }
 
 export async function proxy(req: NextRequest) {
@@ -26,7 +27,8 @@ export async function proxy(req: NextRequest) {
   if (isPublic) {
     const dest =
       session.rol === 'admin' ? '/admin' :
-      session.rol === 'supervisor' ? '/supervisor' : '/capturacion'
+      session.rol === 'supervisor' ? '/supervisor' :
+      session.rol === 'gerente' ? '/gerente' : '/capturacion'
     return NextResponse.redirect(new URL(dest, req.nextUrl))
   }
 
@@ -36,7 +38,8 @@ export async function proxy(req: NextRequest) {
       if (session.rol !== requiredRol) {
         const dest =
           session.rol === 'admin' ? '/admin' :
-          session.rol === 'supervisor' ? '/supervisor' : '/capturacion'
+          session.rol === 'supervisor' ? '/supervisor' :
+          session.rol === 'gerente' ? '/gerente' : '/capturacion'
         return NextResponse.redirect(new URL(dest, req.nextUrl))
       }
       break

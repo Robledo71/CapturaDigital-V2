@@ -95,13 +95,21 @@ function InspectorAvatar({ nombre }: InspectorAvatarProps) {
 
 interface ReportesPageProps {
   initialReportes: ReporteRow[]
+  /** Base del enlace al detalle de cada reporte. Por defecto el del supervisor. */
+  detailHrefBase?: string
+  /** Destino del botón "Nuevo". Si es null, el botón no se muestra (p.ej. gerente, solo lectura). */
+  newReportHref?: string | null
 }
 
 const PAGE_SIZE = 10
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function ReportesPage({ initialReportes }: ReportesPageProps) {
+export function ReportesPage({
+  initialReportes,
+  detailHrefBase = '/supervisor/reportes',
+  newReportHref = '/supervisor/carga-trabajo',
+}: ReportesPageProps) {
   const router = useRouter()
 
   const [activeTab, setActiveTab] = useState<TabKey>('todos')
@@ -182,13 +190,15 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
             </div>
 
             {/* New report */}
-            <Link
-              href="/supervisor/carga-trabajo"
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors flex-shrink-0"
-            >
-              <Plus size={15} />
-              Nuevo
-            </Link>
+            {newReportHref && (
+              <Link
+                href={newReportHref}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors flex-shrink-0"
+              >
+                <Plus size={15} />
+                Nuevo
+              </Link>
+            )}
           </div>
         </div>
 
@@ -281,7 +291,7 @@ export function ReportesPage({ initialReportes }: ReportesPageProps) {
                   paginated.map((r) => (
                     <tr
                       key={r.id}
-                      onClick={() => router.push(`/supervisor/reportes/${r.id}`)}
+                      onClick={() => router.push(`${detailHrefBase}/${r.id}`)}
                       className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors group cursor-pointer"
                     >
                       <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">

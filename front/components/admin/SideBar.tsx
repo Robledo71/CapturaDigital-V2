@@ -120,6 +120,7 @@ const ROL_LABEL: Record<string, string> = {
   lider:            'Líder',
   capturacion:      'Capturación',
   servicio_cliente: 'Servicio al Cliente',
+  gerente:          'Gerencia',
 }
 
 export function SideBar({ user }: SideBarProps) {

@@ -12,7 +12,7 @@ import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente'
+type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'gerente' | 'cliente'
 type UserEstado = 'activo' | 'inactivo'
 
 interface Usuario {
@@ -55,6 +55,7 @@ const ROLES_PERSONALIZABLES: ReadonlySet<string> = new Set([
   'lider',
   'capturacion',
   'servicio_cliente',
+  'gerente',
 ])
 
 // ─── Mapper (outside component for stable reference) ──────────────────────────
@@ -135,6 +136,13 @@ function RolBadge({ rol }: { rol: UserRol }) {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20">
         Servicio al Cliente
+      </span>
+    )
+  }
+  if (rol === 'gerente') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-500/20">
+        Gerencia
       </span>
     )
   }
@@ -313,6 +321,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
     { key: 'lider',       label: 'Líderes',         count: usuarios.filter((u) => u.rol === 'lider').length },
     { key: 'capturacion', label: 'Capturación',     count: usuarios.filter((u) => u.rol === 'capturacion').length },
     { key: 'servicio_cliente', label: 'Servicio al Cliente', count: usuarios.filter((u) => u.rol === 'servicio_cliente').length },
+    { key: 'gerente',     label: 'Gerencia',        count: usuarios.filter((u) => u.rol === 'gerente').length },
     { key: 'cliente',     label: 'Clientes',        count: usuarios.filter((u) => u.rol === 'cliente').length },
     { key: 'inactivos',   label: 'Inactivos',       count: usuarios.filter((u) => u.estado === 'inactivo').length },
   ]

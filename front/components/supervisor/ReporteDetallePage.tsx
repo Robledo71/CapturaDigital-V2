@@ -34,6 +34,8 @@ interface ReporteDetallePageProps {
   /** Permisos efectivos del usuario, para decidir qué acciones de workflow mostrar. */
   rol: string
   permisos?: string[] | null
+  /** Destino del botón "volver". Por defecto la lista de reportes del supervisor. */
+  backHref?: string
 }
 
 const STATUS_CONFIG: Record<string, { dot: string; label: string; pill: string; text: string }> = {
@@ -883,7 +885,7 @@ function toDate(v: Date | string | null): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePageProps) {
+export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/supervisor/reportes' }: ReporteDetallePageProps) {
   // Permisos efectivos del usuario → controlan qué botones de workflow se muestran.
   // La frontera real de seguridad sigue siendo cada server action (que vuelve a validar).
   const session: SessionLike = { rol, permisos }
@@ -1048,7 +1050,7 @@ export function ReporteDetallePage({ reporte, rol, permisos }: ReporteDetallePag
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                href="/supervisor/reportes"
+                href={backHref}
                 className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white text-slate-600 transition-colors hover:text-slate-900 dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:text-slate-400 dark:hover:text-white"
                 aria-label="Regresar a reportes"
               >

@@ -25,6 +25,7 @@ export type Rol =
   | 'capturacion'
   | 'servicio_cliente'
   | 'cliente'
+  | 'gerente'
 
 // ─── Catálogo de permisos (acción fina, agrupados por módulo) ────────────────────
 
@@ -57,6 +58,7 @@ export const PERMISOS = [
   'supervisor.ver',
   'capturacion.ver',
   'servicio_cliente.ver',
+  'gerente.ver',
   // Auditoría
   'historial.ver',
   // Meta: habilita la propia pantalla de configuración de permisos
@@ -126,6 +128,15 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
 
   // Cliente (pendiente de implementar su portal)
   cliente: [],
+
+  // Gerente: solo lectura, ve todo sin filtro de planta
+  gerente: [
+    'gerente.ver',
+    'reportes.ver',
+    'ordenes.ver',
+    'ordenes.descargar',
+    'historial.ver',
+  ],
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────────

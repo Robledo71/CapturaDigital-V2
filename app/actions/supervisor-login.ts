@@ -96,7 +96,7 @@ export async function loginSupervisor(
     }
   }
 
-  const validRoles = ['admin', 'supervisor', 'capturacion', 'lider', 'servicio_cliente', 'cliente'] as const
+  const validRoles = ['admin', 'supervisor', 'capturacion', 'lider', 'servicio_cliente', 'gerente', 'cliente'] as const
   type ValidRol = typeof validRoles[number]
   if (!validRoles.includes(rol as ValidRol)) {
     return {
@@ -123,6 +123,7 @@ export async function loginSupervisor(
     admin:            '/admin',
     capturacion:      '/capturacion',
     servicio_cliente: '/servicio-cliente',
+    gerente:          '/gerente',
     cliente:          '/cliente',
   }
   redirect(redirectByRol[rol as ValidRol])
