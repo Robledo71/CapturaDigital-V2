@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Download, Loader2, X } from 'lucide-react'
+import { ClipboardCheck, Download, Loader2, X } from 'lucide-react'
 import type { ReporteDetalleData } from '@/back/services/reporteDetalleService'
 import { getReporteDetalleAction } from '@/app/actions/get-reporte-detalle'
 import { ReporteDetalleResumen, ReporteEstadoBadge } from './ReporteDetalleResumen'
@@ -63,6 +63,13 @@ export function ReporteDetalleModal({ reporteId, onClose }: ReporteDetalleModalP
     a.click()
   }
 
+  /** Subtitle: "Cliente · Planta" when loaded, fallback identifier while loading */
+  const subtitle = reporte
+    ? `${reporte.cliente} · ${reporte.planta}`
+    : reporteId
+      ? `ID: ${reporteId}`
+      : null
+
   return (
     <div
       role="dialog"
@@ -71,27 +78,53 @@ export function ReporteDetalleModal({ reporteId, onClose }: ReporteDetalleModalP
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 px-4 py-6 backdrop-blur-sm animate-fade-in sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      {/* Contenedor: alto acotado a 85vh; el cuerpo hace scroll, header/footer quedan fijos */}
+      {/* Container: bounded height; body scrolls, header/footer stay fixed */}
       <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-[#F5F5F7] shadow-2xl dark:border-[#25395f] dark:bg-[#070e1a] animate-scale-in">
-        {/* Header fijo */}
-        <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-4 dark:border-[#25395f] dark:bg-[#0c1829]">
-          <div className="flex min-w-0 items-center gap-3">
-            <h2 id="reporte-detalle-titulo" className="truncate text-base font-bold text-slate-900 dark:text-white">
-              {reporte ? reporte.consecutiveNumber : 'Detalle del reporte'}
-            </h2>
-            {reporte && <ReporteEstadoBadge status={reporte.status} />}
+
+        {/* Fixed header — reference style: blue icon box + large title + grey subtitle + badge + ✕ */}
+        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 dark:border-[#25395f] dark:bg-[#0c1829]">
+          <div className="flex min-w-0 items-start gap-3">
+            {/* Icon in rounded blue box */}
+            <div
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+              aria-hidden="true"
+            >
+              <ClipboardCheck size={20} />
+            </div>
+
+            {/* Title block */}
+            <div className="min-w-0">
+              <h2
+                id="reporte-detalle-titulo"
+                className="truncate text-lg font-bold leading-tight text-slate-900 dark:text-white"
+              >
+                {reporte ? reporte.consecutiveNumber : 'Detalle del reporte'}
+              </h2>
+              {subtitle && (
+                <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
+                  {subtitle}
+                </p>
+              )}
+              {reporte && (
+                <div className="mt-1.5">
+                  <ReporteEstadoBadge status={reporte.status} />
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Close button */}
           <button
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="flex-shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+            className="mt-0.5 flex-shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Cuerpo con scroll interno */}
+        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto p-5">
           {loading && (
             <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-500">
@@ -110,7 +143,7 @@ export function ReporteDetalleModal({ reporteId, onClose }: ReporteDetalleModalP
           {!loading && !error && reporte && <ReporteDetalleResumen reporte={reporte} />}
         </div>
 
-        {/* Footer fijo */}
+        {/* Fixed footer */}
         <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-slate-200 bg-white px-5 py-3.5 dark:border-[#25395f] dark:bg-[#0c1829]">
           <button
             type="button"

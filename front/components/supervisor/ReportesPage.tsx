@@ -241,7 +241,7 @@ export function ReportesPage({
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full text-sm" aria-label="Tabla de reportes de inspección">
               <thead>
-                <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+                <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
                   <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                     ID
                   </th>
@@ -274,7 +274,7 @@ export function ReportesPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-100 dark:divide-[#1a2d4d]">
+              <tbody className="divide-y divide-white dark:divide-[#1a2d4d]">
                 {initialReportes.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="px-4 py-12 text-center text-slate-500 text-sm">

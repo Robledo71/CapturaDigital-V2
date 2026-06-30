@@ -2,11 +2,29 @@ import { NextRequest, NextResponse } from 'next/server'
 import { decrypt } from '@/back/services/session'
 
 const PUBLIC_ROUTES = ['/', '/tablet/login', '/reset-password']
-const ROLE_ROUTES: Record<string, string> = {
-  '/admin': 'admin',
-  '/supervisor': 'supervisor',
-  '/capturacion': 'capturacion',
-  '/gerente': 'gerente',
+
+// Roles permitidos por portal. El lider reutiliza el portal de supervisor y el de
+// capturación, así que se incluye en ambos (su rol es 'lider', no 'supervisor').
+const ROLE_ROUTES: Record<string, string[]> = {
+  '/admin': ['admin'],
+  '/supervisor': ['supervisor', 'lider'],
+  '/capturacion': ['capturacion', 'lider'],
+  '/gerente': ['gerente'],
+  '/servicio-cliente': ['servicio_cliente'],
+}
+
+// Portal de aterrizaje de cada rol. DEBE ser un portal donde ese rol esté permitido
+// (ver ROLE_ROUTES) para no provocar bucles de redirección.
+function landingFor(rol: string): string {
+  switch (rol) {
+    case 'admin':            return '/admin'
+    case 'supervisor':       return '/supervisor'
+    case 'lider':            return '/supervisor'
+    case 'gerente':          return '/gerente'
+    case 'servicio_cliente': return '/servicio-cliente'
+    case 'capturacion':      return '/capturacion'
+    default:                 return '/capturacion'
+  }
 }
 
 export async function proxy(req: NextRequest) {
@@ -25,22 +43,14 @@ export async function proxy(req: NextRequest) {
 
   // Authenticated on a public route → redirect to their dashboard
   if (isPublic) {
-    const dest =
-      session.rol === 'admin' ? '/admin' :
-      session.rol === 'supervisor' ? '/supervisor' :
-      session.rol === 'gerente' ? '/gerente' : '/capturacion'
-    return NextResponse.redirect(new URL(dest, req.nextUrl))
+    return NextResponse.redirect(new URL(landingFor(session.rol), req.nextUrl))
   }
 
   // Role-gated routes
-  for (const [route, requiredRol] of Object.entries(ROLE_ROUTES)) {
+  for (const [route, allowedRoles] of Object.entries(ROLE_ROUTES)) {
     if (pathname.startsWith(route)) {
-      if (session.rol !== requiredRol) {
-        const dest =
-          session.rol === 'admin' ? '/admin' :
-          session.rol === 'supervisor' ? '/supervisor' :
-          session.rol === 'gerente' ? '/gerente' : '/capturacion'
-        return NextResponse.redirect(new URL(dest, req.nextUrl))
+      if (!allowedRoles.includes(session.rol)) {
+        return NextResponse.redirect(new URL(landingFor(session.rol), req.nextUrl))
       }
       break
     }

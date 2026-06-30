@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
-import { canAny } from '@/front/lib/permisos'
+import { can, canAny } from '@/front/lib/permisos'
 import { getCotizaciones } from '@/back/services/cotizacionesService'
 import { DesbloquearCotizacionesClient } from '@/front/components/capturacion/DesbloquearCotizacionesClient'
 
@@ -14,5 +14,10 @@ export default async function DesbloquearCotizacionesPage() {
 
   const cotizaciones = await getCotizaciones(session.accessToken)
 
-  return <DesbloquearCotizacionesClient cotizaciones={cotizaciones} />
+  return (
+    <DesbloquearCotizacionesClient
+      cotizaciones={cotizaciones}
+      canBlockAll={can(session, 'cotizaciones.bloquear')}
+    />
+  )
 }

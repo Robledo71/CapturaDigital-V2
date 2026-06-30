@@ -71,7 +71,7 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+              <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
                 <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
                   Reporte
                 </th>
@@ -94,7 +94,7 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
                 <tr
                   key={row.id}
                   onClick={() => setSelected(row)}
-                  className="border-b border-blue-100 dark:border-[#1a2d4d]/50 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer"
+                  className="border-b border-white dark:border-[#1a2d4d]/50 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer"
                 >
                   <td className="px-5 py-3 text-xs font-mono text-blue-600 dark:text-blue-400">
                     #{row.dailyReportConsecutive}

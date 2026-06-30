@@ -126,7 +126,7 @@ export function Sidebar({ user }: SidebarProps) {
   const sidebarContent = (
     <>
       {/* Brand header */}
-      <div className="px-4 py-5 flex items-center gap-3 border-b border-[#2d4f7c] dark:border-[#0C1829]">
+      <div className="px-4 py-5 flex items-center gap-3 border-b border-slate-200 dark:border-[#1a2d4d]">
         <Image
           src="/logoCheck.png"
           alt="Quality Bolca"
@@ -135,7 +135,7 @@ export function Sidebar({ user }: SidebarProps) {
           className="rounded-lg flex-shrink-0"
         />
         <div className="min-w-0">
-          <p className="text-white dark:text-white font-bold text-sm leading-tight truncate">Captura Digital QB</p>
+          <p className="text-slate-900 dark:text-white font-bold text-sm leading-tight truncate">Captura Digital QB</p>
           <p className="text-[#64748b] text-xs leading-tight mt-0.5">v2 · Servicio de inspección</p>
         </div>
         {/* Close button — only visible in mobile drawer */}
@@ -143,7 +143,7 @@ export function Sidebar({ user }: SidebarProps) {
           type="button"
           onClick={() => setMobileOpen(false)}
           aria-label="Cerrar menú"
-          className="ml-auto lg:hidden p-1 rounded-md text-blue-300 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+          className="ml-auto lg:hidden p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0"
         >
           <X size={16} />
         </button>
@@ -158,7 +158,7 @@ export function Sidebar({ user }: SidebarProps) {
           if (visibleItems.length === 0) return null
           return (
           <div key={section.heading} className="flex flex-col gap-1">
-            <p className="text-xs text-blue-300 dark:text-slate-500 font-semibold tracking-wider uppercase px-3 mb-1">
+            <p className="text-xs text-slate-500 dark:text-slate-500 font-semibold tracking-wider uppercase px-3 mb-1">
               {section.heading}
             </p>
             {visibleItems.map((item) => {
@@ -170,8 +170,8 @@ export function Sidebar({ user }: SidebarProps) {
                   aria-current={active ? 'page' : undefined}
                   className={
                     active
-                      ? 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-white dark:text-white bg-white/15 dark:bg-[#1a3a5c]'
-                      : 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-blue-200 dark:text-slate-400 hover:bg-white/10 dark:hover:bg-[#1a2d4d] hover:text-white dark:hover:text-white transition-colors'
+                      ? 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-900 dark:text-white bg-slate-100 dark:bg-[#1a3a5c]'
+                      : 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#1a2d4d] hover:text-slate-900 dark:hover:text-white transition-colors'
                   }
                 >
                   <span className="flex-shrink-0">{item.icon}</span>
@@ -196,30 +196,30 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* Session section */}
-      <div className="px-3 pb-4 border-t border-[#2d4f7c] dark:border-[#1a2d4d] pt-4 relative">
-        <p className="text-xs text-blue-300 dark:text-slate-500 font-semibold tracking-wider uppercase px-3 mb-2">
+      <div className="px-3 pb-4 border-t border-slate-200 dark:border-[#1a2d4d] pt-4 relative">
+        <p className="text-xs text-slate-500 dark:text-slate-500 font-semibold tracking-wider uppercase px-3 mb-2">
           SESIÓN ACTIVA
         </p>
 
         <button
           type="button"
           onClick={() => setDropdownOpen((prev) => !prev)}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-white/10 dark:hover:bg-[#1a2d4d] transition-colors"
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#1a2d4d] transition-colors"
           aria-haspopup="menu"
           aria-expanded={dropdownOpen}
         >
           {/* Avatar */}
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white dark:text-white text-xs font-bold">{initials}</span>
+            <span className="text-white text-xs font-bold">{initials}</span>
           </div>
           {/* Info */}
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-white dark:text-white text-sm font-medium leading-tight truncate">{user.nombreCompleto}</p>
-            <p className="text-blue-300 dark:text-slate-400 text-xs leading-tight mt-0.5 truncate">{rolDisplay}</p>
+            <p className="text-slate-900 dark:text-white text-sm font-medium leading-tight truncate">{user.nombreCompleto}</p>
+            <p className="text-slate-600 dark:text-slate-400 text-xs leading-tight mt-0.5 truncate">{rolDisplay}</p>
           </div>
           <ChevronDown
             size={14}
-            className={`flex-shrink-0 text-blue-300 dark:text-slate-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
+            className={`flex-shrink-0 text-slate-600 dark:text-slate-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
           />
         </button>
 
@@ -227,13 +227,13 @@ export function Sidebar({ user }: SidebarProps) {
         {dropdownOpen && (
           <div
             role="menu"
-            className="absolute bottom-full left-3 right-3 mb-1 rounded-lg border border-[#2d4f7c] dark:border-[#1a2d4d] bg-[#162e50] dark:bg-[#0c1829] shadow-xl overflow-hidden"
+            className="absolute bottom-full left-3 right-3 mb-1 rounded-lg border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] shadow-xl overflow-hidden"
           >
-            <div className="border-t border-[#2d4f7c] dark:border-[#1a2d4d]" />
+            <div className="border-t border-slate-200 dark:border-[#1a2d4d]" />
             <button
               type="button"
               role="menuitem"
-              className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-white/10 dark:hover:bg-[#1a2d4d] transition-colors"
+              className="w-full text-left px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-slate-100 dark:hover:bg-[#1a2d4d] transition-colors"
               onClick={logoutUser}
             >
               Cerrar sesión
@@ -252,7 +252,7 @@ export function Sidebar({ user }: SidebarProps) {
         onClick={() => setMobileOpen(true)}
         aria-label="Abrir menú"
         aria-expanded={mobileOpen}
-        className="fixed top-2 left-2 z-50 flex h-9 w-9 items-center justify-center rounded-lg bg-[#1e3a5f] dark:bg-[#0c1829] border border-[#2d4f7c] dark:border-[#1a2d4d] text-white shadow-md lg:hidden"
+        className="fixed top-2 left-2 z-50 flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-[#0c1829] border border-slate-200 dark:border-[#1a2d4d] text-slate-700 dark:text-white shadow-md lg:hidden"
       >
         <Menu size={18} />
       </button>
@@ -269,7 +269,7 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Mobile drawer */}
       <aside
         aria-label="Navegación principal"
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[#1e3a5f] dark:border-[#0c1829] bg-[#1e3a5f] dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-white dark:border-[#0c1829] bg-white dark:bg-[#0c1829] transition-transform duration-300 lg:hidden ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -277,7 +277,7 @@ export function Sidebar({ user }: SidebarProps) {
       </aside>
 
       {/* Desktop sidebar — always visible on lg+ */}
-      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-[#1e3a5f] dark:border-[#0c1829] bg-[#1e3a5f] dark:bg-[#0c1829]">
+      <aside className="hidden lg:flex w-52 flex-shrink-0 flex-col border-r border-white dark:border-[#0c1829] bg-white dark:bg-[#0c1829]">
         {sidebarContent}
       </aside>
     </>

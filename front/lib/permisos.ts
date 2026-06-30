@@ -103,9 +103,11 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'supervisor.ver',
     'capturacion.ver',
     'reportes.ver',
-    'reportes.editar',
+    'cotizaciones.importar',
     'ordenes.ver',
     'ordenes.descargar',
+    'ordenes.asignar',
+    'historial.ver',
   ],
 
   // Capturación (PIERDE el desbloqueo de cotizaciones)

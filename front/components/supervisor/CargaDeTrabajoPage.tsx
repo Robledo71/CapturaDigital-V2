@@ -618,7 +618,7 @@ function OrderItemCard({
         </span>
       </div>
 
-      {/* Row 3 — status badge + tablet chip */}
+      {/* Row 3 — status badge + tablet chip + assign/release buttons (right-anchored) */}
       <div className="flex flex-wrap items-center gap-2">
         <ItemStatusBadge status={item.status} />
 
@@ -634,59 +634,52 @@ function OrderItemCard({
         {item.hasSubmittedReport && item.status !== 'completed' && (
           <span className="text-xs text-amber-500">Reporte enviado</span>
         )}
+
+        {/* Assign / release buttons — pushed to the far right */}
+        {canAsignar && (canAssign || canRelease) && (
+          <div className="ml-auto flex items-center gap-2">
+            {canAssign && (
+              <button
+                type="button"
+                onClick={() => onAssign(item)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
+              >
+                Asignar tablet
+              </button>
+            )}
+
+            {canRelease && (
+              <button
+                type="button"
+                onClick={() => onRelease(item.id)}
+                className="inline-flex items-center rounded-lg border border-red-500/30 px-2.5 py-1 text-xs text-red-400 transition-colors hover:border-red-400 hover:bg-red-500/10"
+              >
+                Liberar
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Row 4 — actions: assign/release + doc chips (separated by a subtle divider) */}
-      {(canAsignar || showDocs) && (
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-[#1a2d4d]">
-          {/* Assign / release buttons */}
-          {canAsignar && canAssign && (
-            <button
-              type="button"
-              onClick={() => onAssign(item)}
-              
-              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
-            >
-              Asignar tablet
-            </button>
-          )}
-
-          {canAsignar && canRelease && (
-            <button
-              type="button"
-              onClick={() => onRelease(item.id)}
-              className="inline-flex items-center rounded-lg border border-red-500/30 px-2.5 py-1 text-xs text-red-400 transition-colors hover:border-red-400 hover:bg-red-500/10"
-            >
-              Liberar
-            </button>
-          )}
-
-          {/* Subtle spacer between action buttons and doc chips when both are present */}
-          {canAsignar && (canAssign || canRelease) && showDocs && (
-            <span className="h-4 w-px bg-slate-300 dark:bg-slate-700 flex-shrink-0" aria-hidden="true" />
-          )}
-
-          {/* Document chips — only for persisted items */}
-          {showDocs && (
-            <>
-              <DocChip
-                label="HOE"
-                isUploaded={!!item.hoe}
-                isUploading={hoeUploading}
-                disabled={anyUploading}
-                onClick={() => onUploadDoc(item, 'hoe')}
-                onView={() => onViewDoc(item, 'hoe')}
-              />
-              <DocChip
-                label="Arranque"
-                isUploaded={!!item.arranqueSeguro}
-                isUploading={arranqueUploading}
-                disabled={anyUploading}
-                onClick={() => onUploadDoc(item, 'arranque-seguro')}
-                onView={() => onViewDoc(item, 'arranque-seguro')}
-              />
-            </>
-          )}
+      {/* Row 4 — document chips only */}
+      {showDocs && (
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 dark:border-[#1a2d4d]">
+          <DocChip
+            label="HOE"
+            isUploaded={!!item.hoe}
+            isUploading={hoeUploading}
+            disabled={anyUploading}
+            onClick={() => onUploadDoc(item, 'hoe')}
+            onView={() => onViewDoc(item, 'hoe')}
+          />
+          <DocChip
+            label="Arranque"
+            isUploaded={!!item.arranqueSeguro}
+            isUploading={arranqueUploading}
+            disabled={anyUploading}
+            onClick={() => onUploadDoc(item, 'arranque-seguro')}
+            onView={() => onViewDoc(item, 'arranque-seguro')}
+          />
         </div>
       )}
 
@@ -1006,7 +999,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
       <div className="overflow-x-auto">
       <table className="w-full table-auto text-sm">
         <thead>
-          <tr className="border-b border-blue-200 dark:border-[#1a2d4d] dark:bg-[#0a1628]">
+          <tr className="border-b border-slate-100 dark:border-[#1a2d4d] dark:bg-[#0a1628]">
             <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
               Consecutivo
             </th>
@@ -1047,7 +1040,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
                     onRowClick(order)
                   }
                 }}
-                className="cursor-pointer border-b border-blue-200 transition-colors last:border-b-0 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:border-[#1a2d4d] dark:hover:bg-[#111a30]"
+                className="cursor-pointer border-b border-white transition-colors last:border-b-0 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:border-[#1a2d4d] dark:hover:bg-[#111a30]"
               >
                 <td className="px-4 py-3">
                   <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">
