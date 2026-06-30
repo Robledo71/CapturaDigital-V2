@@ -175,7 +175,7 @@ export function MisDescargasClient() {
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+                <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
                   <th className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3">
                     ID
                   </th>
@@ -207,7 +207,7 @@ export function MisDescargasClient() {
                 {pagedRecords.map((record) => (
                   <tr
                     key={record.id}
-                    className="border-b border-blue-200 dark:border-[#1a2d4d]/60 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors"
+                    className="border-b border-white dark:border-[#1a2d4d]/60 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors"
                   >
                     {/* ID */}
                     <td className="px-4 py-3">
@@ -240,14 +240,14 @@ export function MisDescargasClient() {
 
                     {/* Piezas */}
                     <td className="px-4 py-3 text-right">
-                      <span className="text-sm text-slate-900 dark:text-white">
+                      <span className="text-sm text-blue-700 dark:text-blue-400">
                         {record.piezas.toLocaleString('es-MX')}
                       </span>
                     </td>
 
                     {/* % NG */}
                     <td className="px-4 py-3 text-right">
-                      <span className="text-sm text-slate-500 dark:text-slate-300">
+                      <span className="text-sm text-red-600 dark:text-red-400">
                         {(record.pctNG * 100).toFixed(2)}%
                       </span>
                     </td>

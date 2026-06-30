@@ -296,7 +296,7 @@ export function ClientesPage({ initialClientes }: ClientesPageProps) {
             <div className="overflow-x-auto scrollbar-thin">
               <table className="w-full text-sm" aria-label="Tabla de clientes">
                 <thead>
-                  <tr className="h-14 border-b border-blue-200 dark:border-[#1a2d4d]">
+                  <tr className="h-14 border-b border-slate-100 dark:border-[#1a2d4d]">
                     <th
                       scope="col"
                       className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap"

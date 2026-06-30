@@ -247,7 +247,7 @@ export function ReportesPublicadosClient({
       </div>
 
       {/* Tab bar */}
-      <div className="shrink-0 border-b border-blue-200 dark:border-[#1a2d4d] flex gap-1 overflow-x-auto scrollbar-thin">
+      <div className="shrink-0 border-b border-blue-200 dark:border-[#1a2d4d] flex gap-1 overflow-x scrollbar-thin">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -278,7 +278,7 @@ export function ReportesPublicadosClient({
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+            <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
               {canDescargar && (
                 <th className="w-10 px-4 py-3">
                   <input
@@ -365,14 +365,14 @@ export function ReportesPublicadosClient({
 
                 {/* Piezas */}
                 <td className="px-4 py-3 text-right">
-                  <span className="text-sm text-slate-900 dark:text-white">
+                  <span className="text-sm text-blue-700 dark:text-blue-400">
                     {row.piezas.toLocaleString('es-MX')}
                   </span>
                 </td>
 
                 {/* % NG */}
                 <td className="px-4 py-3 text-right">
-                  <span className="text-sm text-slate-500 dark:text-slate-300">
+                  <span className="text-sm text-red-600 dark:text-red-400">
                     {(row.pctNG * 100).toFixed(2)}%
                   </span>
                 </td>

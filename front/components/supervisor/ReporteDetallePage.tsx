@@ -112,7 +112,7 @@ function StatusBadge({ status }: { status: string }) {
 function MiniStatCard({
   label,
   value,
-  valueClass = 'text-slate-900 dark:text-white',
+  valueClass = 'text-dark dark:text-white',
   warning = false,
 }: {
   label: string
@@ -121,7 +121,7 @@ function MiniStatCard({
   warning?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-[#1a2d4d] dark:bg-[#070e1a]">
+    <div className="flex flex-col gap-1 rounded-lg border border-blue-50 bg-slate-100 p-4 dark:border-[#070e1a] dark:bg-[#070e1a]">
       <span className="flex items-center gap-1 text-xs text-slate-500">
         {label}
         {warning && <AlertTriangle size={12} className="flex-shrink-0 text-orange-400" aria-hidden="true" />}
@@ -157,7 +157,7 @@ function InspectionItemsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+              <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
                 {(['#', 'N° Parte', 'Nombre de Parte', 'Lote', 'Serie', 'Identificadores', 'Inspeccionadas', 'OK', 'NG', 'Scrap', 'Recuperadas', 'Incidencias'] as const).map(
                   (col, i) => (
                     <th
@@ -229,7 +229,7 @@ function InspectionItemsTable({
                           type="button"
                           onClick={() => onEditItem(item)}
                           aria-label={`Editar ítem ${item.partNumber ?? item.partName ?? item.id}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 transition-colors hover:border-blue-400 hover:text-blue-600 dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
+                          className="inline-flex items-center gap-1 rounded-md border border-purple-500 bg-purple-500 px-2.5 py-1 text-xs text-white transition-colors hover:border-purple-400 hover:text-slate-200 dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
                         >
                           <Edit2 size={11} aria-hidden="true" />
                           Editar
@@ -255,7 +255,7 @@ function InspectionItemsTable({
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-blue-200 dark:border-[#1a2d4d]">
+              <tr className="border-t-2 border-slate-100 dark:border-[#1a2d4d]">
                 <td colSpan={6} className="py-2.5 text-xs font-semibold text-slate-500">
                   Totales
                 </td>
@@ -1051,7 +1051,7 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={backHref}
-                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-white text-slate-600 transition-colors hover:text-slate-900 dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:text-slate-400 dark:hover:text-white"
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white bg-white text-slate-600 transition-colors hover:text-slate-900 dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:text-slate-400 dark:hover:text-white"
                 aria-label="Regresar a reportes"
               >
                 <ArrowLeft size={16} />
