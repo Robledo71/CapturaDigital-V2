@@ -274,7 +274,7 @@ export function ReportesPublicadosClient({
       </div>
 
       {/* Table card */}
-      <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
+      <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0f2038] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead>

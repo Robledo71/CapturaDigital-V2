@@ -1,9 +1,10 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useRef, useState, startTransition } from 'react'
 import { useFormStatus } from 'react-dom'
 import { X, Loader2, Eye, EyeOff } from 'lucide-react'
 import { createUser } from '@/app/actions/create-user'
+import { getNextEmployeeCodeAction, checkEmployeeCodeAction } from '@/app/actions/employee-code'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import type { PlantaRow } from '@/shared/types/planta'
 
@@ -66,11 +67,79 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
   const [showPwd, setShowPwd] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
+  // Prefill state
+  const [prefillLoading, setPrefillLoading] = useState(true)
+  const userHasTypedCodigo = useRef(false)
+
+  // Live uniqueness check state
+  const [codigoExists, setCodigoExists] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const checkingRef = useRef(false)
+
+  // ── Prefill: fetch suggested code on mount ─────────────────────────────────
+  useEffect(() => {
+    let cancelled = false
+    setPrefillLoading(true)
+    startTransition(() => {
+      getNextEmployeeCodeAction().then(({ codigo }) => {
+        if (cancelled) return
+        setPrefillLoading(false)
+        if (codigo && !userHasTypedCodigo.current) {
+          setValues((prev) => ({ ...prev, codigoEmpleado: codigo }))
+        }
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // ── Live uniqueness check ──────────────────────────────────────────────────
+  function scheduleCheck(codigo: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setCodigoExists(false)
+    if (!codigo.trim() || prefillLoading) return
+    debounceRef.current = setTimeout(() => {
+      checkingRef.current = true
+      startTransition(() => {
+        checkEmployeeCodeAction(codigo).then(({ exists }) => {
+          checkingRef.current = false
+          setCodigoExists(exists)
+        })
+      })
+    }, 400)
+  }
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
-    setValues((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setValues((prev) => ({ ...prev, [name]: value }))
+    if (name === 'codigoEmpleado') {
+      userHasTypedCodigo.current = true
+      scheduleCheck(value)
+    }
   }
+
+  function handleCodigoBlur(e: React.FocusEvent<HTMLInputElement>) {
+    const codigo = e.target.value
+    if (!codigo.trim() || prefillLoading) return
+    // Cancel any pending debounce and check immediately on blur
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    startTransition(() => {
+      checkEmployeeCodeAction(codigo).then(({ exists }) => {
+        setCodigoExists(exists)
+      })
+    })
+  }
+
+  // Clear existence warning when the server action returns a field-level error
+  // for codigoEmpleado (the submit validation already communicated it)
+  useEffect(() => {
+    if (state?.errors?.codigoEmpleado) {
+      setCodigoExists(false)
+    }
+  }, [state?.errors?.codigoEmpleado])
 
   useEffect(() => {
     if (state?.success === true && state.usuario) {
@@ -78,6 +147,13 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
       onClose()
     }
   }, [state])
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [])
 
   return (
     <div
@@ -146,18 +222,45 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
                 <label htmlFor="codigoEmpleado" className="text-xs font-medium text-black dark:text-slate-400">
                   Código de empleado
                 </label>
-                <input
-                  id="codigoEmpleado"
-                  name="codigoEmpleado"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="Ej. S-005"
-                  value={values.codigoEmpleado}
-                  onChange={handleChange}
-                  className={inputCls}
-                />
+                <div className="relative">
+                  <input
+                    id="codigoEmpleado"
+                    name="codigoEmpleado"
+                    type="text"
+                    autoComplete="off"
+                    placeholder={prefillLoading ? 'Generando…' : 'Ej. 0005'}
+                    value={values.codigoEmpleado}
+                    onChange={handleChange}
+                    onBlur={handleCodigoBlur}
+                    className={inputCls}
+                    aria-describedby={
+                      codigoExists
+                        ? 'codigo-exists-warning'
+                        : state?.errors?.codigoEmpleado
+                          ? 'codigo-error'
+                          : undefined
+                    }
+                  />
+                  {prefillLoading && (
+                    <span
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                      aria-hidden="true"
+                    >
+                      <Loader2 size={14} className="animate-spin" />
+                    </span>
+                  )}
+                </div>
+                {/* Live uniqueness warning — amber to distinguish from blocking submit errors */}
+                {codigoExists && !state?.errors?.codigoEmpleado && (
+                  <p id="codigo-exists-warning" role="status" className="text-amber-500 text-xs">
+                    Este código ya está registrado
+                  </p>
+                )}
+                {/* Submit-time validation error */}
                 {state?.errors?.codigoEmpleado && (
-                  <p className="text-red-400 text-xs">{state.errors.codigoEmpleado[0]}</p>
+                  <p id="codigo-error" className="text-red-400 text-xs">
+                    {state.errors.codigoEmpleado[0]}
+                  </p>
                 )}
               </div>
 

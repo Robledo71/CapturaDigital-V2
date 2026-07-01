@@ -177,7 +177,7 @@ export function PermisosMatrix({ permissions, matrix, editableRoles }: PermisosM
         )}
 
         {/* Matriz */}
-        <div className="overflow-x-auto scrollbar-thin rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0c1829]">
+        <div className="overflow-x-auto scrollbar-thin rounded-xl border border-slate-200 dark:border-[#0c1829] bg-white dark:bg-[#0c1829]">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700">

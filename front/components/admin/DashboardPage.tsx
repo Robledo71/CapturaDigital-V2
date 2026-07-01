@@ -25,7 +25,7 @@ function AdminStatCard({ label, value, subtitle, dotColor, icon }: AdminStatCard
     red:    'bg-red-400',
   }
   return (
-    <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] p-5 flex flex-col gap-3">
+    <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:shadow-none bg-white dark:bg-[#0c1829] p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClasses[dotColor]}`} aria-hidden="true" />
@@ -49,7 +49,7 @@ function QuickAction({ label, href, icon }: QuickActionProps) {
   return (
     <Link
       href={href}
-      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors p-6 text-center"
+      className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:shadow-none bg-white dark:bg-[#0c1829] hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors p-6 text-center"
     >
       <span className="text-slate-500 dark:text-slate-400">{icon}</span>
       <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{label}</span>
@@ -218,22 +218,22 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
           <QuickAction
             label="Nuevo usuario"
             href="/admin/usuarios"
-            icon={<Plus size={28} />}
+            icon={<Users size={28} />}
           />
           <QuickAction
             label="Nuevo cliente"
             href="/admin/clientes"
-            icon={<Plus size={28} />}
+            icon={<Building2 size={28} />}
           />
           <QuickAction
             label="Nueva planta"
             href="/admin/plantas"
-            icon={<Plus size={28} />}
+            icon={<MapPin size={28} />}
           />
           <QuickAction
             label="Registrar tablet"
             href="/admin/tablets"
-            icon={<Plus size={28} />}
+            icon={<Tablet size={28} />}
           />
         </div>
       </section>
@@ -252,7 +252,7 @@ export function DashboardPage({ stats, recentUsuarios }: DashboardPageProps) {
           </Link>
         </div>
 
-        <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
+        <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm" aria-label="Usuarios recientes">
               <thead>

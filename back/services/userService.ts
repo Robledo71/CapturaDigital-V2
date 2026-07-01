@@ -137,6 +137,40 @@ export async function createUsuario(
   return { ok: true, usuario: mapExternalUser(raw) }
 }
 
+export async function getNextCodigoEmpleado(accessToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${baseUrl()}/qb_sync/users/next-codigo`, {
+      headers: apiHeaders(accessToken),
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    return typeof json?.data?.codigo === 'string' ? json.data.codigo : null
+  } catch {
+    return null
+  }
+}
+
+export async function checkCodigoEmpleadoExists(
+  codigo: string,
+  accessToken: string,
+): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${baseUrl()}/qb_sync/users/codigo-exists?codigo=${encodeURIComponent(codigo)}`,
+      {
+        headers: apiHeaders(accessToken),
+        cache: 'no-store',
+      },
+    )
+    if (!res.ok) return false
+    const json = await res.json()
+    return json?.data?.exists === true
+  } catch {
+    return false
+  }
+}
+
 export async function updateUsuario(
   input: UpdateUsuarioInput,
   accessToken: string,
