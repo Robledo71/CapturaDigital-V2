@@ -17,7 +17,7 @@ export default async function GerenteOrdenesPage() {
   return (
     <CargaDeTrabajoPage
       orders={orders}
-      tablets={[]}
+      inspectors={[]}
       rol={session.rol}
       permisos={session.permisos}
     />

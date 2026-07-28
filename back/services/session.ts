@@ -4,12 +4,19 @@ import { cookies } from 'next/headers'
 
 export type JWTPayload = {
   userId: number
-  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente' | 'gerente'
-  // Permisos efectivos que entrega qb_sync (acción fina). Opcional durante la
-  // migración: si no viene, el frontend cae a la matriz por defecto en front/lib/permisos.ts.
+  // 'empleado' | 'cliente' — QBSync v2.0 separa identidad (usuarios) de perfil.
+  tipo: 'empleado' | 'cliente'
+  rol: 'superusuario' | 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'cliente' | 'gerente'
+  // Permisos efectivos que entrega el backend (acción fina), ya normalizados a
+  // minúsculas. Opcional: si no viene, el frontend cae a la matriz SEED.
   permisos?: string[]
   codigoEmpleado: string
   nombreCompleto: string
+  // empleado_id del usuario logueado (desde el JWT del backend). Se usa como
+  // id_supervisor al asignar inspectores. null si el usuario no tiene empleado asociado.
+  empleadoId: number | null
+  // QBSync v2.0: un empleado puede pertenecer a varias plantas (empleados_plantas).
+  plantaIds: number[]
   plantaId: number | null
   plantaNombre: string | null
   accessToken: string
@@ -74,4 +81,61 @@ export async function getSession(): Promise<JWTPayload | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get(COOKIE)?.value
   return decrypt(token)
+}
+
+/**
+ * Decodifica el payload de un JWT SIN verificar firma, para leer su `exp`
+ * (segundos, epoch Unix). El access token es emitido y firmado por qb_sync;
+ * aquí solo necesitamos saber cuándo vence, no validarlo (eso ya lo hace
+ * qb_sync en cada request). Devuelve `null` si el token es inválido/no trae
+ * `exp`. Usable desde middleware (no toca `next/headers`).
+ */
+export function getAccessTokenExp(accessToken: string): number | null {
+  try {
+    const seg = accessToken.split('.')[1]
+    const payload = JSON.parse(Buffer.from(seg, 'base64url').toString('utf8'))
+    return typeof payload.exp === 'number' ? payload.exp : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Renueva el par de tokens contra qb_sync. El backend ROTA ambos tokens en
+ * cada llamada exitosa (el refresh_token usado queda invalidado), así que el
+ * valor devuelto reemplaza por completo al anterior — nunca reutilizar el
+ * refresh_token viejo después de llamar esto.
+ *
+ * Devuelve `null` ante cualquier fallo (refresh_token inválido/expirado,
+ * respuesta no-ok, `success: false`, tokens faltantes, o error de red) para
+ * que el caller trate la sesión como irrecuperable sin tener que distinguir
+ * el motivo. No usa `next/headers`: es seguro llamarla desde middleware.
+ */
+export async function refreshTokens(
+  refreshToken: string,
+): Promise<{ accessToken: string; refreshToken: string } | null> {
+  try {
+    const res = await fetch(`${process.env.QSYNC_API_URL}/qb_sync/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-App-Token': process.env.X_APP_TOKEN ?? '',
+      },
+      body: JSON.stringify({ refresh_token: refreshToken, origen: 'WEB' }),
+      cache: 'no-store',
+    })
+
+    if (!res.ok) return null
+
+    const body = await res.json().catch(() => null)
+    if (!body || body.success !== true) return null
+
+    const accessToken = body.data?.access_token
+    const newRefreshToken = body.data?.refresh_token
+    if (!accessToken || !newRefreshToken) return null
+
+    return { accessToken, refreshToken: newRefreshToken }
+  } catch {
+    return null
+  }
 }

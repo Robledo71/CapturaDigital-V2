@@ -1,5 +1,5 @@
 // tests/unit/services/session.test.ts
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { SignJWT } from 'jose'
 
 // SESSION_SECRET debe estar definido antes de que el módulo lo importe
@@ -9,7 +9,16 @@ beforeAll(() => {
 
 // Importamos después de que process.env esté configurado
 // Usamos imports dinámicos para que la resolución ocurra en runtime
-import { encrypt, decrypt, type JWTPayload } from '@/back/services/session'
+import { encrypt, decrypt, getAccessTokenExp, refreshTokens, type JWTPayload } from '@/back/services/session'
+
+// Construye un "JWT" con el payload dado, sin firmar de verdad (no nos
+// importa la firma: getAccessTokenExp no verifica, solo lee el segundo
+// segmento). Sirve para simular el accessToken que manda qb_sync.
+function fakeJwt(payload: Record<string, unknown>): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url')
+  return `${header}.${body}.fake-signature`
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -108,6 +117,124 @@ describe('decrypt', () => {
       .sign(secret)
 
     const result = await decrypt(expiredToken)
+    expect(result).toBeNull()
+  })
+})
+
+// ─── getAccessTokenExp ───────────────────────────────────────────────────────
+
+describe('getAccessTokenExp', () => {
+  it('devuelve el exp (segundos epoch) del payload del JWT', () => {
+    const exp = Math.floor(Date.now() / 1000) + 900 // +15 min, como qb_sync
+    const token = fakeJwt({ sub: 1, exp })
+    expect(getAccessTokenExp(token)).toBe(exp)
+  })
+
+  it('el payload no trae exp → null', () => {
+    const token = fakeJwt({ sub: 1 })
+    expect(getAccessTokenExp(token)).toBeNull()
+  })
+
+  it('token malformado (no tiene 3 segmentos válidos) → null', () => {
+    expect(getAccessTokenExp('esto-no-es-un-jwt')).toBeNull()
+  })
+
+  it('string vacío → null', () => {
+    expect(getAccessTokenExp('')).toBeNull()
+  })
+})
+
+// ─── refreshTokens ───────────────────────────────────────────────────────────
+
+describe('refreshTokens', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    process.env.QSYNC_API_URL = 'http://localhost:3001'
+    process.env.X_APP_TOKEN = 'test-app-token'
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function okResponse(body: object) {
+    return { ok: true, json: vi.fn().mockResolvedValue(body) } as unknown as Response
+  }
+
+  function failResponse(body: object = {}) {
+    return { ok: false, json: vi.fn().mockResolvedValue(body) } as unknown as Response
+  }
+
+  it('200 con success:true → devuelve los tokens rotados', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      okResponse({ success: true, data: { access_token: 'new-access', refresh_token: 'new-refresh' } }),
+    )
+
+    const result = await refreshTokens('old-refresh')
+
+    expect(result).toEqual({ accessToken: 'new-access', refreshToken: 'new-refresh' })
+  })
+
+  it('llama al endpoint correcto con el refresh_token en el body y X-App-Token en headers', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      okResponse({ success: true, data: { access_token: 'a', refresh_token: 'r' } }),
+    )
+
+    await refreshTokens('old-refresh')
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0]
+    expect(url).toBe('http://localhost:3001/qb_sync/auth/refresh')
+    expect(init?.method).toBe('POST')
+    expect(init?.headers).toMatchObject({
+      'Content-Type': 'application/json',
+      'X-App-Token': 'test-app-token',
+    })
+    expect(JSON.parse(init!.body as string)).toEqual({
+      refresh_token: 'old-refresh',
+      origen: 'WEB',
+    })
+  })
+
+  it('respuesta no-ok → null', async () => {
+    vi.mocked(fetch).mockResolvedValue(failResponse({ success: false }))
+
+    const result = await refreshTokens('old-refresh')
+
+    expect(result).toBeNull()
+  })
+
+  it('respuesta ok pero success:false → null', async () => {
+    vi.mocked(fetch).mockResolvedValue(okResponse({ success: false }))
+
+    const result = await refreshTokens('old-refresh')
+
+    expect(result).toBeNull()
+  })
+
+  it('respuesta ok, success:true pero sin tokens → null', async () => {
+    vi.mocked(fetch).mockResolvedValue(okResponse({ success: true, data: {} }))
+
+    const result = await refreshTokens('old-refresh')
+
+    expect(result).toBeNull()
+  })
+
+  it('fetch lanza (error de red) → null', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('ECONNREFUSED'))
+
+    const result = await refreshTokens('old-refresh')
+
+    expect(result).toBeNull()
+  })
+
+  it('json() no parseable → null', async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockRejectedValue(new SyntaxError('bad json')),
+    } as unknown as Response)
+
+    const result = await refreshTokens('old-refresh')
+
     expect(result).toBeNull()
   })
 })

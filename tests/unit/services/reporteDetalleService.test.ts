@@ -238,6 +238,8 @@ const mockApiReport = {
   published_at: null,
   operators: [{ operator_name: 'Juan López' }],
   sampling_results: [],
+  fully_sampled: false,
+  sampled_at: null,
   items: [
     {
       id: 1,
@@ -250,6 +252,16 @@ const mockApiReport = {
       serie: null,
       identificadores: null,
       incidents: [{ incident_name: 'Rayadura', affected_pieces: 10 }],
+      sampling: {
+        required: true,
+        sampled: false,
+        sampled_pieces: 0,
+        ok_pieces: null,
+        ng_pieces: null,
+        result: null,
+        sampled_by_name: null,
+        sampled_at: null,
+      },
     },
   ],
   order_context: {
@@ -343,6 +355,113 @@ describe('getReporteDetalle', () => {
     await getReporteDetalle('42', 'tok')
     const [url] = vi.mocked(fetch).mock.calls[0]
     expect(String(url)).toContain('/qb_sync/daily-reports/42')
+  })
+
+  // ── Estado derivado + muestreo por ítem (nuevo contrato) ──────────────────
+
+  it('submitted + fully_sampled:true → status efectivo "sampling" (listo para firmar)', async () => {
+    const report = { ...mockApiReport, status: 'submitted', fully_sampled: true, sampled_at: '2026-01-15T10:00:00Z' }
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: report }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.status).toBe('sampling')
+  })
+
+  it('submitted + fully_sampled:false → status se mantiene "submitted"', async () => {
+    const report = { ...mockApiReport, status: 'submitted', fully_sampled: false }
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: report }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.status).toBe('submitted')
+  })
+
+  it('sampleApproved/sampleSize/sampleNg se derivan de fully_sampled y del muestreo por ítem', async () => {
+    const report = {
+      ...mockApiReport,
+      status: 'submitted',
+      fully_sampled: true,
+      sampled_at: '2026-01-15T10:00:00Z',
+      items: [
+        {
+          ...mockApiReport.items[0],
+          sampling: {
+            required: true,
+            sampled: true,
+            sampled_pieces: 12,
+            ok_pieces: 10,
+            ng_pieces: 2,
+            result: 'aprobado',
+            sampled_by_name: 'Pedro Ramírez',
+            sampled_at: '2026-01-15T10:00:00Z',
+          },
+        },
+      ],
+    }
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: report }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.sampleApproved).toBe(true)
+    expect(result!.sampleSize).toBe(12)
+    expect(result!.sampleNg).toBe(2)
+    expect(result!.sampledAt).toEqual(new Date('2026-01-15T10:00:00Z'))
+  })
+
+  it('el muestreo por ítem se mapea a inspectionItems[].sampling (camelCase)', async () => {
+    const report = {
+      ...mockApiReport,
+      items: [
+        {
+          ...mockApiReport.items[0],
+          sampling: {
+            required: true,
+            sampled: true,
+            sampled_pieces: 8,
+            ok_pieces: 7,
+            ng_pieces: 1,
+            result: 'no_aprobado',
+            sampled_by_name: 'Pedro Ramírez',
+            sampled_at: '2026-01-15T09:00:00Z',
+          },
+        },
+      ],
+    }
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: report }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.inspectionItems[0].sampling).toEqual({
+      required: true,
+      sampled: true,
+      result: 'no_aprobado',
+      sampledPieces: 8,
+      ng: 1,
+    })
+  })
+
+  it('ítem sin campo sampling (fila legacy) → default derivado de getSamplingRule', async () => {
+    const report = {
+      ...mockApiReport,
+      items: [
+        {
+          ...mockApiReport.items[0],
+          sampling: undefined,
+        },
+      ],
+    }
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: report }), { status: 200 }),
+    )
+    const result = await getReporteDetalle('42', 'tok')
+    expect(result!.inspectionItems[0].sampling).toEqual({
+      required: true, // 300 piezas cae en un rango de getSamplingRule
+      sampled: false,
+      result: null,
+      sampledPieces: 0,
+      ng: null,
+    })
   })
 })
 

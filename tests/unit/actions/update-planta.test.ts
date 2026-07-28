@@ -20,8 +20,8 @@ const makeFormData = (fields: Record<string, string>) => {
   return fd
 }
 
-const validFields = { id: '2', nombre: 'Honda Celaya' }
-const mockPlanta = { id: 2, nombre: 'Honda Celaya' } as never
+const validFields = { id: '2', nombre: 'Honda Celaya', direccion: 'Av. Industria 1', regionId: '3' }
+const mockPlanta = { id: 2, nombre: 'Honda Celaya', direccion: 'Av. Industria 1', regionId: 3, nombreRegion: 'Bajío' } as never
 
 describe('updatePlanta', () => {
   beforeEach(() => { vi.clearAllMocks() })
@@ -50,6 +50,18 @@ describe('updatePlanta', () => {
     expect(res?.errors?.nombre).toBeDefined()
   })
 
+  it('dirección vacía → error Zod', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    const res = await updatePlanta(undefined, makeFormData({ ...validFields, direccion: '' }))
+    expect(res?.errors?.direccion).toBeDefined()
+  })
+
+  it('regionId ausente → error Zod', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    const res = await updatePlanta(undefined, makeFormData({ id: '2', nombre: 'Honda', direccion: 'Av. Industria 1' }))
+    expect(res?.errors?.regionId).toBeDefined()
+  })
+
   it('actualización exitosa → { success: true, planta }', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
     vi.mocked(serviceUpdatePlanta).mockResolvedValue({ ok: true, planta: mockPlanta } as never)
@@ -58,20 +70,20 @@ describe('updatePlanta', () => {
     expect(res?.planta).toBeDefined()
   })
 
+  it('se pasan nombre/dirección/regionId al servicio', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(serviceUpdatePlanta).mockResolvedValue({ ok: true, planta: mockPlanta } as never)
+    await updatePlanta(undefined, makeFormData(validFields))
+    expect(serviceUpdatePlanta).toHaveBeenCalledWith(
+      { id: 2, nombre: 'Honda Celaya', direccion: 'Av. Industria 1', regionId: 3 },
+      'tok',
+    )
+  })
+
   it('not_found → error general "Planta no encontrada"', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
     vi.mocked(serviceUpdatePlanta).mockResolvedValue({ ok: false, reason: 'not_found' } as never)
     const res = await updatePlanta(undefined, makeFormData(validFields))
     expect(res?.errors?.general?.[0]).toMatch(/no encontrada/i)
-  })
-
-  it('dirección vacía se envía como null al servicio', async () => {
-    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
-    vi.mocked(serviceUpdatePlanta).mockResolvedValue({ ok: true, planta: mockPlanta } as never)
-    await updatePlanta(undefined, makeFormData({ ...validFields, direccion: '' }))
-    expect(serviceUpdatePlanta).toHaveBeenCalledWith(
-      expect.objectContaining({ direccion: null }),
-      'tok',
-    )
   })
 })

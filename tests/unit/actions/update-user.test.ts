@@ -15,18 +15,27 @@ const makeSession = () => ({
   expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
 })
 
-const makeFormData = (fields: Record<string, string>) => {
+const makeFormData = (fields: Record<string, string>, plantaIds: string[] = ['3']) => {
   const fd = new FormData()
   for (const [k, v] of Object.entries(fields)) fd.append(k, v)
+  for (const id of plantaIds) fd.append('plantaIds', id)
   return fd
 }
 
 const validFields = {
-  id: '5', nombreCompleto: 'Ana García', codigoEmpleado: 'S-010',
-  puesto: 'Supervisora', plantaId: '3', rol: 'supervisor', correo: 'ana@qb.mx',
+  id: '5', nombreEmpleado: 'Ana', apellidoPaterno: 'García', apellidoMaterno: 'López',
+  codigoEmpleado: 'S-010', rol: 'supervisor', correo: 'ana@qb.mx',
 }
 
-const mockUsuario = { id: 5, nombreCompleto: 'Ana García', codigoEmpleado: 'S-010', isActive: true } as never
+const mockUsuario = {
+  id: 5,
+  nombreCompleto: 'Ana García López',
+  nombreEmpleado: 'Ana',
+  apellidoPaterno: 'García',
+  apellidoMaterno: 'López',
+  codigoEmpleado: 'S-010',
+  isActive: true,
+} as never
 
 describe('updateUser', () => {
   beforeEach(() => { vi.clearAllMocks() })
@@ -49,10 +58,16 @@ describe('updateUser', () => {
     expect(res?.errors?.general?.[0]).toMatch(/ID de usuario requerido/i)
   })
 
-  it('nombre vacío → error Zod en nombreCompleto', async () => {
+  it('nombre vacío → error Zod en nombreEmpleado', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
-    const res = await updateUser(undefined, makeFormData({ ...validFields, nombreCompleto: '' }))
-    expect(res?.errors?.nombreCompleto).toBeDefined()
+    const res = await updateUser(undefined, makeFormData({ ...validFields, nombreEmpleado: '' }))
+    expect(res?.errors?.nombreEmpleado).toBeDefined()
+  })
+
+  it('apellido paterno vacío → error Zod en apellidoPaterno', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    const res = await updateUser(undefined, makeFormData({ ...validFields, apellidoPaterno: '' }))
+    expect(res?.errors?.apellidoPaterno).toBeDefined()
   })
 
   it('correo inválido → error Zod en correo', async () => {
@@ -63,7 +78,7 @@ describe('updateUser', () => {
 
   it('rol inválido → error Zod en rol', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
-    const res = await updateUser(undefined, makeFormData({ ...validFields, rol: 'inspector' }))
+    const res = await updateUser(undefined, makeFormData({ ...validFields, rol: 'rol-inexistente' }))
     expect(res?.errors?.rol).toBeDefined()
   })
 
@@ -96,24 +111,33 @@ describe('updateUser', () => {
     expect(res?.errors?.general?.[0]).toMatch(/no encontrado/i)
   })
 
-  it('cliente SIN planta → válido (no exige planta) y envía planta_id null', async () => {
+  it('rol nuevo (inspector) con planta → actualización exitosa', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
     vi.mocked(updateUsuario).mockResolvedValue({ ok: true, usuario: mockUsuario } as never)
 
-    const { plantaId: _omit, ...sinPlanta } = validFields
-    const res = await updateUser(undefined, makeFormData({ ...sinPlanta, rol: 'cliente' }))
+    const res = await updateUser(undefined, makeFormData({ ...validFields, rol: 'inspector' }))
 
     expect(res?.success).toBe(true)
-    expect(vi.mocked(updateUsuario).mock.calls[0][0]).toMatchObject({ rol: 'cliente', plantaId: null })
+    expect(vi.mocked(updateUsuario).mock.calls[0][0]).toMatchObject({ rol: 'inspector', plantaIds: [3] })
   })
 
-  it('rol NO cliente SIN planta → error Zod en plantaId', async () => {
+  it('múltiples plantaIds en el FormData → se pasan como arreglo al servicio', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(updateUsuario).mockResolvedValue({ ok: true, usuario: mockUsuario } as never)
 
-    const { plantaId: _omit, ...sinPlanta } = validFields
-    const res = await updateUser(undefined, makeFormData({ ...sinPlanta, rol: 'supervisor' }))
+    const res = await updateUser(undefined, makeFormData(validFields, ['3', '4']))
 
-    expect(res?.errors?.plantaId).toBeDefined()
-    expect(updateUsuario).not.toHaveBeenCalled()
+    expect(res?.success).toBe(true)
+    expect(vi.mocked(updateUsuario).mock.calls[0][0]).toMatchObject({ plantaIds: [3, 4] })
+  })
+
+  it('la planta ahora es opcional → SIN plantaIds sigue siendo una actualización válida', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(updateUsuario).mockResolvedValue({ ok: true, usuario: mockUsuario } as never)
+
+    const res = await updateUser(undefined, makeFormData(validFields, []))
+
+    expect(res?.success).toBe(true)
+    expect(vi.mocked(updateUsuario).mock.calls[0][0]).toMatchObject({ plantaIds: [] })
   })
 })

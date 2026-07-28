@@ -13,6 +13,22 @@ interface NuevoClienteModalProps {
   onSuccess: (cliente: ClienteRow) => void
 }
 
+interface FormValues {
+  nombre: string
+  rfc: string
+  direccion: string
+  razonSocial: string
+  po: boolean
+}
+
+const EMPTY_VALUES: FormValues = {
+  nombre: '',
+  rfc: '',
+  direccion: '',
+  razonSocial: '',
+  po: false,
+}
+
 // ─── Submit button ─────────────────────────────────────────────────────────────
 
 function SubmitButton() {
@@ -38,7 +54,12 @@ const inputCls =
 
 export function NuevoClienteModal({ onClose, onSuccess }: NuevoClienteModalProps) {
   const [state, dispatch] = useActionState(createCliente, undefined)
-  const [nombre, setNombre] = useState('')
+  const [values, setValues] = useState<FormValues>(EMPTY_VALUES)
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { name, value, type, checked } = e.target
+    setValues((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+  }
 
   useEffect(() => {
     if (state?.success === true && state.cliente) {
@@ -85,25 +106,111 @@ export function NuevoClienteModal({ onClose, onSuccess }: NuevoClienteModalProps
               </div>
             )}
 
-            {/* Nombre */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="nombre-cliente" className="text-xs font-medium text-black dark:text-slate-400">
-                Nombre del cliente
+            {/* Grid de campos */}
+            <div className="grid grid-cols-2 gap-4">
+
+              {/* Nombre — col span 2 */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <label htmlFor="nombre-cliente" className="text-xs font-medium text-black dark:text-slate-400">
+                  Nombre del cliente
+                </label>
+                <input
+                  id="nombre-cliente"
+                  name="nombre"
+                  type="text"
+                  autoComplete="off"
+                  autoFocus
+                  required
+                  placeholder="Ej. Grupo Antolin"
+                  value={values.nombre}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.nombre && (
+                  <p className="text-red-400 text-xs">{state.errors.nombre[0]}</p>
+                )}
+              </div>
+
+              {/* RFC */}
+              <div className="flex flex-col gap-1">
+                <label htmlFor="rfc-cliente" className="text-xs font-medium text-black dark:text-slate-400">
+                  RFC
+                </label>
+                <input
+                  id="rfc-cliente"
+                  name="rfc"
+                  type="text"
+                  autoComplete="off"
+                  required
+                  placeholder="Ej. GAN010101ABC"
+                  value={values.rfc}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.rfc && (
+                  <p className="text-red-400 text-xs">{state.errors.rfc[0]}</p>
+                )}
+              </div>
+
+              {/* Razón social (opcional) */}
+              <div className="flex flex-col gap-1">
+                <label htmlFor="razonSocial-cliente" className="text-xs font-medium text-black dark:text-slate-400">
+                  Razón social <span className="text-slate-400 font-normal">(opcional)</span>
+                </label>
+                <input
+                  id="razonSocial-cliente"
+                  name="razonSocial"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ej. Grupo Antolin S.A. de C.V."
+                  value={values.razonSocial}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.razonSocial && (
+                  <p className="text-red-400 text-xs">{state.errors.razonSocial[0]}</p>
+                )}
+              </div>
+
+              {/* Dirección — col span 2 */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <label htmlFor="direccion-cliente" className="text-xs font-medium text-black dark:text-slate-400">
+                  Dirección
+                </label>
+                <input
+                  id="direccion-cliente"
+                  name="direccion"
+                  type="text"
+                  autoComplete="off"
+                  required
+                  placeholder="Ej. Av. Industria 1, Silao"
+                  value={values.direccion}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.direccion && (
+                  <p className="text-red-400 text-xs">{state.errors.direccion[0]}</p>
+                )}
+              </div>
+
+              {/* Requiere PO — col span 2 */}
+              <label
+                htmlFor="po-cliente"
+                className="col-span-2 flex items-center gap-2.5 rounded-lg px-1 py-1.5 cursor-pointer"
+              >
+                <input
+                  id="po-cliente"
+                  name="po"
+                  type="checkbox"
+                  checked={values.po}
+                  onChange={handleChange}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className="text-sm text-slate-700 dark:text-slate-300">
+                  Requiere orden de compra (PO)
+                </span>
               </label>
-              <input
-                id="nombre-cliente"
-                name="nombre"
-                type="text"
-                autoComplete="off"
-                autoFocus
-                placeholder="Ej. Grupo Antolin"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                className={inputCls}
-              />
-              {state?.errors?.nombre && (
-                <p className="text-red-400 text-xs">{state.errors.nombre[0]}</p>
-              )}
+
             </div>
 
           </div>

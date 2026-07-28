@@ -30,6 +30,7 @@ const MODULO_LABEL: Record<string, string> = {
   clientes: 'Clientes',
   plantas: 'Plantas',
   secciones: 'Acceso a secciones',
+  historial: 'Historial',
   meta: 'Configuración',
 }
 

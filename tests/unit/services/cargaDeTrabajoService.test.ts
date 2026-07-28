@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   getCargaDeTrabajoData,
   getOrderWorkloadById,
-  getAvailableTablets,
+  getAvailableInspectors,
 } from '@/back/services/cargaDeTrabajoService'
 
 const ACCESS_TOKEN = 'test-token'
@@ -20,7 +20,7 @@ function makeRawItem(overrides: Record<string, unknown> = {}) {
     sessionId: null,
     sessionStatus: null,
     assignedAt: null,
-    assignedTablet: null,
+    assignedInspectors: [],
     hasSubmittedReport: false,
     quotationConsecutive: null,
     ...overrides,
@@ -60,29 +60,25 @@ function makeWorkloadResponse(orders: unknown[]) {
   )
 }
 
-function makeTabletResponse(tablets: unknown[]) {
+function makeUsersResponse(users: unknown[]) {
   return new Response(
-    JSON.stringify({ data: tablets }),
+    JSON.stringify({ data: users }),
     { status: 200 },
   )
 }
 
-function makeSessionsResponse(sessions: unknown[]) {
-  return new Response(
-    JSON.stringify({ data: sessions }),
-    { status: 200 },
-  )
-}
-
-function makeRawTablet(overrides: Record<string, unknown> = {}) {
+function makeRawUser(overrides: Record<string, unknown> = {}) {
   return {
-    id: 1,
-    alias: 'Tablet-01',
-    codigoTablet: 'TAB-01',
-    serialNumber: 'SN-001',
-    status: 'activa',
-    plantId: 3,
-    plantName: 'Planta Sur',
+    empleado_id: 16,
+    id: 5,
+    codigo_empleado: 'EMP016',
+    nombre_completo: 'Juan Perez',
+    planta_id: 3,
+    planta_nombre: 'Planta Sur',
+    plantas: [{ id: 3, nombre: 'Planta Sur' }],
+    rol: 'inspector',
+    correo: 'juan.perez@example.com',
+    is_active: true,
     ...overrides,
   }
 }
@@ -145,6 +141,36 @@ describe('getCargaDeTrabajoData', () => {
     expect(result[0].items[0].status).toBe('pending')
   })
 
+  it('item sin assignedInspectors → mapea a []', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeWorkloadResponse([makeRawOrder({}, { assignedInspectors: null })]),
+    )
+
+    const result = await getCargaDeTrabajoData(ACCESS_TOKEN)
+
+    expect(result[0].items[0].assignedInspectors).toEqual([])
+  })
+
+  it('item con assignedInspectors → los mapea tal cual (id + name)', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeWorkloadResponse([
+        makeRawOrder({}, {
+          assignedInspectors: [
+            { id: 16, name: 'Juan Perez' },
+            { id: 13, name: 'Maria Lopez' },
+          ],
+        }),
+      ]),
+    )
+
+    const result = await getCargaDeTrabajoData(ACCESS_TOKEN)
+
+    expect(result[0].items[0].assignedInspectors).toEqual([
+      { id: 16, name: 'Juan Perez' },
+      { id: 13, name: 'Maria Lopez' },
+    ])
+  })
+
   it('fetch falla → lanza error', async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response('Error', { status: 500 }),
@@ -182,9 +208,9 @@ describe('getOrderWorkloadById', () => {
   })
 })
 
-// ─── getAvailableTablets ──────────────────────────────────────────────────────
+// ─── getAvailableInspectors ───────────────────────────────────────────────────
 
-describe('getAvailableTablets', () => {
+describe('getAvailableInspectors', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn())
     process.env.QSYNC_API_URL = 'http://localhost:3001'
@@ -195,63 +221,128 @@ describe('getAvailableTablets', () => {
     vi.unstubAllGlobals()
   })
 
-  it('solo devuelve tablets con status === "activa"', async () => {
-    const tablets = [
-      makeRawTablet({ id: 1, codigoTablet: 'TAB-01', status: 'activa' }),
-      makeRawTablet({ id: 2, codigoTablet: 'TAB-02', status: 'inactiva' }),
-      makeRawTablet({ id: 3, codigoTablet: 'TAB-03', status: 'en_mantenimiento' }),
+  it('solo devuelve usuarios con rol === "inspector"', async () => {
+    const users = [
+      makeRawUser({ empleado_id: 16, nombre_completo: 'Juan Perez', rol: 'inspector' }),
+      makeRawUser({ empleado_id: 20, nombre_completo: 'Ana Soto', rol: 'supervisor' }),
+      makeRawUser({ empleado_id: 21, nombre_completo: 'Luis Ramirez', rol: 'capturacion' }),
     ]
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(makeTabletResponse(tablets))
-      .mockResolvedValueOnce(makeSessionsResponse([]))
+    vi.mocked(fetch).mockResolvedValueOnce(makeUsersResponse(users))
 
-    const result = await getAvailableTablets(ACCESS_TOKEN)
+    const result = await getAvailableInspectors(ACCESS_TOKEN)
 
     expect(result).toHaveLength(1)
-    expect(result[0].codigoTablet).toBe('TAB-01')
+    expect(result[0].empleadoId).toBe(16)
+    expect(result[0].name).toBe('Juan Perez')
   })
 
-  it('filtra tablets ocupadas (busy) según sesiones activas', async () => {
-    const tablets = [
-      makeRawTablet({ id: 1, codigoTablet: 'TAB-01', status: 'activa' }),
-      makeRawTablet({ id: 2, codigoTablet: 'TAB-02', status: 'activa' }),
+  it('con plantaId = 5 → solo devuelve inspectores cuyas plantas incluyen 5', async () => {
+    const users = [
+      makeRawUser({ empleado_id: 1, nombre_completo: 'Inspector Uno', plantas: [{ id: 5, nombre: 'Planta 5' }] }),
+      makeRawUser({ empleado_id: 2, nombre_completo: 'Inspector Dos', plantas: [{ id: 3, nombre: 'Planta 3' }] }),
     ]
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(makeTabletResponse(tablets))
-      .mockResolvedValueOnce(makeSessionsResponse([{ tabletId: 'TAB-01' }]))
+    vi.mocked(fetch).mockResolvedValueOnce(makeUsersResponse(users))
 
-    const result = await getAvailableTablets(ACCESS_TOKEN)
+    const result = await getAvailableInspectors(ACCESS_TOKEN, 5)
 
     expect(result).toHaveLength(1)
-    expect(result[0].codigoTablet).toBe('TAB-02')
+    expect(result[0].empleadoId).toBe(1)
   })
 
-  it('con plantaId = 5 → solo devuelve tablets con plantId === 5', async () => {
-    const tablets = [
-      makeRawTablet({ id: 1, codigoTablet: 'TAB-01', status: 'activa', plantId: 5 }),
-      makeRawTablet({ id: 2, codigoTablet: 'TAB-02', status: 'activa', plantId: 3 }),
+  it('con plantaId = 5 → también coincide un inspector con VARIAS plantas que incluyan 5', async () => {
+    const users = [
+      makeRawUser({
+        empleado_id: 1,
+        nombre_completo: 'Inspector Multi-planta',
+        plantas: [
+          { id: 3, nombre: 'Planta 3' },
+          { id: 5, nombre: 'Planta 5' },
+        ],
+      }),
     ]
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(makeTabletResponse(tablets))
-      .mockResolvedValueOnce(makeSessionsResponse([]))
+    vi.mocked(fetch).mockResolvedValueOnce(makeUsersResponse(users))
 
-    const result = await getAvailableTablets(ACCESS_TOKEN, 5)
+    const result = await getAvailableInspectors(ACCESS_TOKEN, 5)
 
     expect(result).toHaveLength(1)
-    expect(result[0].codigoTablet).toBe('TAB-01')
+    expect(result[0].plantIds).toEqual([3, 5])
   })
 
-  it('con plantaId = null → devuelve todas las tablets activas sin filtrar por planta', async () => {
-    const tablets = [
-      makeRawTablet({ id: 1, codigoTablet: 'TAB-01', status: 'activa', plantId: 5 }),
-      makeRawTablet({ id: 2, codigoTablet: 'TAB-02', status: 'activa', plantId: 3 }),
+  it('con plantaId = null → devuelve todos los inspectores sin filtrar por planta', async () => {
+    const users = [
+      makeRawUser({ empleado_id: 1, nombre_completo: 'Inspector Uno', plantas: [{ id: 5, nombre: 'Planta 5' }] }),
+      makeRawUser({ empleado_id: 2, nombre_completo: 'Inspector Dos', plantas: [{ id: 3, nombre: 'Planta 3' }] }),
     ]
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(makeTabletResponse(tablets))
-      .mockResolvedValueOnce(makeSessionsResponse([]))
+    vi.mocked(fetch).mockResolvedValueOnce(makeUsersResponse(users))
 
-    const result = await getAvailableTablets(ACCESS_TOKEN, null)
+    const result = await getAvailableInspectors(ACCESS_TOKEN, null)
 
     expect(result).toHaveLength(2)
+  })
+
+  it('mapea empleado_id, name y plantIds (arreglo completo) a InspectorOption', async () => {
+    const users = [
+      makeRawUser({
+        empleado_id: 16,
+        nombre_completo: 'Juan Perez',
+        plantas: [
+          { id: 3, nombre: 'Planta Sur' },
+          { id: 7, nombre: 'Planta Norte' },
+        ],
+      }),
+    ]
+    vi.mocked(fetch).mockResolvedValueOnce(makeUsersResponse(users))
+
+    const result = await getAvailableInspectors(ACCESS_TOKEN)
+
+    expect(result[0]).toEqual({
+      empleadoId: 16,
+      name: 'Juan Perez',
+      plantIds: [3, 7],
+    })
+  })
+
+  it('sin campo "plantas" en la respuesta → usa planta_id legacy como único elemento', async () => {
+    const users = [
+      makeRawUser({
+        empleado_id: 16,
+        nombre_completo: 'Juan Perez',
+        planta_id: 3,
+        plantas: undefined,
+      }),
+    ]
+    vi.mocked(fetch).mockResolvedValueOnce(makeUsersResponse(users))
+
+    const result = await getAvailableInspectors(ACCESS_TOKEN)
+
+    expect(result[0].plantIds).toEqual([3])
+  })
+
+  it('ordena por nombre', async () => {
+    const users = [
+      makeRawUser({ empleado_id: 1, nombre_completo: 'Zoe' }),
+      makeRawUser({ empleado_id: 2, nombre_completo: 'Ana' }),
+    ]
+    vi.mocked(fetch).mockResolvedValueOnce(makeUsersResponse(users))
+
+    const result = await getAvailableInspectors(ACCESS_TOKEN)
+
+    expect(result.map((r) => r.name)).toEqual(['Ana', 'Zoe'])
+  })
+
+  it('respuesta no ok → devuelve []', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('Error', { status: 500 }))
+
+    const result = await getAvailableInspectors(ACCESS_TOKEN)
+
+    expect(result).toEqual([])
+  })
+
+  it('error de red → devuelve []', async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'))
+
+    const result = await getAvailableInspectors(ACCESS_TOKEN)
+
+    expect(result).toEqual([])
   })
 })

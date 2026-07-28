@@ -8,10 +8,16 @@ function makeExternalUser() {
   return {
     id: 1,
     nombre_completo: 'Ana Garcia',
+    nombre_empleado: 'Ana',
+    apellido_paterno: 'Garcia',
+    apellido_materno: 'Lopez',
     codigo_empleado: 'EMP100',
-    puesto: 'Inspector',
     planta_id: 2,
     planta_nombre: 'Planta Norte',
+    plantas: [
+      { id: 2, nombre: 'Planta Norte' },
+      { id: 4, nombre: 'Planta Sur' },
+    ],
     rol: 'supervisor',
     correo: 'ana@example.com',
     is_active: true,
@@ -46,14 +52,42 @@ describe('userService', () => {
       expect(result[0]).toMatchObject({
         id: 1,
         nombreCompleto: 'Ana Garcia',
+        nombreEmpleado: 'Ana',
+        apellidoPaterno: 'Garcia',
+        apellidoMaterno: 'Lopez',
         codigoEmpleado: 'EMP100',
-        puesto: 'Inspector',
         plantaId: 2,
         plantaNombre: 'Planta Norte',
+        plantas: [
+          { id: 2, nombre: 'Planta Norte' },
+          { id: 4, nombre: 'Planta Sur' },
+        ],
         rol: 'supervisor',
         correo: 'ana@example.com',
         isActive: true,
       })
+    })
+
+    it('sin campo "plantas" en la respuesta → mapea a arreglo vacío', async () => {
+      const { plantas: _omit, ...userSinPlantas } = makeExternalUser()
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: [userSinPlantas] }), { status: 200 }),
+      )
+
+      const result = await getAllUsuarios(ACCESS_TOKEN)
+      expect(result[0].plantas).toEqual([])
+    })
+
+    it('apellido_materno "X" (default de BD) se mapea a cadena vacía', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ data: [{ ...makeExternalUser(), apellido_materno: 'X' }] }),
+          { status: 200 },
+        ),
+      )
+
+      const result = await getAllUsuarios(ACCESS_TOKEN)
+      expect(result[0].apellidoMaterno).toBe('')
     })
 
     it('respuesta vacía devuelve array vacío', async () => {
@@ -80,8 +114,7 @@ describe('userService', () => {
     const input = {
       nombreCompleto: 'Pedro Ramirez',
       codigoEmpleado: 'EMP200',
-      puesto: 'Supervisor',
-      plantaId: 1 as number | null,
+      plantaIds: [1] as number[],
       rol: 'supervisor' as const,
       correo: 'pedro@example.com',
       contrasena: 'secret123',
@@ -102,6 +135,30 @@ describe('userService', () => {
         expect(result.usuario).toBeDefined()
         expect(result.usuario.nombreCompleto).toBe('Ana Garcia')
       }
+    })
+
+    it('envía "planta_ids" (arreglo) en el body del POST', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: makeExternalUser() }), { status: 201 }),
+      )
+
+      await createUsuario(input, ACCESS_TOKEN)
+
+      const postCall = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(postCall[1]!.body as string) as Record<string, unknown>
+      expect(body.planta_ids).toEqual([1])
+    })
+
+    it('plantaIds vacío → envía "planta_ids": []', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: makeExternalUser() }), { status: 201 }),
+      )
+
+      await createUsuario({ ...input, plantaIds: [] }, ACCESS_TOKEN)
+
+      const postCall = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(postCall[1]!.body as string) as Record<string, unknown>
+      expect(body.planta_ids).toEqual([])
     })
 
     it('fetch 409 con mensaje "codigo" devuelve { ok: false, reason: "duplicate_codigo" }', async () => {
@@ -154,10 +211,11 @@ describe('userService', () => {
   describe('updateUsuario', () => {
     const input = {
       id: 1,
-      nombreCompleto: 'Ana Garcia',
+      nombreEmpleado: 'Ana',
+      apellidoPaterno: 'Garcia',
+      apellidoMaterno: 'Lopez',
       codigoEmpleado: 'EMP100',
-      puesto: 'Inspector Senior',
-      plantaId: 2 as number | null,
+      plantaIds: [2, 4] as number[],
       rol: 'supervisor' as const,
       correo: 'ana@example.com',
     }
@@ -178,6 +236,18 @@ describe('userService', () => {
       }
     })
 
+    it('envía "planta_ids" (arreglo) en el body del PUT', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: makeExternalUser() }), { status: 200 }),
+      )
+
+      await updateUsuario(input, ACCESS_TOKEN)
+
+      const putCall = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(putCall[1]!.body as string) as Record<string, unknown>
+      expect(body.planta_ids).toEqual([2, 4])
+    })
+
     it('envía "correo" en el body del PUT', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(
         new Response(JSON.stringify({ data: makeExternalUser() }), { status: 200 }),
@@ -188,6 +258,34 @@ describe('userService', () => {
       const putCall = vi.mocked(fetch).mock.calls[0]
       const body = JSON.parse(putCall[1]!.body as string) as Record<string, unknown>
       expect(body.correo).toBe('nuevo@example.com')
+    })
+
+    it('envía nombre_empleado, apellido_paterno y apellido_materno en el body del PUT (no nombre_completo)', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: makeExternalUser() }), { status: 200 }),
+      )
+
+      await updateUsuario(input, ACCESS_TOKEN)
+
+      const putCall = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(putCall[1]!.body as string) as Record<string, unknown>
+      expect(body.nombre_empleado).toBe('Ana')
+      expect(body.apellido_paterno).toBe('Garcia')
+      expect(body.apellido_materno).toBe('Lopez')
+      expect(body.nombre_completo).toBeUndefined()
+    })
+
+    it('apellidoMaterno omitido → envía apellido_materno vacío', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: makeExternalUser() }), { status: 200 }),
+      )
+
+      const { apellidoMaterno: _omit, ...withoutApellidoMaterno } = input
+      await updateUsuario(withoutApellidoMaterno, ACCESS_TOKEN)
+
+      const putCall = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(putCall[1]!.body as string) as Record<string, unknown>
+      expect(body.apellido_materno).toBe('')
     })
 
     it('fetch 404 devuelve { ok: false, reason: "not_found" }', async () => {

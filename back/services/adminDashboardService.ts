@@ -39,7 +39,6 @@ interface RawUsuarioReciente {
   codigo_empleado: string
   correo: string
   rol: string
-  puesto: string | null
   is_active: boolean
   created_at: string
 }

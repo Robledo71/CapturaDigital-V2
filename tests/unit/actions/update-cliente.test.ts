@@ -22,7 +22,7 @@ const makeFormData = (fields: Record<string, string>) => {
   return fd
 }
 
-const validFields = { id: '10', nombre: 'Bimbo S.A.' }
+const validFields = { id: '10', nombre: 'Bimbo S.A.', rfc: 'BIM010101ABC', direccion: 'Av. Industria 1' }
 const mockCliente = { id: 10, nombre: 'Bimbo S.A.' } as never
 
 describe('updateCliente', () => {
@@ -52,12 +52,41 @@ describe('updateCliente', () => {
     expect(res?.errors?.nombre).toBeDefined()
   })
 
+  it('rfc vacío → error Zod', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    const res = await updateCliente(undefined, makeFormData({ ...validFields, rfc: '' }))
+    expect(res?.errors?.rfc).toBeDefined()
+  })
+
+  it('dirección vacía → error Zod', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    const res = await updateCliente(undefined, makeFormData({ ...validFields, direccion: '' }))
+    expect(res?.errors?.direccion).toBeDefined()
+  })
+
   it('actualización exitosa → { success: true, cliente } + revalidatePath', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
     vi.mocked(serviceUpdateCliente).mockResolvedValue({ ok: true, cliente: mockCliente } as never)
     const res = await updateCliente(undefined, makeFormData(validFields))
     expect(res?.success).toBe(true)
     expect(revalidatePath).toHaveBeenCalledWith('/admin/clientes')
+  })
+
+  it('se pasan los campos correctamente al servicio', async () => {
+    vi.mocked(getSession).mockResolvedValue(makeSession() as never)
+    vi.mocked(serviceUpdateCliente).mockResolvedValue({ ok: true, cliente: mockCliente } as never)
+    await updateCliente(undefined, makeFormData(validFields))
+    expect(serviceUpdateCliente).toHaveBeenCalledWith(
+      {
+        id: 10,
+        nombre: 'Bimbo S.A.',
+        rfc: 'BIM010101ABC',
+        direccion: 'Av. Industria 1',
+        razonSocial: undefined,
+        po: false,
+      },
+      'tok',
+    )
   })
 
   it('not_found → error general "Cliente no encontrado"', async () => {

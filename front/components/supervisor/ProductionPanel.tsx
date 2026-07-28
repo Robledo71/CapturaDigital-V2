@@ -35,7 +35,7 @@ export function ProductionPanel({ items }: ProductionPanelProps) {
           const fillWidth = `${percentage}%`
 
           return (
-            <div key={item.report} className="flex flex-col gap-2">
+            <div key={item.id} className="flex flex-col gap-2">
 
               {/* Top row: avatar + name/meta + pill */}
               <div className="flex items-center gap-2">
@@ -47,7 +47,7 @@ export function ProductionPanel({ items }: ProductionPanelProps) {
                     {item.operadores}
                   </p>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                    {item.report} · {item.tabletCode}
+                    {item.report}
                   </p>
                 </div>
                 <span className={STATUS_CLASSES[item.status]}>{item.status}</span>

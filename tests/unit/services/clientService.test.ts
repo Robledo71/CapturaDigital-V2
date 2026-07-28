@@ -12,10 +12,14 @@ const ACCESS_TOKEN = 'test-token'
 function makeRawCliente() {
   return {
     id: 1,
-    name: 'Honda',
-    user_id: null,
-    nombre_completo: null,
-    correo: null,
+    nombre: 'Honda',
+    razon_social: null,
+    rfc: null,
+    direccion: null,
+    po: null,
+    usuario_id: null,
+    usuario_codigo: null,
+    usuario_correo: null,
   }
 }
 
@@ -47,9 +51,13 @@ describe('clientService', () => {
       expect(result[0]).toMatchObject({
         id: 1,
         nombre: 'Honda',
-        userId: null,
-        userNombre: null,
-        userCorreo: null,
+        razonSocial: '',
+        rfc: '',
+        direccion: '',
+        po: false,
+        usuarioId: null,
+        usuarioCodigo: null,
+        usuarioCorreo: null,
       })
     })
 
@@ -65,12 +73,14 @@ describe('clientService', () => {
   // ─── createCliente ─────────────────────────────────────────────────────────
 
   describe('createCliente', () => {
+    const input = { nombre: 'Honda', rfc: 'HON010101ABC', direccion: 'Av. Industria 1' }
+
     it('fetch 409 devuelve { ok: false, reason: "duplicate_name" }', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(
         new Response('Conflict', { status: 409 }),
       )
 
-      const result = await createCliente({ nombre: 'Honda' }, ACCESS_TOKEN)
+      const result = await createCliente(input, ACCESS_TOKEN)
       expect(result).toEqual({ ok: false, reason: 'duplicate_name' })
     })
 
@@ -82,7 +92,7 @@ describe('clientService', () => {
         ),
       )
 
-      const result = await createCliente({ nombre: 'Honda' }, ACCESS_TOKEN)
+      const result = await createCliente(input, ACCESS_TOKEN)
 
       expect(result.ok).toBe(true)
       if (result.ok) {
@@ -90,12 +100,33 @@ describe('clientService', () => {
       }
     })
 
+    it('envía rfc_tax_id/direccion/po al backend', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ success: true, data: makeRawCliente() }),
+          { status: 201 },
+        ),
+      )
+
+      await createCliente({ ...input, razonSocial: 'Honda S.A.', po: true }, ACCESS_TOKEN)
+
+      const [, options] = vi.mocked(fetch).mock.calls[0]
+      const body = JSON.parse(options?.body as string)
+      expect(body).toEqual({
+        nombre: 'Honda',
+        razon_social: 'Honda S.A.',
+        rfc_tax_id: 'HON010101ABC',
+        direccion: 'Av. Industria 1',
+        po: true,
+      })
+    })
+
     it('otro error devuelve { ok: false, reason: "error" }', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(
         new Response('Server Error', { status: 500 }),
       )
 
-      const result = await createCliente({ nombre: 'Honda' }, ACCESS_TOKEN)
+      const result = await createCliente(input, ACCESS_TOKEN)
       expect(result).toEqual({ ok: false, reason: 'error' })
     })
   })

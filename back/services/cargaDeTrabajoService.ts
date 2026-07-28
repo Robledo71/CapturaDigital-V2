@@ -11,10 +11,9 @@ const BASE = () => process.env.QSYNC_API_URL ?? 'http://localhost:3001'
 
 // ─── Raw shapes from qb_sync ─────────────────────────────────────────────────
 
-interface RawAssignedTablet {
+interface RawAssignedInspector {
   id: number
-  alias: string
-  codigoTablet: string
+  name: string
 }
 
 interface RawItem {
@@ -26,7 +25,7 @@ interface RawItem {
   sessionId: number | null
   sessionStatus: string | null
   assignedAt: string | null
-  assignedTablet: RawAssignedTablet | null
+  assignedInspectors: RawAssignedInspector[] | null
   hasSubmittedReport: boolean
   quotationConsecutive: string | null
   hoe: string | null
@@ -68,11 +67,6 @@ interface RawOrder {
   items: RawItem[]
 }
 
-export type AssignedTablet = {
-  id: number
-  alias: string
-}
-
 export type QuotationSummary = {
   id: number
   consecutiveNumber: string | null
@@ -93,7 +87,7 @@ export type OrderItemWorkload = {
   inventario: number
   inventarioTerminado: number
   assignedAt: Date | null
-  assignedTablet: AssignedTablet | null
+  assignedInspectors: { id: number; name: string }[]
   quotationConsecutive: string | null
   hasSubmittedReport: boolean
   hoe: string | null
@@ -125,14 +119,10 @@ export type OrderWorkload = {
   arranqueSeguro: string | null
 }
 
-export type TabletOption = {
-  id: number
-  alias: string
-  serialNumber: string
-  codigoTablet: string
-  plantId: number | null
-  plantName: string | null
-  status: string
+export type InspectorOption = {
+  empleadoId: number
+  name: string
+  plantIds: number[]
 }
 
 function deriveItemStatus(sessionStatus: string | null): string {
@@ -157,9 +147,7 @@ function mapWorkloadOrder(raw: RawOrder): OrderWorkload {
     inventario: Number(item.inventory ?? 0),
     inventarioTerminado: Number(item.inventoryDone ?? 0),
     assignedAt: item.assignedAt ? new Date(item.assignedAt) : null,
-    assignedTablet: item.assignedTablet
-      ? { id: item.assignedTablet.id, alias: item.assignedTablet.alias ?? item.assignedTablet.codigoTablet }
-      : null,
+    assignedInspectors: item.assignedInspectors ?? [],
     quotationConsecutive: item.quotationConsecutive ?? null,
     hasSubmittedReport: item.hasSubmittedReport ?? false,
     hoe: item.hoe ?? null,
@@ -214,18 +202,21 @@ export async function getCargaDeTrabajoData(accessToken: string): Promise<OrderW
   return (body.data ?? []).map(mapWorkloadOrder)
 }
 
-type ExternalTablet = {
+type ExternalUser = {
+  empleado_id?: number | string
+  empleadoId?: number | string
   id?: number
-  codigoTablet?: string
-  codigo_tablet?: string
-  alias?: string
-  serialNumber?: string
-  serial_number?: string
-  status?: string
-  plantId?: number
-  plant_id?: number
-  plantName?: string
-  plant_name?: string
+  codigo_empleado?: string
+  nombre_completo?: string
+  nombreCompleto?: string
+  planta_id?: number | null
+  plantaId?: number | null
+  planta_nombre?: string | null
+  plantaNombre?: string | null
+  plantas?: { id: number; nombre: string }[]
+  rol?: string
+  correo?: string
+  is_active?: boolean
 }
 
 export async function getOrderWorkloadById(id: number, accessToken: string): Promise<OrderWorkload | null> {
@@ -233,61 +224,48 @@ export async function getOrderWorkloadById(id: number, accessToken: string): Pro
   return all.find((o) => o.id === id) ?? null
 }
 
-export async function getAvailableTablets(
+export async function getAvailableInspectors(
   accessToken: string,
   plantaId: number | null = null,
-): Promise<TabletOption[]> {
-  // 1. Fetch all tablets from qb_sync
-  let externalTablets: ExternalTablet[] = []
+): Promise<InspectorOption[]> {
+  let externalUsers: ExternalUser[] = []
   try {
-    const res = await fetch(`${BASE()}/qb_sync/tablets`, {
+    const res = await fetch(`${BASE()}/qb_sync/users`, {
       headers: apiHeaders(accessToken),
     })
     if (res.ok) {
       const body = await res.json().catch(() => ({}))
-      externalTablets = Array.isArray(body.data) ? body.data : []
+      externalUsers = Array.isArray(body.data) ? body.data : []
     } else {
-      console.error(`[getAvailableTablets] API returned ${res.status}: ${res.statusText}`)
+      console.error(`[getAvailableInspectors] API returned ${res.status}: ${res.statusText}`)
+      return []
     }
   } catch (err) {
-    console.error('[getAvailableTablets] Network error fetching tablets:', err)
+    console.error('[getAvailableInspectors] Network error fetching users:', err)
     return []
   }
 
-  // 2. Fetch active sessions from qb_sync to determine which tablets are busy
-  let busyTabletCodes: Set<string> = new Set()
-  try {
-    const sessRes = await fetch(`${BASE()}/qb_sync/inspection-sessions/active`, {
-      headers: apiHeaders(accessToken),
-    })
-    if (sessRes.ok) {
-      const sessBody = await sessRes.json().catch(() => ({}))
-      const activeSessions: Array<{ tabletId?: string }> = Array.isArray(sessBody.data) ? sessBody.data : []
-      busyTabletCodes = new Set(
-        activeSessions.map((s) => s.tabletId).filter((c): c is string => typeof c === 'string' && c !== ''),
-      )
-    }
-  } catch (err) {
-    console.error('[getAvailableTablets] Network error fetching active sessions:', err)
-    // Non-fatal — proceed without filtering busy tablets
+  // Prefiere el arreglo completo de plantas activas del usuario; si el backend
+  // aún no lo trae, cae a la planta única legacy (planta_id) como único elemento.
+  function derivePlantIds(u: ExternalUser): number[] {
+    if (Array.isArray(u.plantas)) return u.plantas.map((p) => p.id)
+    const legacyPlantId = u.planta_id ?? u.plantaId ?? null
+    return legacyPlantId != null ? [legacyPlantId] : []
   }
 
-  // 3. Filter and map to TabletOption
-  return externalTablets
-    .filter((t) => {
-      const codigo = t.codigoTablet ?? t.codigo_tablet ?? ''
-      const tabletPlantId = t.plantId ?? t.plant_id ?? null
-      const matchesPlant = plantaId == null || tabletPlantId === plantaId
-      return codigo !== '' && t.status === 'activa' && !busyTabletCodes.has(codigo) && matchesPlant
+  return externalUsers
+    .filter((u) => {
+      const rol = String(u.rol ?? '').toLowerCase()
+      if (rol !== 'inspector') return false
+      const empleadoId = u.empleado_id ?? u.empleadoId
+      if (empleadoId == null || empleadoId === '') return false
+      const matchesPlant = plantaId == null || derivePlantIds(u).includes(plantaId)
+      return matchesPlant
     })
-    .map((t) => ({
-      id: t.id ?? 0,
-      alias: t.alias ?? t.codigoTablet ?? t.codigo_tablet ?? '',
-      serialNumber: t.serialNumber ?? t.serial_number ?? '',
-      codigoTablet: t.codigoTablet ?? t.codigo_tablet ?? '',
-      plantId: t.plantId ?? t.plant_id ?? null,
-      plantName: t.plantName ?? t.plant_name ?? null,
-      status: t.status ?? '',
+    .map((u) => ({
+      empleadoId: Number(u.empleado_id ?? u.empleadoId),
+      name: u.nombre_completo ?? u.nombreCompleto ?? '',
+      plantIds: derivePlantIds(u),
     }))
-    .sort((a, b) => a.alias.localeCompare(b.alias))
+    .sort((a, b) => a.name.localeCompare(b.name))
 }

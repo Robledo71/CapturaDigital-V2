@@ -6,12 +6,126 @@ import { loginSupervisor, requestPasswordReset, type LoginState, type ForgotStat
 import { Input } from '@/front/components/ui/Input'
 import { Button } from '@/front/components/ui/Button'
 import Image from 'next/image'
-import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle, Copy, Check } from 'lucide-react'
 
 type View = 'login' | 'forgot'
 
+/**
+ * Pantalla TEMPORAL: mientras no exista el destino real del login (dashboards sin
+ * datos aún), al iniciar sesión con éxito se muestra la respuesta JSON del backend.
+ */
+function LoginSuccessView({ response }: { response: NonNullable<LoginState>['response'] }) {
+  const [copied, setCopied] = useState(false)
+  const json = JSON.stringify(response, null, 2)
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(json)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard no disponible: no hacer nada */
+    }
+  }
+
+  return (
+    <>
+      <div className="mb-4 flex justify-center sm:mb-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/15 ring-1 ring-green-500/30">
+          <CheckCircle size={30} className="text-green-400" />
+        </div>
+      </div>
+
+      <h1 className="mb-2 text-center text-xl font-bold text-blue-950 dark:text-white sm:text-2xl">
+        Login exitoso
+      </h1>
+      <p className="mb-5 text-center text-sm leading-relaxed text-blue-600 dark:text-slate-400">
+        Respuesta del backend (pantalla temporal)
+      </p>
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={copy}
+          aria-label="Copiar JSON"
+          className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md border border-slate-600/50 bg-slate-800/70 px-2 py-1 text-xs text-slate-300 transition-colors hover:border-blue-500/50 hover:text-blue-300"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? 'Copiado' : 'Copiar'}
+        </button>
+        <pre className="max-h-96 overflow-auto rounded-lg border border-slate-700 bg-slate-900 p-4 text-left font-mono text-xs leading-relaxed text-slate-100">
+{json}
+        </pre>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="mt-5 flex w-full items-center justify-center gap-1.5 text-sm text-blue-600 transition-colors hover:text-blue-700 dark:text-slate-400 dark:hover:text-slate-300"
+      >
+        <ArrowLeft size={14} />
+        Volver al inicio de sesión
+      </button>
+    </>
+  )
+}
+
+/**
+ * Pantalla de bloqueo: cuentas de mobile (cliente/inspector) no pueden entrar a la
+ * app de staff. El backend responde `wrong_app` y aquí se muestra la ilustración.
+ */
+/** Extrae el `message` del JSON del backend; cae a un texto por defecto si no viene. */
+function extractMessage(raw: unknown): string {
+  if (raw && typeof raw === 'object' && 'message' in raw) {
+    const msg = (raw as { message?: unknown }).message
+    if (typeof msg === 'string' && msg.trim()) return msg
+  }
+  return 'No puedes ingresar a esta aplicación con este tipo de cuenta.'
+}
+
+function LoginBlockedView({ onBack, raw }: { onBack: () => void; raw?: unknown }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto px-6 py-10 text-center"
+      style={{ background: 'radial-gradient(ellipse at 50% 0%, #0d1f3c 0%, #070e1a 70%)' }}
+    >
+      <Image
+        src="/error.png"
+        alt="Acceso no permitido"
+        width={900}
+        height={600}
+        className="mb-6 h-auto w-full max-w-2xl"
+        priority
+      />
+      <h1 className="mb-2 text-2xl font-bold text-white sm:text-3xl">
+        Acceso no permitido
+      </h1>
+
+      <p className="mb-8 max-w-md text-sm leading-relaxed text-slate-400 sm:text-base">
+        {extractMessage(raw)}
+      </p>
+
+      <button
+        type="button"
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-200"      >
+        <ArrowLeft size={14} />
+        Volver al inicio de sesión
+      </button>
+    </div>
+  )
+}
+
 function LoginView({ onForgot }: { onForgot: () => void }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(loginSupervisor, undefined)
+
+  if (state?.blocked) {
+    return <LoginBlockedView onBack={() => window.location.reload()} raw={state.raw} />
+  }
+
+  if (state?.response) {
+    return <LoginSuccessView response={state.response} />
+  }
 
   return (
     <>

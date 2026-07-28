@@ -13,10 +13,13 @@ interface EditarUsuarioModalProps {
   usuario: {
     id: number | string
     nombre: string
+    nombreEmpleado: string
+    apellidoPaterno: string
+    apellidoMaterno: string
     codigo: string
-    puesto: string
     planta?: string
     plantaId: number | null
+    plantas?: { id: number; nombre: string }[]
     rol: string
     correo: string
   }
@@ -26,10 +29,10 @@ interface EditarUsuarioModalProps {
 }
 
 interface FormValues {
-  nombreCompleto: string
+  nombreEmpleado: string
+  apellidoPaterno: string
+  apellidoMaterno: string
   codigoEmpleado: string
-  puesto: string
-  plantaId: string
   rol: string
   correo: string
 }
@@ -60,18 +63,28 @@ const inputCls =
 export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: EditarUsuarioModalProps) {
   const [state, dispatch] = useActionState(updateUser, undefined)
   const [values, setValues] = useState<FormValues>({
-    nombreCompleto: usuario.nombre,
+    nombreEmpleado: usuario.nombreEmpleado,
+    apellidoPaterno: usuario.apellidoPaterno,
+    apellidoMaterno: usuario.apellidoMaterno,
     codigoEmpleado: usuario.codigo,
-    puesto: usuario.puesto,
-    plantaId: usuario.plantaId !== null ? String(usuario.plantaId) : '',
     rol: usuario.rol,
     correo: usuario.correo,
   })
+  // Prefill desde el arreglo completo de plantas del usuario (no de plantaId único).
+  const [plantaIds, setPlantaIds] = useState<string[]>(
+    () => usuario.plantas?.map((p) => String(p.id)) ?? [],
+  )
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
     setValues((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+  }
+
+  function togglePlanta(id: string) {
+    setPlantaIds((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+    )
   }
 
   useEffect(() => {
@@ -124,29 +137,69 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
             {/* Grid de campos */}
             <div className="grid grid-cols-2 gap-4">
 
-              {/* Nombre completo — col span 2 */}
+              {/* Nombre — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="nombreCompleto" className="text-xs font-medium text-black dark:text-slate-400">
-                  Nombre completo
+                <label htmlFor="nombreEmpleado" className="text-xs font-medium text-black dark:text-slate-400">
+                  Nombre(s)
                 </label>
                 <input
-                  id="nombreCompleto"
-                  name="nombreCompleto"
+                  id="nombreEmpleado"
+                  name="nombreEmpleado"
                   type="text"
                   autoComplete="off"
                   autoFocus
-                  placeholder="Ej. Juan Pérez García"
-                  value={values.nombreCompleto}
+                  placeholder="Ej. Juan"
+                  value={values.nombreEmpleado}
                   onChange={handleChange}
                   className={inputCls}
                 />
-                {state?.errors?.nombreCompleto && (
-                  <p className="text-red-400 text-xs">{state.errors.nombreCompleto[0]}</p>
+                {state?.errors?.nombreEmpleado && (
+                  <p className="text-red-400 text-xs">{state.errors.nombreEmpleado[0]}</p>
                 )}
               </div>
 
-              {/* Código de empleado */}
+              {/* Apellido paterno */}
               <div className="flex flex-col gap-1">
+                <label htmlFor="apellidoPaterno" className="text-xs font-medium text-black dark:text-slate-400">
+                  Apellido paterno
+                </label>
+                <input
+                  id="apellidoPaterno"
+                  name="apellidoPaterno"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ej. Pérez"
+                  value={values.apellidoPaterno}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.apellidoPaterno && (
+                  <p className="text-red-400 text-xs">{state.errors.apellidoPaterno[0]}</p>
+                )}
+              </div>
+
+              {/* Apellido materno (opcional) */}
+              <div className="flex flex-col gap-1">
+                <label htmlFor="apellidoMaterno" className="text-xs font-medium text-black dark:text-slate-400">
+                  Apellido materno <span className="text-slate-400 font-normal">(opcional)</span>
+                </label>
+                <input
+                  id="apellidoMaterno"
+                  name="apellidoMaterno"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ej. García"
+                  value={values.apellidoMaterno}
+                  onChange={handleChange}
+                  className={inputCls}
+                />
+                {state?.errors?.apellidoMaterno && (
+                  <p className="text-red-400 text-xs">{state.errors.apellidoMaterno[0]}</p>
+                )}
+              </div>
+
+              {/* Código de empleado — col span 2 */}
+              <div className="col-span-2 flex flex-col gap-1">
                 <label htmlFor="codigoEmpleado" className="text-xs font-medium text-black dark:text-slate-400">
                   Código de empleado
                 </label>
@@ -165,45 +218,40 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                 )}
               </div>
 
-              {/* Puesto */}
-              <div className="flex flex-col gap-1">
-                <label htmlFor="puesto" className="text-xs font-medium text-black dark:text-slate-400">
-                  Puesto
-                </label>
-                <input
-                  id="puesto"
-                  name="puesto"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="Ej. Supervisor de calidad"
-                  value={values.puesto}
-                  onChange={handleChange}
-                  className={inputCls}
-                />
-                {state?.errors?.puesto && (
-                  <p className="text-red-400 text-xs">{state.errors.puesto[0]}</p>
-                )}
-              </div>
-
-              {/* Planta */}
-              <div className="flex flex-col gap-1">
-                <label htmlFor="plantaId" className="text-xs font-medium text-black dark:text-slate-400">
-                  Planta
-                </label>
-                <select
-                  id="plantaId"
-                  name="plantaId"
-                  value={values.plantaId}
-                  onChange={handleChange}
-                  className={inputCls}
-                >
-                  <option value="">Selecciona una planta</option>
-                  {plantas.map((p) => (
-                    <option key={p.id} value={String(p.id)}>{p.nombre}</option>
-                  ))}
-                </select>
-                {state?.errors?.plantaId && (
-                  <p className="text-red-400 text-xs">{state.errors.plantaId[0]}</p>
+              {/* Plantas — selección múltiple (opcional: roles cross-planta pueden no tener ninguna) */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <fieldset className="flex flex-col gap-1">
+                  <legend className="text-xs font-medium text-black dark:text-slate-400">
+                    Plantas <span className="text-slate-400 font-normal">(opcional)</span>
+                  </legend>
+                  <div className="max-h-36 overflow-y-auto rounded-lg border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-2 flex flex-col gap-1">
+                    {plantas.length === 0 ? (
+                      <p className="text-xs text-slate-500 px-1 py-1">No hay plantas disponibles</p>
+                    ) : (
+                      plantas.map((p) => {
+                        const id = String(p.id)
+                        return (
+                          <label
+                            key={p.id}
+                            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              name="plantaIds"
+                              value={id}
+                              checked={plantaIds.includes(id)}
+                              onChange={() => togglePlanta(id)}
+                              className="h-4 w-4 flex-shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40"
+                            />
+                            <span className="flex-1 truncate">{p.nombre}</span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </fieldset>
+                {state?.errors?.plantaIds && (
+                  <p className="text-red-400 text-xs">{state.errors.plantaIds[0]}</p>
                 )}
               </div>
 
@@ -222,13 +270,15 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                   <option value="" disabled className="text-slate-500">
                     Selecciona un rol
                   </option>
+                  <option value="superusuario">Superusuario</option>
                   <option value="admin">Administrador</option>
+                  <option value="gerente">Gerencia</option>
+                  <option value="supervisor_regional">Supervisor Regional</option>
                   <option value="supervisor">Supervisor</option>
                   <option value="lider">Líder</option>
-                  <option value="capturacion">Capturación</option>
                   <option value="servicio_cliente">Servicio al Cliente</option>
-                  <option value="gerente">Gerencia</option>
-                  <option value="cliente">Cliente</option>
+                  <option value="capturacion">Capturación</option>
+                  <option value="inspector">Inspector</option>
                 </select>
                 {state?.errors?.rol && (
                   <p className="text-red-400 text-xs">{state.errors.rol[0]}</p>
@@ -238,7 +288,7 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
               {/* Correo — col span 2 */}
               <div className="col-span-2 flex flex-col gap-1">
                 <label htmlFor="correo" className="text-xs font-medium text-black dark:text-slate-400">
-                  Correo electrónico
+                  Correo electrónico <span className="text-slate-400 font-normal">(opcional)</span>
                 </label>
                 <input
                   id="correo"

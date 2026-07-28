@@ -16,6 +16,14 @@ export type IncidentEntry = {
   count: number
 }
 
+export type ItemSampling = {
+  required: boolean
+  sampled: boolean
+  result: 'aprobado' | 'no_aprobado' | null
+  sampledPieces: number
+  ng: number | null
+}
+
 export type InspectionItemRow = {
   id: number
   partName: string | null
@@ -29,6 +37,7 @@ export type InspectionItemRow = {
   lote: string | null
   serie: string | null
   identificadores: string | null
+  sampling: ItemSampling
 }
 
 export type ReporteDetalleData = {
@@ -97,6 +106,17 @@ type ApiIncident = {
   affected_pieces: number
 }
 
+type ApiItemSampling = {
+  required: boolean
+  sampled: boolean
+  sampled_pieces: number
+  ok_pieces: number | null
+  ng_pieces: number | null
+  result: 'aprobado' | 'no_aprobado' | null
+  sampled_by_name: string | null
+  sampled_at: string | null
+}
+
 type ApiItem = {
   id: number
   total_pieces: number
@@ -111,6 +131,9 @@ type ApiItem = {
   // already a string — always serialise to string before passing to React.
   identificadores: Record<string, string> | string | null
   incidents: ApiIncident[]
+  // Muestreo por ítem (captura.muestreos), keyed by este mismo item.id.
+  // Puede venir ausente en filas legacy — tratar como "sin muestrear".
+  sampling?: ApiItemSampling
 }
 
 type ApiOperator = {
@@ -169,6 +192,10 @@ type ApiDailyReport = {
   operators: ApiOperator[]
   sampling_results: ApiSamplingResult[]
   order_context: ApiOrderContext | null
+  // Muestreo ahora vive por ítem (captura.muestreos). Estos dos campos son la
+  // fuente de verdad agregada a nivel de reporte, calculada por qb_sync.
+  fully_sampled: boolean
+  sampled_at: string | null
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -240,6 +267,21 @@ export async function getReporteDetalle(
         .map(([k, v]) => `${k}: ${String(v)}`)
       return pairs.length > 0 ? pairs.join(', ') : null
     })(),
+    sampling: item.sampling
+      ? {
+          required: item.sampling.required,
+          sampled: item.sampling.sampled,
+          result: item.sampling.result,
+          sampledPieces: item.sampling.sampled_pieces,
+          ng: item.sampling.ng_pieces,
+        }
+      : {
+          required: getSamplingRule(item.total_pieces) !== null,
+          sampled: false,
+          result: null,
+          sampledPieces: 0,
+          ng: null,
+        },
   }))
 
   const samplingItems: SamplingItemRule[] = inspectionItems
@@ -257,6 +299,12 @@ export async function getReporteDetalle(
 
   const latestSampling = report.sampling_results[0] ?? null
 
+  // Piezas muestreadas / NG de muestreo se agregan a partir del muestreo POR
+  // ÍTEM (nueva fuente de verdad), no del array report-wide sampling_results.
+  const sampledItems = inspectionItems.filter((i) => i.sampling.sampled)
+  const sampleSize = sampledItems.reduce((s, i) => s + i.sampling.sampledPieces, 0)
+  const sampleNg = sampledItems.reduce((s, i) => s + (i.sampling.ng ?? 0), 0)
+
   const totalInspected = inspectionItems.reduce((s, i) => s + i.inspected, 0)
   const totalOk = inspectionItems.reduce((s, i) => s + i.ok, 0)
   const totalNg = inspectionItems.reduce((s, i) => s + i.ng, 0)
@@ -273,10 +321,21 @@ export async function getReporteDetalle(
     .filter(Boolean)
     .join(', ')
 
+  // Estado efectivo (derivado): el status a nivel de reporte en BD ya no tiene
+  // un valor intermedio 'sampling' — muestreo ahora vive por ítem
+  // (captura.muestreos). El UI sigue esperando status === 'sampling' para
+  // habilitar "Firmar", así que lo derivamos aquí: un reporte 'submitted'
+  // cuyo `fully_sampled` es true (todos los ítems que requieren muestreo
+  // tienen un muestreo aprobado) se presenta como 'sampling' ("listo para
+  // firmar"). mapStatus() se conserva para el resto de transiciones y para
+  // filas legacy que aún pudieran traer el status 'sampled'/'muestreado'.
+  const effectiveStatus =
+    report.status === 'submitted' && report.fully_sampled ? 'sampling' : mapStatus(report.status)
+
   return {
     reportId: report.id,
     consecutiveNumber: ctx?.quotation_consecutive ?? `RPT-${report.id}`,
-    status: mapStatus(report.status),
+    status: effectiveStatus,
     reportDate: new Date(report.report_date),
     createdAt: new Date(report.created_at),
 
@@ -294,10 +353,14 @@ export async function getReporteDetalle(
     pzsPorIncidencia,
     samplingItems,
     inspectionItems,
-    sampleSize: latestSampling?.sampled_pieces ?? 0,
-    sampleNg: latestSampling?.ng_pieces ?? 0,
-    sampleApproved: latestSampling?.approved ?? false,
-    sampledAt: latestSampling?.sampled_at ? new Date(latestSampling.sampled_at) : null,
+    sampleSize,
+    sampleNg,
+    sampleApproved: report.fully_sampled,
+    sampledAt: report.sampled_at
+      ? new Date(report.sampled_at)
+      : latestSampling?.sampled_at
+        ? new Date(latestSampling.sampled_at)
+        : null,
     signedAt: report.signed_at ? new Date(report.signed_at) : null,
     publishedAt: report.published_at ? new Date(report.published_at) : null,
 

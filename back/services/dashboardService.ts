@@ -103,6 +103,11 @@ export async function getDashboardBandeja(accessToken: string): Promise<BandejaR
 }
 
 export type ProduccionItem = {
+  // id de la sesión de inspección — key ÚNICA por fila. Un mismo trabajo/cotización
+  // ahora puede tener N inspectores (N sesiones activas), así que `report`
+  // (consecutivo) YA NO es único entre filas — usar id_session evita el warning
+  // de React "two children with the same key".
+  id: number
   operadores: string
   initials: string
   report: string
@@ -124,6 +129,7 @@ export async function getDashboardProduccion(accessToken: string): Promise<Produ
     if (!res.ok) return []
     const json = await res.json()
     const sessions: Array<{
+      id_session: number
       inspector_name: string
       quotation_consecutive: string
       id_tablet: string | null
@@ -132,6 +138,7 @@ export async function getDashboardProduccion(accessToken: string): Promise<Produ
       inventory: number
     }> = json?.data ?? []
     return sessions.map((s) => ({
+      id: s.id_session,
       operadores: s.inspector_name,
       initials: getInitials(s.inspector_name),
       report: s.quotation_consecutive,

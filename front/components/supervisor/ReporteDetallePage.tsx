@@ -98,6 +98,38 @@ function getNgColorClass(pct: number): string {
   return 'text-red-500'
 }
 
+function ItemSamplingBadge({ sampling }: { sampling: InspectionItemRow['sampling'] }) {
+  if (sampling.sampled) {
+    if (sampling.result === 'no_aprobado') {
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+          <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-600 dark:bg-red-400" aria-hidden="true" />
+          No aprobado
+        </span>
+      )
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-400">
+        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-600 dark:bg-green-400" aria-hidden="true" />
+        Muestreado
+      </span>
+    )
+  }
+  if (sampling.required) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400">
+        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-600 dark:bg-amber-400" aria-hidden="true" />
+        Sin muestrear
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:border-[#1a2d4d] dark:bg-[#1a2d4d]/40 dark:text-slate-400">
+      No aplica
+    </span>
+  )
+}
+
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.submitted
 
@@ -143,7 +175,7 @@ function InspectionItemsTable({
   onEditItem?: (item: InspectionItemRow) => void
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
-  const colCount = onEditItem ? 13 : 12
+  const colCount = onEditItem ? 14 : 13
 
   return (
     <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
@@ -158,7 +190,7 @@ function InspectionItemsTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
-                {(['#', 'N° Parte', 'Nombre de Parte', 'Lote', 'Serie', 'Identificadores', 'Inspeccionadas', 'OK', 'NG', 'Scrap', 'Recuperadas', 'Incidencias'] as const).map(
+                {(['#', 'N° Parte', 'Nombre de Parte', 'Lote', 'Serie', 'Identificadores', 'Inspeccionadas', 'OK', 'NG', 'Scrap', 'Recuperadas', 'Incidencias', 'Muestreo'] as const).map(
                   (col, i) => (
                     <th
                       key={col}
@@ -223,6 +255,9 @@ function InspectionItemsTable({
                         </button>
                       )}
                     </td>
+                    <td className="py-2.5 pl-4 text-right">
+                      <ItemSamplingBadge sampling={item.sampling} />
+                    </td>
                     {onEditItem && (
                       <td className="py-2.5 pl-4 text-right">
                         <button
@@ -274,7 +309,7 @@ function InspectionItemsTable({
                 <td className="py-2.5 pl-4 text-right tabular-nums font-semibold text-slate-900 dark:text-white">
                   {totals.recovered.toLocaleString('es-MX')}
                 </td>
-                <td colSpan={onEditItem ? 2 : 1} />
+                <td colSpan={onEditItem ? 3 : 2} />
               </tr>
             </tfoot>
           </table>

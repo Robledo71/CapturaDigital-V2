@@ -24,7 +24,6 @@ function makeRawDashboard(overrides: Partial<{
         codigo_empleado: 'EMP010',
         correo: 'carlos@example.com',
         rol: 'supervisor',
-        puesto: 'Supervisor General',
         is_active: true,
         created_at: '2024-01-15T10:00:00.000Z',
       },

@@ -19,13 +19,16 @@
 // ─── Roles ──────────────────────────────────────────────────────────────────────
 
 export type Rol =
+  | 'superusuario'
   | 'admin'
   | 'supervisor'
+  | 'supervisor_regional'
   | 'lider'
   | 'capturacion'
   | 'servicio_cliente'
   | 'cliente'
   | 'gerente'
+  | 'inspector'
 
 // ─── Catálogo de permisos (acción fina, agrupados por módulo) ────────────────────
 
@@ -75,6 +78,9 @@ export type Permiso = (typeof PERMISOS)[number]
 const TODOS_LOS_PERMISOS = [...PERMISOS] as Permiso[]
 
 export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
+  // Superusuario: acceso absoluto a todos los módulos y acciones.
+  superusuario: TODOS_LOS_PERMISOS,
+
   // Acceso total
   admin: TODOS_LOS_PERMISOS,
 
@@ -93,6 +99,24 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     // tablets.ver: supervisor tiene su página de control de tablets (solo lectura).
     // NO tablets.gestionar: el alta/edición/baja de tablets es admin-only (la UI de
     // mutación vive únicamente en /admin).
+    'tablets.ver',
+    'usuarios.crear_cliente',
+    'historial.ver',
+  ],
+
+  // Supervisor regional: mismo alcance operativo que el supervisor, pero cross-planta
+  // (el filtro de planta lo maneja el backend). Reusa el portal /supervisor.
+  supervisor_regional: [
+    'supervisor.ver',
+    'reportes.ver',
+    'reportes.editar',
+    'reportes.publicar',
+    'reportes.firmar',
+    'reportes.muestreo',
+    'cotizaciones.importar',
+    'ordenes.ver',
+    'ordenes.asignar',
+    'ordenes.documentos',
     'tablets.ver',
     'usuarios.crear_cliente',
     'historial.ver',
@@ -130,6 +154,10 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
 
   // Cliente (pendiente de implementar su portal)
   cliente: [],
+
+  // Inspector: rol de la app móvil; no accede al portal web de staff (el backend
+  // lo bloquea con wrong_app). Sin permisos de portal.
+  inspector: [],
 
   // Gerente: solo lectura, ve todo sin filtro de planta
   gerente: [

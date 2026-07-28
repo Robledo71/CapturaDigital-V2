@@ -10,6 +10,9 @@ import { createCliente as serviceCreateCliente } from '@/back/services/clientSer
 export type CreateClienteState = {
   errors?: {
     nombre?: string[]
+    rfc?: string[]
+    direccion?: string[]
+    razonSocial?: string[]
     general?: string[]
   }
   success?: true
@@ -18,6 +21,9 @@ export type CreateClienteState = {
 
 const CreateClienteSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').trim(),
+  rfc: z.string().min(1, 'El RFC es requerido').trim(),
+  direccion: z.string().min(1, 'La dirección es requerida').trim(),
+  razonSocial: z.string().trim().optional(),
 })
 
 export async function createCliente(
@@ -31,7 +37,11 @@ export async function createCliente(
 
   const raw = {
     nombre: String(formData.get('nombre') ?? '').trim(),
+    rfc: String(formData.get('rfc') ?? '').trim(),
+    direccion: String(formData.get('direccion') ?? '').trim(),
+    razonSocial: String(formData.get('razonSocial') ?? '').trim() || undefined,
   }
+  const po = formData.get('po') === 'on'
 
   const validated = CreateClienteSchema.safeParse(raw)
   if (!validated.success) {
@@ -39,7 +49,13 @@ export async function createCliente(
   }
 
   const result = await serviceCreateCliente(
-    { nombre: validated.data.nombre },
+    {
+      nombre: validated.data.nombre,
+      rfc: validated.data.rfc,
+      direccion: validated.data.direccion,
+      razonSocial: validated.data.razonSocial,
+      po,
+    },
     session.accessToken,
   )
 

@@ -31,12 +31,15 @@ function supervisorSession() {
   return { ...adminSession(), rol: 'supervisor' as const }
 }
 
-function validFormData(overrides: Record<string, string> = {}): FormData {
+function validFormData(
+  overrides: Record<string, string> = {},
+  plantaIds: string[] = ['1'],
+): FormData {
   const defaults: Record<string, string> = {
-    nombreCompleto: 'Pedro Ramirez',
+    nombreEmpleado: 'Pedro',
+    apellidoPaterno: 'Ramirez',
+    apellidoMaterno: 'Soto',
     codigoEmpleado: 'EMP200',
-    puesto: 'Inspector',
-    plantaId: '1',
     rol: 'supervisor',
     correo: 'pedro@example.com',
     contrasena: 'secret1234',
@@ -47,6 +50,9 @@ function validFormData(overrides: Record<string, string> = {}): FormData {
   for (const [key, value] of Object.entries(merged)) {
     fd.append(key, value)
   }
+  for (const id of plantaIds) {
+    fd.append('plantaIds', id)
+  }
   return fd
 }
 
@@ -54,10 +60,13 @@ function makeUsuarioRow() {
   return {
     id: 1,
     nombreCompleto: 'Pedro Ramirez',
+    nombreEmpleado: 'Pedro',
+    apellidoPaterno: 'Ramirez',
+    apellidoMaterno: 'Soto',
     codigoEmpleado: 'EMP200',
-    puesto: 'Inspector',
     plantaId: 1,
     plantaNombre: 'Planta Norte',
+    plantas: [{ id: 1, nombre: 'Planta Norte' }],
     rol: 'supervisor' as const,
     correo: 'pedro@example.com',
     isActive: true,
@@ -124,11 +133,14 @@ describe('createUser', () => {
     expect(result).toMatchObject({ errors: { contrasena: expect.any(Array) } })
   })
 
-  it('plantaId inválido → error de validación', async () => {
+  it('sin plantaIds (arreglo vacío) → sigue siendo válido (planta ahora es opcional)', async () => {
     vi.mocked(getSession).mockResolvedValue(adminSession())
+    vi.mocked(createUsuario).mockResolvedValue({ ok: true, usuario: makeUsuarioRow() })
 
-    const result = await createUser(undefined, validFormData({ plantaId: '' }))
-    expect(result).toMatchObject({ errors: { plantaId: expect.any(Array) } })
+    const result = await createUser(undefined, validFormData({}, []))
+
+    expect(result).toMatchObject({ success: true })
+    expect(vi.mocked(createUsuario).mock.calls[0][0]).toMatchObject({ plantaIds: [] })
   })
 
   it('creación exitosa → { success: true, usuario }', async () => {
@@ -140,6 +152,16 @@ describe('createUser', () => {
     expect(result).toMatchObject({ success: true })
     expect(result?.usuario).toBeDefined()
     expect(createUsuario).toHaveBeenCalledOnce()
+  })
+
+  it('múltiples plantaIds en el FormData → se pasan como arreglo al servicio', async () => {
+    vi.mocked(getSession).mockResolvedValue(adminSession())
+    vi.mocked(createUsuario).mockResolvedValue({ ok: true, usuario: makeUsuarioRow() })
+
+    const result = await createUser(undefined, validFormData({}, ['1', '2', '3']))
+
+    expect(result).toMatchObject({ success: true })
+    expect(vi.mocked(createUsuario).mock.calls[0][0]).toMatchObject({ plantaIds: [1, 2, 3] })
   })
 
   it('duplicado de código → error en codigoEmpleado', async () => {

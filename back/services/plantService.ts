@@ -1,8 +1,9 @@
 import 'server-only'
-import type { PlantaRow } from '@/shared/types/planta'
+import type { PlantaRow, RegionRow } from '@/shared/types/planta'
 import type { PlantRecord } from '@/back/repositories/plantRepository'
 import {
   findAllPlants,
+  findAllRegiones,
   createPlant as repoCreatePlant,
   updatePlant as repoUpdatePlant,
   deletePlant as repoDeletePlant,
@@ -18,6 +19,8 @@ function mapToRow(p: PlantRecord): PlantaRow {
     id: p.id,
     nombre: p.name,
     direccion: p.address ?? null,
+    regionId: p.regionId,
+    nombreRegion: p.nombreRegion,
   }
 }
 
@@ -30,9 +33,14 @@ export async function getAllPlantas(accessToken: string): Promise<PlantaRow[]> {
   return rows.map(mapToRow)
 }
 
+export async function getRegiones(accessToken: string): Promise<RegionRow[]> {
+  return findAllRegiones(accessToken)
+}
+
 export type CreatePlantaInput = {
   nombre: string
-  direccion?: string
+  direccion: string
+  regionId: number
 }
 
 export async function createPlanta(
@@ -40,7 +48,7 @@ export async function createPlanta(
   accessToken: string,
 ): Promise<{ ok: true; planta: PlantaRow }> {
   const record = await repoCreatePlant(
-    { name: input.nombre, address: input.direccion },
+    { name: input.nombre, address: input.direccion, regionId: input.regionId },
     accessToken,
   )
   return { ok: true, planta: mapToRow(record) }
@@ -49,7 +57,8 @@ export async function createPlanta(
 export type UpdatePlantaInput = {
   id: number
   nombre: string
-  direccion?: string | null
+  direccion: string
+  regionId: number
 }
 
 export type UpdatePlantaResult =
@@ -63,7 +72,7 @@ export async function updatePlanta(
   try {
     const record = await repoUpdatePlant(
       input.id,
-      { name: input.nombre, address: input.direccion },
+      { name: input.nombre, address: input.direccion, regionId: input.regionId },
       accessToken,
     )
     return { ok: true, planta: mapToRow(record) }

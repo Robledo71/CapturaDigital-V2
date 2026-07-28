@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
 
   // Orígenes permitidos para assets en desarrollo (LAN).
-  allowedDevOrigins: ["192.168.10.186"],
+  allowedDevOrigins: ["192.168.10.181"],
 
   experimental: {
     // Client Router Cache: reutiliza el render (RSC) de cada ruta en el navegador
