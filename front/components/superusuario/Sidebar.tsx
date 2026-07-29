@@ -11,6 +11,8 @@ import {
   TrendingUp,
   LayoutGrid,
   ClipboardList,
+  ClipboardCheck,
+  FileStack,
   FileText,
   Tablet,
   Download,
@@ -21,6 +23,7 @@ import {
   MapPin,
   ShieldCheck,
   History,
+  HardHat,
   ChevronDown,
   Menu,
   X,
@@ -60,6 +63,8 @@ const NAV_SECTIONS: NavSection[] = [
     heading: 'OPERACIÓN',
     items: [
       { label: 'Carga de trabajo', icon: <ClipboardList size={16} />, href: '/superusuario/carga-trabajo', permiso: 'ordenes.ver' },
+      { label: 'Órdenes informales', icon: <FileStack size={16} />, href: '/superusuario/ordenes-informales', permiso: 'ordenes_informales.ver' },
+      { label: 'Reportes informales', icon: <ClipboardCheck size={16} />, href: '/superusuario/reportes-informales' },
       { label: 'Reportes', icon: <FileText size={16} />, href: '/superusuario/reportes', permiso: 'reportes.ver' },
       { label: 'Tablets', icon: <Tablet size={16} />, href: '/superusuario/tablets', permiso: 'tablets.gestionar' },
     ],
@@ -81,6 +86,7 @@ const NAV_SECTIONS: NavSection[] = [
     heading: 'ADMINISTRACIÓN',
     items: [
       { label: 'Usuarios', icon: <Users size={16} />, href: '/superusuario/usuarios', permiso: 'usuarios.crud' },
+      { label: 'Inspectores', icon: <HardHat size={16} />, href: '/superusuario/inspectores' },
       { label: 'Clientes', icon: <Building2 size={16} />, href: '/superusuario/clientes', permiso: 'clientes.crud' },
       { label: 'Plantas', icon: <MapPin size={16} />, href: '/superusuario/plantas', permiso: 'plantas.crud' },
       { label: 'Permisos', icon: <ShieldCheck size={16} />, href: '/superusuario/permisos', permiso: 'permisos.configurar' },

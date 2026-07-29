@@ -48,6 +48,16 @@ export const PERMISOS = [
   'ordenes.descargar',
   'ordenes.asignar',
   'ordenes.documentos',
+  // Órdenes informales (ad-hoc, fuera de SysQB)
+  'ordenes_informales.ver',
+  'ordenes_informales.crear',
+  'ordenes_informales.asignar',
+  // Reportes informales (muestreo/editar/firmar; NO publicar hasta promover a formal)
+  'reportes_informales.ver',
+  'reportes_informales.muestreo',
+  'reportes_informales.editar',
+  'reportes_informales.firmar',
+  'reportes_informales.promover',
   // Tablets
   'tablets.ver',
   'tablets.gestionar',
@@ -102,6 +112,15 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'tablets.ver',
     'usuarios.crear_cliente',
     'historial.ver',
+    // Órdenes/reportes informales: mecánica completa
+    'ordenes_informales.ver',
+    'ordenes_informales.crear',
+    'ordenes_informales.asignar',
+    'reportes_informales.ver',
+    'reportes_informales.muestreo',
+    'reportes_informales.editar',
+    'reportes_informales.firmar',
+    'reportes_informales.promover',
   ],
 
   // Supervisor regional: mismo alcance operativo que el supervisor, pero cross-planta
@@ -120,6 +139,14 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'tablets.ver',
     'usuarios.crear_cliente',
     'historial.ver',
+    'ordenes_informales.ver',
+    'ordenes_informales.crear',
+    'ordenes_informales.asignar',
+    'reportes_informales.ver',
+    'reportes_informales.muestreo',
+    'reportes_informales.editar',
+    'reportes_informales.firmar',
+    'reportes_informales.promover',
   ],
 
   // Líder de planta (reusa la vista de supervisor y entra a captura)
@@ -132,6 +159,14 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.descargar',
     'ordenes.asignar',
     'historial.ver',
+    'ordenes_informales.ver',
+    'ordenes_informales.crear',
+    'ordenes_informales.asignar',
+    'reportes_informales.ver',
+    'reportes_informales.muestreo',
+    'reportes_informales.editar',
+    'reportes_informales.firmar',
+    'reportes_informales.promover',
   ],
 
   // Capturación (PIERDE el desbloqueo de cotizaciones)
@@ -140,6 +175,9 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'reportes.ver',
     'ordenes.ver',
     'ordenes.descargar',
+    // Consulta (lectura) de órdenes/reportes informales
+    'ordenes_informales.ver',
+    'reportes_informales.ver',
   ],
 
   // Servicio al cliente (rol nuevo): ve órdenes descargadas y bloquea/desbloquea
@@ -150,6 +188,8 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.descargar',
     'cotizaciones.bloquear',
     'cotizaciones.desbloquear',
+    'ordenes_informales.ver',
+    'reportes_informales.ver',
   ],
 
   // Cliente (pendiente de implementar su portal)
@@ -166,6 +206,8 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.ver',
     'ordenes.descargar',
     'historial.ver',
+    'ordenes_informales.ver',
+    'reportes_informales.ver',
   ],
 }
 

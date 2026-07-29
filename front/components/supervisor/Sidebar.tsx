@@ -9,10 +9,12 @@ import {
   LayoutDashboard,
   FileText,
   Menu,
-  Tablet,
+  ClipboardList,
+  ClipboardCheck,
   ChevronDown,
   UserCheck,
   History,
+  HardHat,
   X,
 } from 'lucide-react'
 import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
@@ -61,10 +63,21 @@ const NAV_SECTIONS: NavSection[] = [
         permiso: 'ordenes.ver',
       },
       {
-        label: 'Tablets',
-        icon: <Tablet size={16} />,
-        href: '/supervisor/tablets',
-        permiso: 'tablets.ver',
+        label: 'Órdenes informales',
+        icon: <ClipboardList size={16} />,
+        href: '/supervisor/ordenes-informales',
+        permiso: 'ordenes_informales.ver',
+      },
+      {
+        label: 'Reportes informales',
+        icon: <ClipboardCheck size={16} />,
+        href: '/supervisor/reportes-informales',
+        permiso: 'reportes_informales.ver',
+      },
+      {
+        label: 'Inspectores',
+        icon: <HardHat size={16} />,
+        href: '/supervisor/inspectores',
       },
       {
         label: 'Historial de cambios',
@@ -135,7 +148,7 @@ export function Sidebar({ user }: SidebarProps) {
           className="rounded-lg flex-shrink-0"
         />
         <div className="min-w-0">
-          <p className="text-slate-900 dark:text-white font-bold text-sm leading-tight truncate">Captura Digital QB</p>
+          <p className="text-slate-900 dark:text-white font-bold text-sm leading-tight truncate">QBSync</p>
           <p className="text-[#64748b] text-xs leading-tight mt-0.5">v2 · Servicio de inspección</p>
         </div>
         {/* Close button — only visible in mobile drawer */}

@@ -26,6 +26,11 @@ import {
   updateInspectionItemAction,
   type UpdateInspectionItemState,
 } from '@/app/actions/update-inspection-item'
+import {
+  registerInformalSamplingAction,
+  signInformalReporteAction,
+} from '@/app/actions/informal-report-workflow'
+import { updateInformalReportItemAction } from '@/app/actions/update-informal-report-item'
 import { can, type SessionLike } from '@/front/lib/permisos'
 import { SAMPLING_RULES } from '@/front/lib/sampling'
 
@@ -36,6 +41,15 @@ interface ReporteDetallePageProps {
   permisos?: string[] | null
   /** Destino del botón "volver". Por defecto la lista de reportes del supervisor. */
   backHref?: string
+  /**
+   * 'informal' reusa este mismo componente para reportes de órdenes informales:
+   * usa las acciones de workflow informales, gatea por los permisos
+   * `reportes_informales.*` en vez de `reportes.*`, y oculta por completo el
+   * botón "Publicar" y el paso "Publicado" del historial (los reportes
+   * informales nunca se publican — el flujo termina en "Firmado"). Por
+   * defecto 'formal', que se comporta exactamente igual que antes.
+   */
+  variant?: 'formal' | 'informal'
 }
 
 const STATUS_CONFIG: Record<string, { dot: string; label: string; pill: string; text: string }> = {
@@ -920,23 +934,38 @@ function toDate(v: Date | string | null): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/supervisor/reportes' }: ReporteDetallePageProps) {
+export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/supervisor/reportes', variant = 'formal' }: ReporteDetallePageProps) {
+  const isInformal = variant === 'informal'
+
   // Permisos efectivos del usuario → controlan qué botones de workflow se muestran.
   // La frontera real de seguridad sigue siendo cada server action (que vuelve a validar).
+  // La variante 'informal' gatea por los permisos `reportes_informales.*` — los
+  // reportes informales nunca se publican, así que `canPublicar` siempre es false ahí.
   const session: SessionLike = { rol, permisos }
-  const canMuestreo = can(session, 'reportes.muestreo')
-  const canFirmar = can(session, 'reportes.firmar')
-  const canPublicar = can(session, 'reportes.publicar')
-  const canEditar = can(session, 'reportes.editar')
+  const canMuestreo = can(session, isInformal ? 'reportes_informales.muestreo' : 'reportes.muestreo')
+  const canFirmar = can(session, isInformal ? 'reportes_informales.firmar' : 'reportes.firmar')
+  const canPublicar = !isInformal && can(session, 'reportes.publicar')
+  const canEditar = can(session, isInformal ? 'reportes_informales.editar' : 'reportes.editar')
 
   const [samplingOpen, setSamplingOpen] = useState(false)
   const [defectsByItem, setDefectsByItem] = useState<Record<number, string>>({})
   const [samplingNotes, setSamplingNotes] = useState('')
-  const [samplingState, samplingAction] = useActionState(registerSamplingAction, {})
-  const [signState, signAction] = useActionState(signReporteAction, {})
+  const [samplingState, samplingAction] = useActionState(
+    isInformal ? registerInformalSamplingAction : registerSamplingAction,
+    {},
+  )
+  const [signState, signAction] = useActionState(
+    isInformal ? signInformalReporteAction : signReporteAction,
+    {},
+  )
+  // Publicar no existe en el flujo informal — el botón/modal correspondiente
+  // nunca se renderiza para esa variante, así que esta action queda sin uso ahí.
   const [publishState, publishAction] = useActionState(publishReporteAction, {})
   const [editItem, setEditItem] = useState<InspectionItemRow | null>(null)
-  const [editItemState, editItemAction] = useActionState(updateInspectionItemAction, undefined)
+  const [editItemState, editItemAction] = useActionState(
+    isInformal ? updateInformalReportItemAction : updateInspectionItemAction,
+    undefined,
+  )
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error'; visible: boolean }>({
     message: '',
     type: 'success',
@@ -1125,8 +1154,8 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
               </button>
             )}
 
-            {/* signed → publicar */}
-            {!isLegacy && status === 'signed' && canPublicar && (
+            {/* signed → publicar (no existe en el flujo informal) */}
+            {!isLegacy && !isInformal && status === 'signed' && canPublicar && (
               <button
                 type="button"
                 onClick={() => setShowPublishConfirm(true)}
@@ -1137,7 +1166,7 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
             )}
 
             {/* published → indicador final */}
-            {isPublished && (
+            {!isInformal && isPublished && (
               <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-500/10 px-3 py-2 text-sm font-medium text-green-400 border border-green-500/20">
                 <CheckCircle2 size={14} aria-hidden="true" />
                 Publicado
@@ -1260,7 +1289,9 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
                   <TimelineStep label="Capturado por operador" actor={operadores} date={sessionFinishedAt} done={isCaptured} dotClass="bg-green-400" />
                   <TimelineStep label="Muestreo aprobado" actor={supervisorName} date={sampledAt} done={isSampling} dotClass="bg-blue-400" detail={samplingDetail} />
                   <TimelineStep label="Firmado" actor={supervisorName} date={signedAt} done={isSigned} dotClass="bg-slate-400" />
-                  <TimelineStep label="Publicado" actor={supervisorName} date={publishedAt} done={isPublished} dotClass="bg-green-400" />
+                  {!isInformal && (
+                    <TimelineStep label="Publicado" actor={supervisorName} date={publishedAt} done={isPublished} dotClass="bg-green-400" />
+                  )}
                 </div>
               </div>
             </div>
