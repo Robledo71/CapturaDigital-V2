@@ -1,4 +1,4 @@
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { UsuariosPage } from '@/front/components/admin/UsuariosPage'
 import { getAllUsuarios } from '@/back/services/userService'
 import { getAllPlantas } from '@/back/services/plantService'
@@ -16,7 +16,7 @@ export default async function Page() {
 
   return (
     <>
-      <TopBar crumb="Usuarios" />
+      <TopBar crumb="Usuarios" homeHref="/admin" />
       <UsuariosPage
         initialUsuarios={usuarios}
         currentUserId={String(session?.userId ?? '')}

@@ -16,9 +16,9 @@ import {
   ShieldCheck,
   ChevronDown,
   History,
-  Menu,
   X,
 } from 'lucide-react'
+import { useMobileMenu } from '@/front/components/supervisor/MobileMenuContext'
 
 interface NavItem {
   label: string
@@ -125,7 +125,7 @@ const ROL_LABEL: Record<string, string> = {
 
 export function SideBar({ user }: SideBarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const { mobileOpen, closeMobileMenu } = useMobileMenu()
   const pathname = usePathname()
 
   function isActive(item: NavItem): boolean {
@@ -135,23 +135,23 @@ export function SideBar({ user }: SideBarProps) {
 
   // Close drawer on route change (navigation)
   useEffect(() => {
-    setMobileOpen(false)
-  }, [pathname])
+    closeMobileMenu()
+  }, [pathname, closeMobileMenu])
 
   // Close drawer on Escape key
   useEffect(() => {
     if (!mobileOpen) return
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setMobileOpen(false)
+      if (e.key === 'Escape') closeMobileMenu()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [mobileOpen])
+  }, [mobileOpen, closeMobileMenu])
 
   const sidebarContent = (
     <>
       {/* Brand header */}
-      <div className="px-4 py-5 flex items-center gap-3 border-b border-slate-200 dark:border-[#1a2d4d]">
+      <div className="px-4 h-20 flex items-center gap-3 border-b border-slate-200 dark:border-[#1a2d4d]">
         <Image
           src="/logoCheck.png"
           alt="Quality Bolca"
@@ -166,7 +166,7 @@ export function SideBar({ user }: SideBarProps) {
         {/* Close button — only visible in mobile drawer */}
         <button
           type="button"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobileMenu}
           aria-label="Cerrar menú"
           className="ml-auto lg:hidden p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors flex-shrink-0"
         >
@@ -265,23 +265,12 @@ export function SideBar({ user }: SideBarProps) {
 
   return (
     <>
-      {/* Hamburger button — only visible on mobile (<lg) */}
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        aria-label="Abrir menú"
-        aria-expanded={mobileOpen}
-        className="fixed top-2 left-2 z-50 flex h-9 w-9 items-center justify-center rounded-lg bg-white dark:bg-[#0c1829] border border-slate-200 dark:border-[#1a2d4d] text-slate-700 dark:text-white shadow-md lg:hidden"
-      >
-        <Menu size={18} />
-      </button>
-
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
           aria-hidden="true"
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobileMenu}
         />
       )}
 

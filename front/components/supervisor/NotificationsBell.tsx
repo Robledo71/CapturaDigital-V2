@@ -76,9 +76,9 @@ export function NotificationsBell() {
         aria-label={`Notificaciones${count > 0 ? ` (${count})` : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 hover:bg-white/10 hover:text-white transition-colors"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-white/10 dark:hover:text-white transition-colors"
       >
-        <Bell size={17} />
+        <Bell size={18} />
         {count > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
             {count}

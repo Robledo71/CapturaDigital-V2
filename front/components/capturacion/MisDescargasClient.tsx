@@ -8,6 +8,8 @@ import {
   upsertDownloadRecord,
   type DownloadRecord,
 } from '@/front/lib/downloadHistory'
+import { OfflineBanner } from '@/front/components/ui/OfflineBanner'
+import { DescargaCardList } from '@/front/components/capturacion/DescargaCardList'
 
 const PAGE_SIZE = 20
 
@@ -132,29 +134,35 @@ export function MisDescargasClient() {
 
       {/* Empty state — not yet hydrated */}
       {records === null && (
-        <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
-                {['ID', 'Cliente · Planta', 'Cotización', '# Parte', 'Piezas', '% NG', 'Publicado', 'Descargado el', ''].map(
-                  (col) => (
-                    <th
-                      key={col}
-                      className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3"
-                    >
-                      {col}
-                    </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              <SkeletonRows />
-            </tbody>
-          </table>
+        <>
+          <div className="hidden md:block shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#1a2d4d] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
+            <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-blue-200 dark:border-[#1a2d4d]">
+                  {['ID', 'Cliente · Planta', 'Cotización', '# Parte', 'Piezas', '% NG', 'Publicado', 'Descargado el', ''].map(
+                    (col) => (
+                      <th
+                        key={col}
+                        className="text-xs font-bold text-black dark:text-white uppercase tracking-wider text-left px-4 py-3"
+                      >
+                        {col}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                <SkeletonRows />
+              </tbody>
+            </table>
+            </div>
           </div>
-        </div>
+
+          <div className="md:hidden flex items-center justify-center py-16">
+            <p className="text-sm text-slate-500 dark:text-slate-400">Cargando...</p>
+          </div>
+        </>
       )}
 
       {/* Empty state — hydrated but no records */}
@@ -171,7 +179,7 @@ export function MisDescargasClient() {
       {/* Table — hydrated and has records */}
       {records !== null && records.length > 0 && (
         <>
-          <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0f2038] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
+          <div className="hidden md:block shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0f2038] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
             <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -293,6 +301,11 @@ export function MisDescargasClient() {
               </tbody>
             </table>
             </div>
+          </div>
+
+          <div className="md:hidden flex flex-col gap-3">
+            <OfflineBanner />
+            <DescargaCardList records={pagedRecords} onRedownload={handleRedownload} />
           </div>
 
           {totalPages > 1 && (

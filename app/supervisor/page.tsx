@@ -36,7 +36,7 @@ export default async function SupervisorPage() {
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-6">
 
         {/* Page header */}
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col gap-1">
             <LiveClock nombre={firstName} esperanRevision={stats.esperanRevision} />
             {plantaNombre && (
@@ -49,7 +49,7 @@ export default async function SupervisorPage() {
             {canVerTablets && (
               <Link
                 href="/supervisor/tablets"
-                className="border border-black dark:border-[#1a2d4d] rounded-lg px-4 py-2 text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
+                className="border border-slate-200 dark:border-[#1a2d4d] rounded-xl px-4 py-2 text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
               >
                 <Tablet size={15} />
                 Tablets
@@ -58,7 +58,7 @@ export default async function SupervisorPage() {
             {canVerOrdenes && (
               <Link
                 href="/supervisor/carga-trabajo"
-                className="bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-lg px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+                className="bg-blue-600 hover:bg-blue-500 text-white dark:text-white rounded-xl px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
               >
                 <Plus size={15} />
                 Carga de trabajo
@@ -74,7 +74,7 @@ export default async function SupervisorPage() {
           <div className="flex-1 min-w-0 flex flex-col gap-6">
 
             {/* 4 stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <StatCard
                 label="Pendientes en piso"
                 value={String(stats.pendientesEnPiso)}

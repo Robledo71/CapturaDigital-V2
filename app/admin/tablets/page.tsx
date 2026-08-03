@@ -1,4 +1,4 @@
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { TabletsPage } from '@/front/components/admin/TabletsPage'
 import { getAllTablets } from '@/back/services/tabletService'
 import { getAllPlantas } from '@/back/services/plantService'
@@ -16,7 +16,7 @@ export default async function Page() {
 
   return (
     <>
-      <TopBar crumb="Tablets" />
+      <TopBar crumb="Tablets" homeHref="/admin" />
       <TabletsPage initialTablets={tablets} plantas={plantas} />
     </>
   )

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import type { InspectionItemRow, ReporteDetalleData } from '@/back/services/reporteDetalleService'
 import { LegacyCsvTable } from '@/front/components/supervisor/LegacyCsvTable'
+import { InspectionItemCardList } from '@/front/components/supervisor/InspectionItemCardList'
 import {
   publishReporteAction,
   registerSamplingAction,
@@ -112,21 +113,23 @@ function StatusBadge({ status }: { status: string }) {
 function MiniStatCard({
   label,
   value,
-  valueClass = 'text-dark dark:text-white',
+  valueClass = 'text-slate-900 dark:text-white',
   warning = false,
+  size = 'sm',
 }: {
   label: string
   value: number
   valueClass?: string
   warning?: boolean
+  size?: 'lg' | 'sm'
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-blue-50 bg-slate-100 p-4 dark:border-[#070e1a] dark:bg-[#070e1a]">
+    <div className="flex flex-col gap-1">
       <span className="flex items-center gap-1 text-xs text-slate-500">
         {label}
         {warning && <AlertTriangle size={12} className="flex-shrink-0 text-orange-400" aria-hidden="true" />}
       </span>
-      <span className={`text-2xl font-bold tabular-nums ${valueClass}`}>
+      <span className={`font-bold tabular-nums ${size === 'lg' ? 'text-4xl' : 'text-xl'} ${valueClass}`}>
         {value.toLocaleString('es-MX')}
       </span>
     </div>
@@ -146,30 +149,46 @@ function InspectionItemsTable({
   const colCount = onEditItem ? 13 : 12
 
   return (
-    <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
-      <h2 className="mb-4 text-sm font-semibold text-slate-900 dark:text-white">
+    <div className="rounded-2xl border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-5">
+      <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
         Detalle por ítem inspeccionado
       </h2>
 
       {items.length === 0 ? (
         <p className="text-sm text-slate-500">Sin ítems de inspección registrados.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <>
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-8" />
+              <col className="w-27.5" />
+              <col className="w-37.5" />
+              <col className="w-14" />
+              <col className="w-14" />
+              <col className="w-16" />
+              <col className="w-16" />
+              <col className="w-12" />
+              <col className="w-12" />
+              <col className="w-14" />
+              <col className="w-16" />
+              <col className="w-16" />
+              {onEditItem && <col className="w-20" />}
+            </colgroup>
             <thead>
-              <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
-                {(['#', 'N° Parte', 'Nombre de Parte', 'Lote', 'Serie', 'Identificadores', 'Inspeccionadas', 'OK', 'NG', 'Scrap', 'Recuperadas', 'Incidencias'] as const).map(
+              <tr className="border-b-2 border-slate-900 dark:border-white/20">
+                {(['#', 'N° Parte', 'Nombre de Parte', 'Lote', 'Serie', 'Ident.', 'Inspec.', 'OK', 'NG', 'Scrap', 'Recup.', 'Inc.'] as const).map(
                   (col, i) => (
                     <th
                       key={col}
-                      className={`pb-2.5 text-xs font-bold text-black dark:text-white ${i < 3 ? 'text-left' : 'text-right'} ${i === 0 ? 'w-8 pr-4' : ''} ${i === 1 ? 'min-w-[100px] pr-4' : ''} ${i === 2 ? 'min-w-[140px] pr-4' : ''} ${i > 2 ? 'pl-4' : ''}`}
+                      className={`whitespace-nowrap pb-2.5 font-mono text-[10.5px] uppercase leading-tight text-black dark:text-white ${i < 3 ? 'text-left tracking-wider' : 'text-right'} ${i <= 2 ? 'pr-4' : 'pl-4'}`}
                     >
                       {col}
                     </th>
                   ),
                 )}
                 {onEditItem && (
-                  <th className="pb-2.5 pl-4 text-right text-xs font-bold text-black dark:text-white">
+                  <th className="pb-2.5 pl-4 text-right font-mono text-[10.5px] uppercase text-black dark:text-white">
                     <span className="sr-only">Acciones</span>
                   </th>
                 )}
@@ -178,21 +197,21 @@ function InspectionItemsTable({
             <tbody>
               {items.map((item, idx) => (
                 <React.Fragment key={item.id}>
-                  <tr className="border-b border-blue-100 dark:border-[#1a2d4d]/50">
+                  <tr className="border-b border-slate-100 dark:border-[#1a2d4d]/50">
                     <td className="py-2.5 pr-4 text-xs tabular-nums text-slate-400">{idx + 1}</td>
-                    <td className="py-2.5 pr-4 text-xs text-slate-500 font-mono" title={item.partNumber ?? '—'}>
+                    <td className="wrap-break-word py-2.5 pr-4 text-[11.5px] leading-relaxed text-slate-500 font-mono" title={item.partNumber ?? '—'}>
                       {item.partNumber ?? '—'}
                     </td>
-                    <td className="max-w-[180px] truncate py-2.5 pr-4 text-slate-900 dark:text-white" title={item.partName ?? '—'}>
+                    <td className="truncate py-2.5 pr-4 text-slate-900 dark:text-white" title={item.partName ?? '—'}>
                       {item.partName ?? '—'}
                     </td>
-                    <td className="py-2.5 pl-4 text-right text-xs text-slate-400">
+                    <td className="py-2.5 pl-4 text-right text-xs text-slate-300">
                       {item.lote ?? '—'}
                     </td>
-                    <td className="py-2.5 pl-4 text-right text-xs text-slate-400">
+                    <td className="py-2.5 pl-4 text-right text-xs text-slate-300">
                       {item.serie ?? '—'}
                     </td>
-                    <td className="py-2.5 pl-4 text-right text-xs text-slate-400">
+                    <td className="py-2.5 pl-4 text-right text-xs text-slate-300">
                       {item.identificadores ?? '—'}
                     </td>
                     <td className="py-2.5 pl-4 text-right tabular-nums text-slate-900 dark:text-white">
@@ -212,7 +231,7 @@ function InspectionItemsTable({
                     </td>
                     <td className="py-2.5 pl-4 text-right">
                       {item.incidents.length === 0 ? (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-slate-300">—</span>
                       ) : (
                         <button
                           type="button"
@@ -256,9 +275,12 @@ function InspectionItemsTable({
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-slate-100 dark:border-[#1a2d4d]">
-                <td colSpan={6} className="py-2.5 text-xs font-semibold text-slate-500">
-                  Totales
-                </td>
+                <td className="py-2.5 pr-4 text-xs font-semibold text-slate-500">Totales</td>
+                <td className="py-2.5 pr-4" />
+                <td className="py-2.5 pr-4" />
+                <td className="py-2.5 pl-4 text-right text-xs" />
+                <td className="py-2.5 pl-4 text-right text-xs" />
+                <td className="py-2.5 pl-4 text-right text-xs" />
                 <td className="py-2.5 pl-4 text-right tabular-nums font-semibold text-slate-900 dark:text-white">
                   {totals.inspected.toLocaleString('es-MX')}
                 </td>
@@ -274,11 +296,17 @@ function InspectionItemsTable({
                 <td className="py-2.5 pl-4 text-right tabular-nums font-semibold text-slate-900 dark:text-white">
                   {totals.recovered.toLocaleString('es-MX')}
                 </td>
-                <td colSpan={onEditItem ? 2 : 1} />
+                <td className="py-2.5 pl-4 text-right" />
+                {onEditItem && <td className="py-2.5 pl-4 text-right" />}
               </tr>
             </tfoot>
           </table>
         </div>
+
+        <div className="md:hidden">
+          <InspectionItemCardList items={items} onEditItem={onEditItem} />
+        </div>
+        </>
       )}
     </div>
   )
@@ -520,6 +548,7 @@ function TimelineStep({
   done,
   dotClass,
   detail,
+  isLast = false,
 }: {
   label: string
   actor: string
@@ -527,11 +556,13 @@ function TimelineStep({
   done: boolean
   dotClass: string
   detail?: string
+  isLast?: boolean
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-1 flex flex-shrink-0 flex-col items-center">
+      <div className="mt-1 flex flex-shrink-0 flex-col items-center self-stretch">
         <span className={`h-2 w-2 rounded-full ${done ? dotClass : 'bg-slate-600'}`} aria-hidden="true" />
+        {!isLast && <span className="w-px flex-1 bg-slate-200 dark:bg-[#1a2d4d] mt-1" aria-hidden="true" />}
       </div>
       <div className="flex min-w-0 flex-col pb-4">
         <span className={`text-sm font-medium ${done ? 'text-slate-900 dark:text-white' : 'text-slate-500'}`}>
@@ -541,7 +572,11 @@ function TimelineStep({
           <>
             <span className="truncate text-xs text-slate-500">{actor}</span>
             <span className="text-xs text-slate-500">{formatDate(date)}</span>
-            {detail && <span className="text-xs text-slate-500 mt-0.5">{detail}</span>}
+            {detail && (
+              <span className="inline-block mt-1 rounded-md bg-slate-100 dark:bg-[#1a2d4d] px-2 py-1 text-xs text-slate-600 dark:text-slate-300">
+                {detail}
+              </span>
+            )}
           </>
         ) : (
           <span className="text-xs italic text-slate-500">pendiente</span>
@@ -1042,12 +1077,32 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
     setSamplingOpen(true)
   }
 
+  // Derivado puramente de presentación: misma cascada de fechas que ya alimenta el timeline.
+  const lastUpdatedAt = publishedAt ?? signedAt ?? sampledAt ?? sessionFinishedAt ?? sessionCreatedAt ?? createdAt
+
+  const timelineSteps: {
+    label: string
+    actor: string
+    date: Date | null
+    done: boolean
+    dotClass: string
+    detail?: string
+  }[] = [
+    { label: 'Creado por supervisor', actor: supervisorName, date: createdAt, done: true, dotClass: 'bg-green-400' },
+    { label: 'Asignado a operador', actor: operadores, date: sessionCreatedAt, done: isAssigned, dotClass: 'bg-green-400' },
+    { label: 'Capturado por operador', actor: operadores, date: sessionFinishedAt, done: isCaptured, dotClass: 'bg-green-400' },
+    { label: 'Muestreo aprobado', actor: supervisorName, date: sampledAt, done: isSampling, dotClass: 'bg-blue-400', detail: samplingDetail },
+    { label: 'Firmado', actor: supervisorName, date: signedAt, done: isSigned, dotClass: 'bg-slate-400' },
+    { label: 'Publicado', actor: supervisorName, date: publishedAt, done: isPublished, dotClass: 'bg-green-400' },
+  ]
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
-        <div className="flex flex-wrap items-start gap-4">
+        <div className="flex flex-wrap items-start gap-4 pb-4">
           {/* Left: back button + consecutive number + client-plant-quote */}
           <div className="flex min-w-0 flex-col gap-1">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-slate-400">Reporte de inspección</p>
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={backHref}
@@ -1059,12 +1114,13 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{consecutiveNumber}</h1>
             </div>
             <p className="pl-11 text-sm text-slate-500">
-              {cliente} - {planta} - {cotizacion}
+              {cliente} · {planta} · {cotizacion}
             </p>
           </div>
 
           {/* Right: status badge + workflow buttons — ml-auto anchors to the right even when wrapping */}
-          <div className="ml-auto flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
+          <div className="ml-auto flex flex-shrink-0 flex-col items-end gap-1">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <StatusBadge status={status} />
 
             {/* submitted → registrar muestreo */}
@@ -1072,7 +1128,7 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
               <button
                 type="button"
                 onClick={openSamplingModal}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
               >
                 <CheckCircle2 size={14} aria-hidden="true" />
                 Registrar muestreo
@@ -1109,6 +1165,8 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
               </span>
             )}
           </div>
+          <p className="font-mono text-[11px] text-slate-400">Última actualización {formatRelativeTime(lastUpdatedAt)}</p>
+          </div>
         </div>
 
         {isLegacy && (
@@ -1118,9 +1176,9 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-5">
-            <div className="sm:col-span-1 lg:col-span-3 flex flex-col">
-              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Datos del servicio</h2>
+            <div className="sm:col-span-1 lg:col-span-3 flex h-full flex-col">
+              <div className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Datos del servicio</h2>
                 <dl className="flex flex-col gap-2.5">
                   {(
                     [
@@ -1133,9 +1191,9 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
                       ['Lote esperado', totalInspected > 0 ? totalInspected.toLocaleString('es-MX') : '-'],
                     ] as [string, string][]
                   ).map(([label, value]) => (
-                    <div key={label} className="flex min-w-0 items-baseline justify-between gap-2">
-                      <dt className="flex-shrink-0 text-xs text-slate-500">{label}</dt>
-                      <dd className="max-w-[130px] truncate text-right text-sm font-medium text-slate-900 dark:text-white">
+                    <div key={label} className="flex min-w-0 items-baseline justify-between gap-2 border-b border-slate-200 dark:border-[#1a2d4d] pb-2">
+                      <dt className="flex-shrink-0 font-mono text-xs text-slate-400">{label}</dt>
+                      <dd className="text-right text-sm font-medium text-slate-900 dark:text-white">
                         {value}
                       </dd>
                     </div>
@@ -1145,12 +1203,12 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
             </div>
 
             <div className="sm:col-span-2 lg:col-span-6 flex flex-col gap-5">
-              <div className="flex flex-1 flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
+              <div className="flex flex-1 flex-col gap-4 rounded-2xl border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-5">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Resumen de piezas inspeccionadas
                   </h2>
-                  <p className="mt-0.5 text-xs text-slate-500">{summarySubtitle}</p>
+                  <p className="mt-0.5 text-xs italic text-slate-500">{summarySubtitle}</p>
                 </div>
 
                 {inspectionItems.length === 0 && !isLegacy ? (
@@ -1163,10 +1221,13 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <MiniStatCard label="Piezas OK" value={realTotals.ok} valueClass="text-green-500" />
-                      <MiniStatCard label="Piezas NG" value={realTotals.ng} valueClass="text-orange-400" warning={realTotals.ng > 0} />
-                      <MiniStatCard label="Scrap" value={realTotals.scrap} />
+                    <div className="grid grid-cols-3 gap-4">
+                      <MiniStatCard label="Piezas OK" value={realTotals.ok} valueClass="text-green-600" size="lg" />
+                      <MiniStatCard label="Piezas NG" value={realTotals.ng} valueClass="text-red-500" warning={realTotals.ng > 0} size="lg" />
+                      <MiniStatCard label="Scrap" value={realTotals.scrap} size="lg" />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 border-t border-slate-100 dark:border-[#1a2d4d] pt-3 mt-1">
                       <MiniStatCard label="Recuperadas" value={realTotals.recovered} />
                       <MiniStatCard label="Incidencias" value={realTotals.incidents} />
                       <MiniStatCard label="Pzs / incidencia" value={realTotals.pzsPorIncidencia} />
@@ -1181,15 +1242,23 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-slate-500">% NG</span>
-                        <span className={`font-medium tabular-nums ${ngPctClass}`}>{ngPctDisplay}</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`font-medium tabular-nums ${ngPctClass}`}>{ngPctDisplay}</span>
+                          <div className="h-1.25 w-24 rounded-full bg-slate-100 dark:bg-[#1a2d4d] overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${ngPct > 3 ? 'bg-red-500' : ngPct > 1 ? 'bg-amber-500' : 'bg-green-500'}`}
+                              style={{ width: `${Math.min(ngPct * 8, 100)}%` }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </>
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
-                <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Asignacion</h2>
+              <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Asignacion</h2>
                 {hasOperadores ? (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2.5">
@@ -1212,20 +1281,17 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
               </div>
             </div>
 
-            <div className="sm:col-span-1 lg:col-span-3 flex flex-col">
-              <div className="flex h-full flex-col gap-4 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
+            <div className="sm:col-span-1 lg:col-span-3 flex h-full flex-col">
+              <div className="flex h-full flex-col gap-4 rounded-2xl border border-slate-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-5">
                 <div className="flex items-center gap-1.5">
                   <Clock size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />
-                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Historial</h2>
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Historial</h2>
                 </div>
 
                 <div className="flex flex-col" role="list" aria-label="Historial de etapas del reporte">
-                  <TimelineStep label="Creado por supervisor" actor={supervisorName} date={createdAt} done dotClass="bg-green-400" />
-                  <TimelineStep label="Asignado a operador" actor={operadores} date={sessionCreatedAt} done={isAssigned} dotClass="bg-green-400" />
-                  <TimelineStep label="Capturado por operador" actor={operadores} date={sessionFinishedAt} done={isCaptured} dotClass="bg-green-400" />
-                  <TimelineStep label="Muestreo aprobado" actor={supervisorName} date={sampledAt} done={isSampling} dotClass="bg-blue-400" detail={samplingDetail} />
-                  <TimelineStep label="Firmado" actor={supervisorName} date={signedAt} done={isSigned} dotClass="bg-slate-400" />
-                  <TimelineStep label="Publicado" actor={supervisorName} date={publishedAt} done={isPublished} dotClass="bg-green-400" />
+                  {timelineSteps.map((step, idx) => (
+                    <TimelineStep key={step.label} {...step} isLast={idx === timelineSteps.length - 1} />
+                  ))}
                 </div>
               </div>
             </div>
