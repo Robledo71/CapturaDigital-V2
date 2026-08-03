@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Fragment, useState, useEffect } from 'react'
+import { Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import type { InformalReporteListRow } from '@/back/services/informalReportesService'
+import { getInformalReporteDetalleAction } from '@/app/actions/get-informal-reporte-detalle'
 import { getAvatarColor } from '@/front/lib/avatarColor'
+import { ReporteAccordionPanel, groupByPart, type RowDetail } from './ReporteAccordionPanel'
 
 // ─── Avatar helpers ────────────────────────────────────────────────────────────
 
@@ -105,11 +106,31 @@ export function ReportesInformalesPage({
   reportes,
   detailHrefBase = '/supervisor/reportes-informales',
 }: ReportesInformalesPageProps) {
-  const router = useRouter()
-
   const [activeTab, setActiveTab] = useState<TabKey>('todos')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+
+  // Acordeón: filas expandidas + caché de detalles (lazy-load al abrir).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [details, setDetails] = useState<Record<string, RowDetail>>({})
+
+  async function toggleRow(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    if (details[id]) return
+    setDetails((prev) => ({ ...prev, [id]: { status: 'loading' } }))
+    const res = await getInformalReporteDetalleAction(id)
+    setDetails((prev) => ({
+      ...prev,
+      [id]: res.ok
+        ? { status: 'ready', groups: groupByPart(res.reporte.inspectionItems) }
+        : { status: 'error', error: res.error },
+    }))
+  }
 
   const statusCounts = {
     submitted: reportes.filter((r) => r.status === 'submitted').length,
@@ -257,50 +278,68 @@ export function ReportesInformalesPage({
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((r) => (
-                    <tr
-                      key={r.id}
-                      onClick={() => router.push(`${detailHrefBase}/${r.id}`)}
-                      className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors group cursor-pointer"
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <TipoOrdenBadge tipo={r.tipoOrden} />
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm">{r.clienteNombre ?? '—'}</p>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">
-                        {r.plantaNombre ?? '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-col">
-                          <span className="font-mono text-xs text-slate-800 dark:text-slate-200">{r.numeroParte}</span>
-                          {r.nombreParte && (
-                            <span className="text-xs text-slate-500 dark:text-slate-400">{r.nombreParte}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <InspectorAvatar nombre={r.inspector ?? '—'} />
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">
-                        {r.horario ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <EstatusBadge estatus={r.status} />
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">
-                        {formatDate(r.fechaCreado)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ChevronRight
-                          size={15}
-                          className="text-blue-400 group-hover:text-slate-600 dark:text-slate-400 transition-colors inline"
-                          aria-hidden="true"
-                        />
-                      </td>
-                    </tr>
-                  ))
+                  paginated.map((r) => {
+                    const rid = String(r.id)
+                    const isOpen = expanded.has(rid)
+                    const detail = details[rid]
+                    return (
+                      <Fragment key={rid}>
+                        <tr
+                          onClick={() => toggleRow(rid)}
+                          aria-expanded={isOpen}
+                          className={`hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors group cursor-pointer ${isOpen ? 'bg-blue-50/70 dark:bg-[#1a2d4d]/40' : ''}`}
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <TipoOrdenBadge tipo={r.tipoOrden} />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <p className="text-slate-800 dark:text-slate-200 font-medium text-sm">{r.clienteNombre ?? '—'}</p>
+                          </td>
+                          <td className="px-4 py-3 text-slate-500 text-sm whitespace-nowrap">
+                            {r.plantaNombre ?? '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="font-mono text-xs text-slate-800 dark:text-slate-200">{r.numeroParte}</span>
+                              {r.nombreParte && (
+                                <span className="text-xs text-slate-500 dark:text-slate-400">{r.nombreParte}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <InspectorAvatar nombre={r.inspector ?? '—'} />
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">
+                            {r.horario ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <EstatusBadge estatus={r.status} />
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">
+                            {formatDate(r.fechaCreado)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <ChevronDown
+                              size={16}
+                              className={`text-blue-400 group-hover:text-slate-600 dark:text-slate-400 transition-transform inline ${isOpen ? 'rotate-180' : ''}`}
+                              aria-hidden="true"
+                            />
+                          </td>
+                        </tr>
+
+                        {isOpen && (
+                          <tr className="bg-slate-50/70 dark:bg-[#0a1628]">
+                            <td colSpan={9} className="px-4 py-4">
+                              <ReporteAccordionPanel
+                                detail={detail}
+                                detailHref={`${detailHrefBase}/${r.id}`}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })
                 )}
               </tbody>
             </table>

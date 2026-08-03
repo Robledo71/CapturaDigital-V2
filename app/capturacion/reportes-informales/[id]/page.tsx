@@ -27,6 +27,7 @@ export default async function ReporteInformalDetalleCapturacionRoute({
 
   // Capturación es solo lectura sobre reportes informales: los botones de
   // muestreo/editar/firmar se ocultan vía can() porque su rol no tiene esos permisos.
+  // currentUserHasSignature se deja en false — este rol nunca ve "Firmar reporte".
   return (
     <ReporteDetallePage
       reporte={reporte}
@@ -34,6 +35,7 @@ export default async function ReporteInformalDetalleCapturacionRoute({
       permisos={session.permisos}
       backHref="/capturacion/reportes-informales"
       variant="informal"
+      currentUserHasSignature={false}
     />
   )
 }

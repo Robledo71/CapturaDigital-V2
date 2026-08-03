@@ -14,7 +14,6 @@ import {
   ClipboardCheck,
   FileStack,
   FileText,
-  Tablet,
   Download,
   Unlock,
   Headset,
@@ -24,11 +23,12 @@ import {
   ShieldCheck,
   History,
   HardHat,
+  PenLine,
   ChevronDown,
   Menu,
   X,
 } from 'lucide-react'
-import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
+import { can, canAny, type Permiso, type SessionLike } from '@/front/lib/permisos'
 
 interface NavItem {
   label: string
@@ -37,6 +37,8 @@ interface NavItem {
   exact?: boolean
   /** Permiso requerido para ver el link. Si se omite, siempre visible. */
   permiso?: Permiso
+  /** Alternativa a `permiso`: visible si el usuario tiene AL MENOS uno de estos. */
+  permisoAny?: Permiso[]
 }
 
 interface NavSection {
@@ -66,7 +68,6 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Órdenes informales', icon: <FileStack size={16} />, href: '/superusuario/ordenes-informales', permiso: 'ordenes_informales.ver' },
       { label: 'Reportes informales', icon: <ClipboardCheck size={16} />, href: '/superusuario/reportes-informales' },
       { label: 'Reportes', icon: <FileText size={16} />, href: '/superusuario/reportes', permiso: 'reportes.ver' },
-      { label: 'Tablets', icon: <Tablet size={16} />, href: '/superusuario/tablets', permiso: 'tablets.gestionar' },
     ],
   },
   {
@@ -96,6 +97,17 @@ const NAV_SECTIONS: NavSection[] = [
     heading: 'AUDITORÍA',
     items: [
       { label: 'Historial de cambios', icon: <History size={16} />, href: '/superusuario/historial', permiso: 'historial.ver' },
+    ],
+  },
+  {
+    heading: 'CONFIGURACIÓN',
+    items: [
+      {
+        label: 'Mi firma',
+        icon: <PenLine size={16} />,
+        href: '/superusuario/configuracion',
+        permisoAny: ['reportes.firmar', 'reportes_informales.firmar'],
+      },
     ],
   },
 ]
@@ -177,9 +189,10 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5" aria-label="Menú principal">
         {NAV_SECTIONS.map((section) => {
-          const visibleItems = section.items.filter(
-            (item) => !item.permiso || can(session, item.permiso),
-          )
+          const visibleItems = section.items.filter((item) => {
+            if (item.permisoAny) return canAny(session, item.permisoAny)
+            return !item.permiso || can(session, item.permiso)
+          })
           if (visibleItems.length === 0) return null
           return (
             <div key={section.heading} className="flex flex-col gap-1">

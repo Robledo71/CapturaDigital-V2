@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState } from 'react'
 import { useFormStatus } from 'react-dom'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, Plus } from 'lucide-react'
 import { crearOrdenInformalAction, type CreateInformalOrderState } from '@/app/actions/create-informal-order'
 import type { PlantaRow } from '@/shared/types/planta'
 import type { InspectorOption } from '@/back/services/cargaDeTrabajoService'
@@ -48,6 +48,7 @@ export function NuevoOrdenInformalModal({ clientes, plantas, inspectors, onClose
   const [nombreParte, setNombreParte] = useState('')
   const [plantaId, setPlantaId] = useState('')
   const [inspectorIds, setInspectorIds] = useState<string[]>([])
+  const [incidencias, setIncidencias] = useState<string[]>([''])
 
   const relevantInspectors = useMemo(() => {
     if (!plantaId) return []
@@ -62,6 +63,21 @@ export function NuevoOrdenInformalModal({ clientes, plantas, inspectors, onClose
 
   function toggleInspector(id: string) {
     setInspectorIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+  }
+
+  function updateIncidencia(index: number, value: string) {
+    setIncidencias((prev) => prev.map((v, i) => (i === index ? value : v)))
+  }
+
+  function addIncidencia() {
+    setIncidencias((prev) => [...prev, ''])
+  }
+
+  function removeIncidencia(index: number) {
+    setIncidencias((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      return next.length > 0 ? next : ['']
+    })
   }
 
   useEffect(() => {
@@ -178,6 +194,47 @@ export function NuevoOrdenInformalModal({ clientes, plantas, inspectors, onClose
                   onChange={(e) => setNombreParte(e.target.value)}
                   className={inputCls}
                 />
+              </div>
+
+              {/* Incidencias — lista dinámica opcional */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="text-xs font-medium text-black dark:text-slate-400">
+                    Incidencias <span className="text-slate-400 font-normal">(opcional)</span>
+                  </legend>
+                  <div className="flex flex-col gap-2">
+                    {incidencias.map((incidencia, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          name="incidencias"
+                          type="text"
+                          autoComplete="off"
+                          placeholder="Ej. Fuga de aceite"
+                          aria-label={`Incidencia ${index + 1}`}
+                          value={incidencia}
+                          onChange={(e) => updateIncidencia(index, e.target.value)}
+                          className={inputCls}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeIncidencia(index)}
+                          aria-label="Eliminar incidencia"
+                          className="p-1.5 rounded text-blue-600 dark:text-slate-400 hover:text-red-500 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors flex-shrink-0"
+                        >
+                          <X size={16} aria-hidden="true" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addIncidencia}
+                    className="flex items-center gap-1.5 self-start text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                  >
+                    <Plus size={14} aria-hidden="true" />
+                    Agregar incidencia
+                  </button>
+                </fieldset>
               </div>
 
               {/* Planta */}

@@ -3,7 +3,11 @@
 import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { X, Loader2 } from 'lucide-react'
-import { crearInspectorAction, type CreateInspectorState } from '@/app/actions/create-inspector'
+import {
+  crearInspectorAction,
+  getNextInspectorCodeAction,
+  type CreateInspectorState,
+} from '@/app/actions/create-inspector'
 import type { InspectorRow } from '@/shared/types/inspector'
 import type { PlantaRow } from '@/shared/types/planta'
 
@@ -16,14 +20,12 @@ interface NuevoInspectorModalProps {
 }
 
 interface FormValues {
-  codigo_empleado: string
   nombre_empleado: string
   apellido_paterno: string
   apellido_materno: string
 }
 
 const EMPTY_VALUES: FormValues = {
-  codigo_empleado: '',
   nombre_empleado: '',
   apellido_paterno: '',
   apellido_materno: '',
@@ -56,6 +58,18 @@ export function NuevoInspectorModal({ plantas, onClose, onSuccess }: NuevoInspec
   const [state, dispatch] = useActionState<CreateInspectorState, FormData>(crearInspectorAction, undefined)
   const [values, setValues] = useState<FormValues>(EMPTY_VALUES)
   const [plantaIds, setPlantaIds] = useState<string[]>([])
+  // Preview read-only del código autogenerado (INS-00x); null mientras carga.
+  const [codigoPreview, setCodigoPreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    getNextInspectorCodeAction().then((r) => {
+      if (!cancelled) setCodigoPreview(r.codigo)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target
@@ -163,31 +177,30 @@ export function NuevoInspectorModal({ plantas, onClose, onSuccess }: NuevoInspec
                 />
               </div>
 
-              {/* Código de empleado — col span 2 */}
+              {/* Código de empleado — autogenerado (INS-00x), solo lectura.
+                  El backend vuelve a generarlo al crear; este campo es informativo. */}
               <div className="col-span-2 flex flex-col gap-1">
                 <label htmlFor="codigo_empleado" className="text-xs font-medium text-black dark:text-slate-400">
-                  Código de empleado
+                  Código de usuario <span className="text-slate-400 font-normal">(automático)</span>
                 </label>
                 <input
                   id="codigo_empleado"
-                  name="codigo_empleado"
                   type="text"
-                  autoComplete="off"
-                  required
-                  placeholder="Ej. INS-0005"
-                  value={values.codigo_empleado}
-                  onChange={handleChange}
-                  className={inputCls}
+                  readOnly
+                  aria-readonly="true"
+                  tabIndex={-1}
+                  value={codigoPreview ?? 'Generando…'}
+                  className={`${inputCls} cursor-not-allowed bg-slate-50 dark:bg-[#0a1628] text-slate-500 dark:text-slate-400 font-mono`}
                 />
               </div>
 
               {/* Plantas — selección múltiple */}
-              <div className="col-span-2 flex flex-col gap-1">
-                <fieldset className="flex flex-col gap-1">
+              <div className="col-span-2 flex flex-col gap-1 min-w-0">
+                <fieldset className="flex flex-col gap-1 min-w-0">
                   <legend className="text-xs font-medium text-black dark:text-slate-400">
                     Plantas <span className="text-slate-400 font-normal">(opcional)</span>
                   </legend>
-                  <div className="max-h-36 overflow-y-auto rounded-lg border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-2 flex flex-col gap-1">
+                  <div className="max-h-36 overflow-y-auto overflow-x-hidden rounded-lg border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-2 flex flex-col gap-1">
                     {plantas.length === 0 ? (
                       <p className="text-xs text-slate-500 px-1 py-1">No hay plantas disponibles</p>
                     ) : (
@@ -206,7 +219,7 @@ export function NuevoInspectorModal({ plantas, onClose, onSuccess }: NuevoInspec
                               onChange={() => togglePlanta(id)}
                               className="h-4 w-4 flex-shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40"
                             />
-                            <span className="flex-1 truncate">{p.nombre}</span>
+                            <span className="flex-1 min-w-0 truncate">{p.nombre}</span>
                           </label>
                         )
                       })

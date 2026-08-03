@@ -7,6 +7,21 @@ import { updateInformalReportItem } from '@/back/services/informalReportesServic
 
 export type IncidentInput = { description: string; count: number }
 
+// Parsea el campo `identificadores` (JSON `{ tipo: valor }`) del FormData a un
+// objeto limpio (sin vacíos). null si no hay ninguno válido.
+function parseIdentificadores(raw: FormDataEntryValue | null): Record<string, string> | null {
+  try {
+    const parsed = JSON.parse(String(raw ?? '{}'))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    const entries = Object.entries(parsed as Record<string, unknown>)
+      .map(([k, v]) => [String(k).trim(), String(v ?? '').trim()] as const)
+      .filter(([k, v]) => k !== '' && v !== '')
+    return entries.length > 0 ? Object.fromEntries(entries) : null
+  } catch {
+    return null
+  }
+}
+
 export type UpdateInformalReportItemState =
   | { ok: true }
   | { ok: false; error: string }
@@ -50,10 +65,17 @@ export async function updateInformalReportItemAction(
     // keep empty
   }
 
+  const lote = String(formData.get('lote') ?? '').trim() || null
+  const serie = String(formData.get('serie') ?? '').trim() || null
+  const identificadores = parseIdentificadores(formData.get('identificadores'))
+
   const result = await updateInformalReportItem({
     reportId,
     itemId,
     accessToken: session.accessToken,
+    lote,
+    serie,
+    identificadores,
     totalPieces: total_pieces,
     okPieces: ok_pieces,
     ngPieces: ng_pieces,

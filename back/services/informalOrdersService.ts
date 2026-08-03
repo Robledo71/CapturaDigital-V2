@@ -16,6 +16,7 @@ type ExternalInformalOrder = {
   item_orden_informal_id: number
   numero_parte: string
   nombre_parte: string | null
+  incidentes: string | null
   planta_id: number | null
   planta_nombre: string | null
   solicitante_nombre: string | null
@@ -34,6 +35,7 @@ function mapExternalInformalOrder(raw: ExternalInformalOrder): InformalOrderRow 
     plantaNombre: raw.planta_nombre ?? null,
     numeroParte: raw.numero_parte,
     nombreParte: raw.nombre_parte ?? null,
+    incidentes: raw.incidentes ?? null,
     solicitanteNombre: raw.solicitante_nombre ?? null,
     inspectores: Array.isArray(raw.inspectores) ? raw.inspectores.map((i) => ({ id: i.id, name: i.name })) : [],
     estadoReporte: raw.estado_reporte ?? null,
@@ -82,6 +84,7 @@ export type CreateInformalOrderInput = {
     numeroParte: string
     nombreParte?: string
     plantaId: number
+    incidentes?: string
   }
   inspectionSession?: {
     idSupervisor: string
@@ -118,6 +121,7 @@ export async function createInformalOrder(
           numero_parte: input.item.numeroParte,
           nombre_parte: input.item.nombreParte || undefined,
           planta_id: input.item.plantaId,
+          incidentes: input.item.incidentes || undefined,
         },
         ...(input.inspectionSession
           ? {

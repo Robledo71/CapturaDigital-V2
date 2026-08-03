@@ -58,6 +58,10 @@ function SubmitButton() {
 const inputCls =
   'rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-800 dark:text-slate-200 placeholder-slate-500 px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition-colors w-full'
 
+// Solo estos roles pueden tener planta(s) asignada(s). Para el resto no se
+// muestra el selector de plantas. El correo no aplica a inspector.
+const PLANT_ROLES = new Set(['supervisor', 'lider', 'inspector', 'supervisor_regional'])
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: EditarUsuarioModalProps) {
@@ -78,7 +82,17 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
-    setValues((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    const { name, value } = e.target
+    setValues((prev) => {
+      const next = { ...prev, [name]: value }
+      // Al cambiar a inspector, el correo no aplica: se limpia.
+      if (name === 'rol' && value === 'inspector') next.correo = ''
+      return next
+    })
+    // Al cambiar a un rol sin planta, se limpian las plantas seleccionadas.
+    if (name === 'rol' && !PLANT_ROLES.has(value)) {
+      setPlantaIds([])
+    }
   }
 
   function togglePlanta(id: string) {
@@ -122,7 +136,7 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
         <form action={dispatch} className="flex flex-col flex-1 min-h-0">
           <input type="hidden" name="id" value={usuario.id} />
 
-          <div className="p-6 flex flex-col gap-4 overflow-y-auto flex-1">
+          <div className="p-6 flex flex-col gap-4 overflow-y-auto overflow-x-hidden flex-1">
 
             {/* Error general */}
             {state?.errors?.general && (
@@ -218,13 +232,14 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                 )}
               </div>
 
-              {/* Plantas — selección múltiple (opcional: roles cross-planta pueden no tener ninguna) */}
+              {/* Plantas — solo para roles con planta (supervisor/lider/inspector/supervisor_regional) */}
+              {PLANT_ROLES.has(values.rol) && (
               <div className="col-span-2 flex flex-col gap-1">
-                <fieldset className="flex flex-col gap-1">
+                <fieldset className="flex flex-col gap-1 min-w-0">
                   <legend className="text-xs font-medium text-black dark:text-slate-400">
                     Plantas <span className="text-slate-400 font-normal">(opcional)</span>
                   </legend>
-                  <div className="max-h-36 overflow-y-auto rounded-lg border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-2 flex flex-col gap-1">
+                  <div className="max-h-36 overflow-y-auto overflow-x-hidden rounded-lg border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-2 flex flex-col gap-1">
                     {plantas.length === 0 ? (
                       <p className="text-xs text-slate-500 px-1 py-1">No hay plantas disponibles</p>
                     ) : (
@@ -243,7 +258,7 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                               onChange={() => togglePlanta(id)}
                               className="h-4 w-4 flex-shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40"
                             />
-                            <span className="flex-1 truncate">{p.nombre}</span>
+                            <span className="flex-1 min-w-0 truncate">{p.nombre}</span>
                           </label>
                         )
                       })
@@ -254,6 +269,7 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                   <p className="text-red-400 text-xs">{state.errors.plantaIds[0]}</p>
                 )}
               </div>
+              )}
 
               {/* Rol */}
               <div className="flex flex-col gap-1">
@@ -285,7 +301,8 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                 )}
               </div>
 
-              {/* Correo — col span 2 */}
+              {/* Correo — col span 2 — no aplica a inspector */}
+              {values.rol !== 'inspector' && (
               <div className="col-span-2 flex flex-col gap-1">
                 <label htmlFor="correo" className="text-xs font-medium text-black dark:text-slate-400">
                   Correo electrónico <span className="text-slate-400 font-normal">(opcional)</span>
@@ -304,6 +321,7 @@ export function EditarUsuarioModal({ usuario, plantas, onClose, onSuccess }: Edi
                   <p className="text-red-400 text-xs">{state.errors.correo[0]}</p>
                 )}
               </div>
+              )}
 
             </div>
           </div>

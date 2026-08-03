@@ -10,16 +10,18 @@ import {
   CheckCircle2,
   Clock,
   Edit2,
+  FlaskConical,
   Loader2,
-  TabletSmartphone,
+  PenLine,
   X,
 } from 'lucide-react'
 import type { InspectionItemRow, ReporteDetalleData } from '@/back/services/reporteDetalleService'
 import { LegacyCsvTable } from '@/front/components/supervisor/LegacyCsvTable'
 import {
   publishReporteAction,
-  registerSamplingAction,
+  registrarMuestreoDetalleAction,
   signReporteAction,
+  type MuestreoDetalleState,
   type WorkflowActionState,
 } from '@/app/actions/reporte-workflow'
 import {
@@ -27,12 +29,12 @@ import {
   type UpdateInspectionItemState,
 } from '@/app/actions/update-inspection-item'
 import {
-  registerInformalSamplingAction,
+  registrarMuestreoDetalleInformalAction,
   signInformalReporteAction,
 } from '@/app/actions/informal-report-workflow'
 import { updateInformalReportItemAction } from '@/app/actions/update-informal-report-item'
 import { can, type SessionLike } from '@/front/lib/permisos'
-import { SAMPLING_RULES } from '@/front/lib/sampling'
+import { getSamplingRule } from '@/front/lib/sampling'
 
 interface ReporteDetallePageProps {
   reporte: ReporteDetalleData
@@ -50,6 +52,14 @@ interface ReporteDetallePageProps {
    * defecto 'formal', que se comporta exactamente igual que antes.
    */
   variant?: 'formal' | 'informal'
+  /**
+   * ¿El usuario actual (quien ve la página) tiene su firma configurada? La
+   * firma es obligatoria para firmar — si es `false`, el botón "Firmar
+   * reporte" se deshabilita aunque el reporte ya esté totalmente muestreado.
+   * Por defecto `false` (p. ej. el portal de gerente, que es solo lectura y
+   * nunca muestra el botón de firmar de todos modos).
+   */
+  currentUserHasSignature?: boolean
 }
 
 const STATUS_CONFIG: Record<string, { dot: string; label: string; pill: string; text: string }> = {
@@ -183,13 +193,18 @@ function InspectionItemsTable({
   items,
   totals,
   onEditItem,
+  onMuestreo,
+  onVerDetalle,
 }: {
   items: InspectionItemRow[]
   totals: { inspected: number; ok: number; ng: number; scrap: number; recovered: number }
   onEditItem?: (item: InspectionItemRow) => void
+  onMuestreo?: (item: InspectionItemRow) => void
+  onVerDetalle?: (item: InspectionItemRow) => void
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null)
-  const colCount = onEditItem ? 14 : 13
+  const hasActions = Boolean(onEditItem || onMuestreo)
+  const colCount = hasActions ? 14 : 13
 
   return (
     <div className="rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] bg-white p-5 dark:border-[#0c1829] dark:shadow-none dark:bg-[#0c1829]">
@@ -214,7 +229,7 @@ function InspectionItemsTable({
                     </th>
                   ),
                 )}
-                {onEditItem && (
+                {hasActions && (
                   <th className="pb-2.5 pl-4 text-right text-xs font-bold text-black dark:text-white">
                     <span className="sr-only">Acciones</span>
                   </th>
@@ -224,7 +239,10 @@ function InspectionItemsTable({
             <tbody>
               {items.map((item, idx) => (
                 <React.Fragment key={item.id}>
-                  <tr className="border-b border-blue-100 dark:border-[#1a2d4d]/50">
+                  <tr
+                    onClick={onVerDetalle ? () => onVerDetalle(item) : undefined}
+                    className={`border-b border-blue-100 dark:border-[#1a2d4d]/50 ${onVerDetalle ? 'cursor-pointer transition-colors hover:bg-blue-50/60 dark:hover:bg-[#1a2d4d]/40' : ''}`}
+                  >
                     <td className="py-2.5 pr-4 text-xs tabular-nums text-slate-400">{idx + 1}</td>
                     <td className="py-2.5 pr-4 text-xs text-slate-500 font-mono" title={item.partNumber ?? '—'}>
                       {item.partNumber ?? '—'}
@@ -262,7 +280,7 @@ function InspectionItemsTable({
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                          onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === item.id ? null : item.id) }}
                           className="inline-flex min-w-[24px] items-center justify-center rounded-full bg-orange-400/10 px-2 py-0.5 text-xs font-medium text-orange-400 transition-colors hover:bg-orange-400/20"
                         >
                           {item.incidents.length}
@@ -270,19 +288,56 @@ function InspectionItemsTable({
                       )}
                     </td>
                     <td className="py-2.5 pl-4 text-right">
-                      <ItemSamplingBadge sampling={item.sampling} />
+                      <div className="flex flex-col items-end gap-1">
+                        <ItemSamplingBadge sampling={item.sampling} />
+                        {item.sampling.needsEdit && (
+                          <span className="max-w-[170px] text-right text-[10px] leading-tight text-red-500 dark:text-red-400">
+                            Edita la información del ítem para volver a habilitar el muestreo.
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    {onEditItem && (
+                    {hasActions && (
                       <td className="py-2.5 pl-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => onEditItem(item)}
-                          aria-label={`Editar ítem ${item.partNumber ?? item.partName ?? item.id}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-purple-500 bg-purple-500 px-2.5 py-1 text-xs text-white transition-colors hover:border-purple-400 hover:text-slate-200 dark:border-[#1a2d4d] dark:bg-[#0c1829] dark:text-slate-400 dark:hover:border-blue-500 dark:hover:text-blue-400"
-                        >
-                          <Edit2 size={11} aria-hidden="true" />
-                          Editar
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          {onMuestreo && item.sampling.required && (() => {
+                            const yaAprobado = item.sampling.sampled && item.sampling.result === 'aprobado'
+                            const muestreoDisabled = item.sampling.needsEdit || yaAprobado
+                            return (
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onMuestreo(item) }}
+                                disabled={muestreoDisabled}
+                                title={
+                                  item.sampling.needsEdit
+                                    ? 'Muestreo no aprobado: edita la información del ítem para volver a habilitarlo'
+                                    : yaAprobado
+                                      ? 'Este ítem ya fue muestreado y aprobado'
+                                      : 'Muestreo'
+                                }
+                                aria-label={`Muestrear ítem ${item.partNumber ?? item.partName ?? item.id}`}
+                                className={`inline-flex items-center justify-center rounded-md p-1.5 transition-colors ${
+                                  muestreoDisabled
+                                    ? 'cursor-not-allowed text-slate-300 dark:text-slate-600'
+                                    : 'text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10'
+                                }`}
+                              >
+                                <FlaskConical size={14} aria-hidden="true" />
+                              </button>
+                            )
+                          })()}
+                          {onEditItem && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onEditItem(item) }}
+                              title="Editar"
+                              aria-label={`Editar ítem ${item.partNumber ?? item.partName ?? item.id}`}
+                              className="inline-flex items-center justify-center rounded-md p-1.5 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-[#1a2d4d] dark:hover:text-white"
+                            >
+                              <Edit2 size={14} aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -323,7 +378,7 @@ function InspectionItemsTable({
                 <td className="py-2.5 pl-4 text-right tabular-nums font-semibold text-slate-900 dark:text-white">
                   {totals.recovered.toLocaleString('es-MX')}
                 </td>
-                <td colSpan={onEditItem ? 3 : 2} />
+                <td colSpan={hasActions ? 3 : 2} />
               </tr>
             </tfoot>
           </table>
@@ -370,6 +425,32 @@ function EditItemModal({
   })
   const [incidentCounts, setIncidentCounts] = useState<Record<number, string>>(
     Object.fromEntries(item.incidents.map((inc, i) => [i, String(inc.count)]))
+  )
+
+  // Identificadores editables: lote, serie y pares { tipo: valor } (LPN, ASN, …).
+  const [lote, setLote] = useState(item.lote ?? '')
+  const [serie, setSerie] = useState(item.serie ?? '')
+  const [identifiers, setIdentifiers] = useState<{ type: string; value: string }[]>(
+    Object.entries(item.identificadoresRaw ?? {}).map(([type, value]) => ({ type, value: String(value) }))
+  )
+
+  function updateIdentifier(idx: number, field: 'type' | 'value', v: string) {
+    setIdentifiers((prev) => prev.map((row, i) => (i === idx ? { ...row, [field]: v } : row)))
+  }
+  function addIdentifier() {
+    setIdentifiers((prev) => [...prev, { type: '', value: '' }])
+  }
+  function removeIdentifier(idx: number) {
+    setIdentifiers((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  // Solo se envían los pares completos (tipo y valor no vacíos).
+  const identificadoresJson = JSON.stringify(
+    Object.fromEntries(
+      identifiers
+        .map(({ type, value }) => [type.trim(), value.trim()] as const)
+        .filter(([t, v]) => t !== '' && v !== '')
+    )
   )
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -426,6 +507,7 @@ function EditItemModal({
         <input type="hidden" name="total" value={String(item.inspected)} />
         <input type="hidden" name="scrap" value={String(computedScrap)} />
         <input type="hidden" name="incidents" value={incidentsJson} />
+        <input type="hidden" name="identificadores" value={identificadoresJson} />
 
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
@@ -518,6 +600,86 @@ function EditItemModal({
             </div>
           )}
 
+          {/* Identificadores: lote, serie y pares tipo/valor (varían por planta) */}
+          <div className="flex flex-col gap-3 rounded-lg border border-slate-300 bg-slate-50 dark:border-[#31476f] dark:bg-[#0c1426] p-3">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">Identificadores</p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Lote</span>
+                <input
+                  type="text"
+                  name="lote"
+                  value={lote}
+                  onChange={(e) => setLote(e.target.value)}
+                  placeholder="—"
+                  className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#111a30] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Serie</span>
+                <input
+                  type="text"
+                  name="serie"
+                  value={serie}
+                  onChange={(e) => setSerie(e.target.value)}
+                  placeholder="—"
+                  className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#111a30] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                />
+              </label>
+            </div>
+
+            {/* Pares tipo/valor — el tipo es libre (con sugerencias) porque varía por planta */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Otros identificadores</span>
+              <datalist id="tipos-identificador">
+                <option value="LPN" />
+                <option value="ASN" />
+                <option value="TAG" />
+                <option value="PALLET" />
+                <option value="CAJA" />
+              </datalist>
+              {identifiers.length === 0 && (
+                <p className="text-xs text-slate-400">Sin identificadores adicionales.</p>
+              )}
+              {identifiers.map((idf, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    list="tipos-identificador"
+                    value={idf.type}
+                    onChange={(e) => updateIdentifier(i, 'type', e.target.value)}
+                    placeholder="Tipo (LPN, ASN…)"
+                    aria-label={`Tipo del identificador ${i + 1}`}
+                    className="w-1/3 min-w-0 rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#111a30] px-2 py-1.5 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                  />
+                  <input
+                    type="text"
+                    value={idf.value}
+                    onChange={(e) => updateIdentifier(i, 'value', e.target.value)}
+                    placeholder="Valor"
+                    aria-label={`Valor del identificador ${i + 1}`}
+                    className="flex-1 min-w-0 rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#111a30] px-2 py-1.5 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeIdentifier(i)}
+                    aria-label={`Quitar identificador ${i + 1}`}
+                    className="flex-shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addIdentifier}
+                className="self-start rounded-md border border-dashed border-slate-300 dark:border-[#31476f] px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 transition-colors hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400"
+              >
+                + Agregar identificador
+              </button>
+            </div>
+          </div>
+
           <label className="flex flex-col gap-1.5">
             <span className="text-xs text-slate-600 dark:text-slate-300">Motivo de edición <span className="text-red-400">*</span></span>
             <textarea name="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} required
@@ -569,6 +731,7 @@ function TimelineStep({
   done,
   dotClass,
   detail,
+  children,
 }: {
   label: string
   actor: string
@@ -576,6 +739,7 @@ function TimelineStep({
   done: boolean
   dotClass: string
   detail?: string
+  children?: React.ReactNode
 }) {
   return (
     <div className="flex items-start gap-3">
@@ -591,10 +755,93 @@ function TimelineStep({
             <span className="truncate text-xs text-slate-500">{actor}</span>
             <span className="text-xs text-slate-500">{formatDate(date)}</span>
             {detail && <span className="text-xs text-slate-500 mt-0.5">{detail}</span>}
+            {children}
           </>
         ) : (
           <span className="text-xs italic text-slate-500">pendiente</span>
         )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Miniatura de una firma servida vía el proxy autenticado `/api/signatures/...`.
+ * Se oculta a sí misma si la imagen falla a cargar (404 — el firmante borró su
+ * firma después de firmar, o el reporte informal no expone un userId numérico).
+ */
+function SignatureThumbnail({ src, alt }: { src: string; alt: string }) {
+  const [hidden, setHidden] = useState(false)
+  if (hidden) return null
+  return (
+    <div className="mt-1.5 inline-flex rounded-md border border-slate-200 bg-white p-1 dark:border-[#1a2d4d]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-16 max-w-[140px] object-contain"
+        onError={() => setHidden(true)}
+      />
+    </div>
+  )
+}
+
+// Modal para mostrar la firma en grande (se abre desde el enlace "Ver firma").
+function SignatureModal({ src, title, onClose }: { src: string; title: string; onClose: () => void }) {
+  const [error, setError] = useState(false)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-xl border border-slate-200 bg-white text-slate-800 shadow-2xl animate-scale-in dark:border-[#111a30] dark:bg-[#111a30] dark:text-slate-100"
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-[#25395f]">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex items-center justify-center bg-white p-6 dark:bg-white/95">
+          {error ? (
+            <p className="py-8 text-sm text-slate-500">No se pudo cargar la firma.</p>
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={src}
+              alt={title}
+              className="max-h-64 max-w-full object-contain"
+              onError={() => setError(true)}
+            />
+          )}
+        </div>
+        <div className="flex justify-end border-t border-slate-200 px-5 py-4 dark:border-[#25395f]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:border-[#31476f] dark:text-slate-300 dark:hover:bg-white/10"
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -623,48 +870,54 @@ function WorkflowSubmitButton({
   )
 }
 
-function SamplingModal({
-  reporte,
-  state,
+// ─── Muestreo por-detalle Modal ──────────────────────────────────────────────
+
+function MuestreoDetalleModal({
+  item,
+  reportId,
   action,
-  defectsByItem,
-  setDefectsByItem,
-  notes,
-  setNotes,
   onClose,
+  onSuccess,
 }: {
-  reporte: ReporteDetalleData
-  state: WorkflowActionState
-  action: (formData: FormData) => void
-  defectsByItem: Record<number, string>
-  setDefectsByItem: React.Dispatch<React.SetStateAction<Record<number, string>>>
-  notes: string
-  setNotes: React.Dispatch<React.SetStateAction<string>>
+  item: InspectionItemRow
+  reportId: number
+  action: (prevState: MuestreoDetalleState, formData: FormData) => Promise<MuestreoDetalleState>
   onClose: () => void
+  onSuccess: () => void
 }) {
-  const totalSample = reporte.samplingItems.reduce((sum, item) => sum + item.sampleSize, 0)
-  const totalAllowed = reporte.samplingItems.reduce((sum, item) => sum + item.maxDefects, 0)
-  const totalDefects = reporte.samplingItems.reduce(
-    (sum, item) => sum + Math.max(0, Math.floor(Number(defectsByItem[item.id]) || 0)),
-    0,
-  )
-  const approves = reporte.samplingItems.length > 0 && reporte.samplingItems.every((item) => {
-    const defects = Math.max(0, Math.floor(Number(defectsByItem[item.id]) || 0))
-    return defects <= item.maxDefects
-  })
-  // Rangos de la tabla de muestreo que aplican a este reporte (según piezas inspeccionadas).
-  const applicableMins = new Set(reporte.samplingItems.map((item) => item.min))
+  const [state, formAction] = useActionState(action, {})
+  const [defects, setDefects] = useState('0')
+  const rule = getSamplingRule(item.inspected)
+  const succeeded = state.ok === true
+
+  useEffect(() => {
+    if (state.ok === true) {
+      onSuccess()
+    }
+    // Solo debe dispararse cuando cambia el resultado de la acción, no en cada
+    // render (onSuccess se recrea en el padre).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-3 py-4 sm:px-4 sm:py-6 backdrop-blur-sm animate-fade-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-muestreo-detalle-titulo"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in"
+    >
       <form
-        action={action}
-        className="flex max-h-[85vh] flex-col w-full max-w-[640px] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in sm:max-h-[90vh]"
+        action={formAction}
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#111a30] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
       >
-        <input type="hidden" name="reportId" value={String(reporte.reportId)} />
+        <input type="hidden" name="reportId" value={String(reportId)} />
+        <input type="hidden" name="item_id" value={String(item.id)} />
 
-        <div className="flex-shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Registrar muestreo de liberacion</h2>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h2 id="modal-muestreo-detalle-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
+            Muestreo de liberación
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -675,184 +928,282 @@ function SamplingModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 flex flex-col gap-4 px-5 py-5">
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Piezas muestreadas</span>
-              <input
-                readOnly
-                value={totalSample}
-                className="rounded-md border border-slate-300 bg-slate-100 dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none"
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs text-slate-600 dark:text-slate-300">Hallazgos (defectos)</span>
-              <input
-                readOnly
-                value={totalDefects}
-                className="rounded-md border border-slate-300 bg-slate-100 dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none"
-              />
-            </label>
+        {/* Body */}
+        <div className="flex flex-col gap-4 px-5 py-5">
+          <div>
+            <p className="truncate text-sm font-medium text-slate-900 dark:text-white" title={`${item.partNumber ?? ''} ${item.partName ?? ''}`}>
+              {item.partNumber ? `${item.partNumber} · ` : ''}{item.partName ?? '—'}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {item.inspected.toLocaleString('es-MX')} piezas inspeccionadas
+            </p>
           </div>
 
-          <div className="rounded-lg bg-slate-100 dark:bg-[#0c1426] p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold text-slate-900 dark:text-white">Reglas por item inspeccionado</p>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  El rango se calcula con las piezas inspeccionadas de cada item.
+          {rule && (
+            <p className="rounded-md bg-slate-100 dark:bg-[#0c1426] px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+              Muestrear {rule.sampleSize} pieza{rule.sampleSize !== 1 ? 's' : ''} · máximo {rule.maxDefects} defectuosa{rule.maxDefects !== 1 ? 's' : ''}
+            </p>
+          )}
+
+          {succeeded ? (
+            <div
+              className={`rounded-md border px-3 py-2 text-sm ${
+                state.approved
+                  ? 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-300'
+                  : 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300'
+              }`}
+            >
+              {state.approved
+                ? 'Muestreo aprobado.'
+                : 'Muestreo NO aprobado: se hallaron más defectos de los permitidos.'}
+            </div>
+          ) : (
+            <>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-600 dark:text-slate-300">Piezas malas</span>
+                <input
+                  type="number"
+                  name="defects"
+                  min={0}
+                  step={1}
+                  value={defects}
+                  onChange={(e) => setDefects(e.target.value)}
+                  className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs text-slate-600 dark:text-slate-300">
+                  Observaciones <span className="text-slate-400">(opcional)</span>
+                </span>
+                <textarea
+                  name="observations"
+                  rows={2}
+                  placeholder="Notas del muestreo..."
+                  className="min-h-16 rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+                />
+              </label>
+
+              {state.ok === false && (
+                <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                  {state.error}
                 </p>
-              </div>
-              <span
-                className={`rounded-full border px-2 py-1 text-xs font-medium ${
-                  approves
-                    ? 'border-green-500/40 bg-green-500/10 text-green-300'
-                    : 'border-red-500/40 bg-red-500/10 text-red-300'
-                }`}
-              >
-                {approves ? 'Aprueba' : 'No aprueba'}
-              </span>
-            </div>
-
-            {reporte.samplingItems.length === 0 ? (
-              <p className="text-sm text-slate-400">No hay items con piezas suficientes para aplicar muestreo.</p>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {reporte.samplingItems.map((item) => {
-                  const defects = Math.max(0, Math.floor(Number(defectsByItem[item.id]) || 0))
-                  const passes = defects <= item.maxDefects
-
-                  return (
-                    <div key={item.id} className="rounded-lg border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{item.description}</p>
-                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            Rango {item.rangeLabel} pzs: muestrear {item.sampleSize} y maximo {item.maxDefects} defectuosa{item.maxDefects !== 1 ? 's' : ''}.
-                          </p>
-                        </div>
-                        <label className="flex w-24 flex-col gap-1">
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">Defectos</span>
-                          <input
-                            type="number"
-                            min={0}
-                            name={`defects_${item.id}`}
-                            value={defectsByItem[item.id] ?? '0'}
-                            onChange={(event) =>
-                              setDefectsByItem((prev) => ({
-                                ...prev,
-                                [item.id]: event.target.value,
-                              }))
-                            }
-                            className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-2 py-1.5 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                          />
-                        </label>
-                      </div>
-                      <p className={`mt-2 text-xs ${passes ? 'text-green-300' : 'text-red-300'}`}>
-                        Resultado: {passes ? 'aprueba' : 'no aprueba'} para este item.
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            <div className="mt-4 border-t border-slate-300 dark:border-[#25395f] pt-3">
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Resultado calculado: {totalDefects} defecto{totalDefects !== 1 ? 's' : ''} / {totalAllowed} permitidos.
-              </p>
-            </div>
-          </div>
-
-          {/* Tabla de rangos de muestreo (referencia) */}
-          <div className="rounded-lg bg-slate-100 dark:bg-[#0c1426] p-4">
-            <p className="text-xs font-semibold text-slate-900 dark:text-white">Tabla de muestreo (rangos)</p>
-            <p className="mt-0.5 mb-3 text-xs text-slate-500 dark:text-slate-400">
-              Tamaño de muestra y máximo de defectos según las piezas inspeccionadas del lote.
-              {applicableMins.size > 0 && ' El rango resaltado aplica a este reporte.'}
-            </p>
-            <div className="rounded-md border border-slate-200 dark:border-[#25395f] max-h-[220px] overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10 bg-slate-200 dark:bg-[#0c1426]">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-bold text-black dark:text-white">Rango (pzs)</th>
-                    <th className="px-3 py-2 text-right font-bold text-black dark:text-white">Muestrear</th>
-                    <th className="px-3 py-2 text-right font-bold text-black dark:text-white">Máx. defectos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {SAMPLING_RULES.map((rule) => {
-                    const aplica = applicableMins.has(rule.min)
-                    return (
-                      <tr
-                        key={rule.min}
-                        className={`border-t border-slate-200 dark:border-[#25395f] ${
-                          aplica
-                            ? 'bg-blue-500/10 font-medium text-slate-900 dark:text-white'
-                            : 'text-slate-600 dark:text-slate-400'
-                        }`}
-                      >
-                        <td className="px-3 py-1.5 text-left">
-                          {rule.min.toLocaleString('es-MX')}–{rule.max.toLocaleString('es-MX')}
-                          {aplica && (
-                            <span className="ml-1.5 rounded-full bg-blue-500/20 px-1.5 py-0.5 text-[10px] text-blue-600 dark:text-blue-300">
-                              aplica
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-1.5 text-right">{rule.sampleSize}</td>
-                        <td className="px-3 py-1.5 text-right">{rule.maxDefects}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs text-slate-600 dark:text-slate-300">Notas / motivo (si no aprueba)</span>
-            <textarea
-              name="notes"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Motivo obligatorio si el muestreo no aprueba..."
-              className="min-h-20 rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-blue-500"
-            />
-          </label>
-
-          {state?.error && (
-            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {state.error}
-            </p>
+              )}
+            </>
           )}
         </div>
 
-        <div className="flex-shrink-0 flex items-center justify-between gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
-          {!approves && (
-            <p className="text-xs text-red-500 dark:text-red-300">
-              El muestreo no cumple las condiciones. Edita los ítems antes de aprobar.
-            </p>
-          )}
-          <div className="flex items-center gap-2 ml-auto">
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
+          {succeeded ? (
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10"
+              className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
             >
-              Cancelar
+              Cerrar
             </button>
-            <WorkflowSubmitButton
-              name="decision"
-              value="approve"
-              disabled={!approves}
-              className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              Aprobar muestreo
-            </WorkflowSubmitButton>
-          </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+              <WorkflowSubmitButton className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed">
+                Realizar muestreo
+              </WorkflowSubmitButton>
+            </>
+          )}
         </div>
       </form>
+    </div>
+  )
+}
+
+// ─── Detalle del ítem (read-only) ─────────────────────────────────────────────
+// Al presionar un renglón de la tabla se abre este modal con el detalle del
+// muestreo (resultado, quién, cuándo, observaciones) y demás datos del ítem.
+
+function ItemDetalleModal({ item, onClose }: { item: InspectionItemRow; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const s = item.sampling
+  const idPairs = Object.entries(item.identificadoresRaw ?? {})
+  const fmtDate = (iso: string | null) =>
+    iso
+      ? new Date(iso).toLocaleString('es-MX', {
+          day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        })
+      : '—'
+
+  const piezas = [
+    { label: 'Inspeccionadas', value: item.inspected, cls: 'text-slate-900 dark:text-white' },
+    { label: 'OK', value: item.ok, cls: 'text-green-600 dark:text-green-400' },
+    { label: 'NG', value: item.ng, cls: 'text-orange-500 dark:text-orange-400' },
+    { label: 'Scrap', value: item.scrap, cls: 'text-slate-700 dark:text-slate-300' },
+    { label: 'Recuperadas', value: item.recovered, cls: 'text-slate-700 dark:text-slate-300' },
+  ]
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-item-detalle-titulo"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#111a30] dark:bg-[#111a30] text-slate-800 dark:text-slate-100 shadow-2xl animate-scale-in"
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <div className="min-w-0">
+            <h2 id="modal-item-detalle-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
+              Detalle del ítem inspeccionado
+            </h2>
+            <p className="mt-0.5 truncate text-xs text-slate-500" title={`${item.partNumber ?? ''} ${item.partName ?? ''}`}>
+              {item.partNumber && <span className="font-mono">{item.partNumber}</span>}
+              {item.partNumber && item.partName ? ' · ' : ''}
+              {item.partName ?? ''}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar modal"
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-5 px-5 py-5">
+          {/* Piezas */}
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Piezas</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {piezas.map((c) => (
+                <div key={c.label} className="rounded-md border border-slate-200 dark:border-[#25395f] px-3 py-2">
+                  <p className="text-[11px] text-slate-500">{c.label}</p>
+                  <p className={`tabular-nums text-sm font-semibold ${c.cls}`}>{c.value.toLocaleString('es-MX')}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Identificadores */}
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Identificadores</h3>
+            <dl className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <dt className="text-[11px] text-slate-500">Lote</dt>
+                <dd className="font-mono">{item.lote ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] text-slate-500">Serie</dt>
+                <dd className="font-mono">{item.serie ?? '—'}</dd>
+              </div>
+            </dl>
+            {idPairs.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {idPairs.map(([k, v]) => (
+                  <span key={k} className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-[#0c1426] px-2 py-1 text-xs">
+                    <span className="font-semibold text-slate-500">{k}:</span>
+                    <span className="font-mono">{v}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Incidencias */}
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Incidencias</h3>
+            {item.incidents.length === 0 ? (
+              <p className="text-sm text-slate-500">Sin incidencias.</p>
+            ) : (
+              <ul className="flex flex-col gap-1 text-sm">
+                {item.incidents.map((inc, i) => (
+                  <li key={i} className="flex items-center justify-between rounded-md bg-slate-50 dark:bg-[#0c1426] px-3 py-1.5">
+                    <span className="min-w-0 truncate text-slate-700 dark:text-slate-300" title={inc.description}>{inc.description}</span>
+                    <span className="ml-2 tabular-nums font-medium text-orange-500">{inc.count}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Muestreo */}
+          <section>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Muestreo</h3>
+            {!s.required ? (
+              <p className="text-sm text-slate-500">Este ítem no requiere muestreo (piezas insuficientes).</p>
+            ) : !s.sampled ? (
+              <p className="text-sm text-slate-500">
+                Sin muestrear.{s.needsEdit ? ' Edita la información del ítem para volver a habilitar el muestreo.' : ''}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-[#25395f] p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Resultado</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      s.result === 'aprobado'
+                        ? 'bg-green-500/10 text-green-600 dark:text-green-300'
+                        : 'bg-red-500/10 text-red-600 dark:text-red-300'
+                    }`}
+                  >
+                    {s.result === 'aprobado' ? 'Aprobado' : 'No aprobado'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Piezas muestreadas</span>
+                  <span className="tabular-nums">{s.sampledPieces}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Defectos hallados</span>
+                  <span className="tabular-nums">{s.ng ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Muestreó</span>
+                  <span className="truncate text-right">{s.sampledByName ?? '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Fecha</span>
+                  <span className="text-right">{fmtDate(s.sampledAt)}</span>
+                </div>
+                <div className="flex flex-col gap-1 border-t border-slate-200 dark:border-[#25395f] pt-2">
+                  <span className="text-slate-500">Observaciones</span>
+                  <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-200">
+                    {s.observations?.trim() ? s.observations : '—'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -867,6 +1218,7 @@ function ConfirmWorkflowModal({
   action,
   state,
   onClose,
+  children,
 }: {
   title: string
   description: string
@@ -877,6 +1229,7 @@ function ConfirmWorkflowModal({
   action: (formData: FormData) => void
   state: WorkflowActionState
   onClose: () => void
+  children?: React.ReactNode
 }) {
   return (
     <div
@@ -903,6 +1256,8 @@ function ConfirmWorkflowModal({
         {/* Body */}
         <div className="flex flex-col gap-4 px-5 py-5">
           <p className="text-sm text-slate-600 dark:text-slate-300">{description}</p>
+
+          {children}
 
           {'error' in state && state.error && (
             <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -934,7 +1289,14 @@ function toDate(v: Date | string | null): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/supervisor/reportes', variant = 'formal' }: ReporteDetallePageProps) {
+export function ReporteDetallePage({
+  reporte,
+  rol,
+  permisos,
+  backHref = '/supervisor/reportes',
+  variant = 'formal',
+  currentUserHasSignature = false,
+}: ReporteDetallePageProps) {
   const isInformal = variant === 'informal'
 
   // Permisos efectivos del usuario → controlan qué botones de workflow se muestran.
@@ -947,13 +1309,10 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
   const canPublicar = !isInformal && can(session, 'reportes.publicar')
   const canEditar = can(session, isInformal ? 'reportes_informales.editar' : 'reportes.editar')
 
-  const [samplingOpen, setSamplingOpen] = useState(false)
-  const [defectsByItem, setDefectsByItem] = useState<Record<number, string>>({})
-  const [samplingNotes, setSamplingNotes] = useState('')
-  const [samplingState, samplingAction] = useActionState(
-    isInformal ? registerInformalSamplingAction : registerSamplingAction,
-    {},
-  )
+  const [muestreoItem, setMuestreoItem] = useState<InspectionItemRow | null>(null)
+  const [detalleItem, setDetalleItem] = useState<InspectionItemRow | null>(null)
+  const [firmaModal, setFirmaModal] = useState<{ src: string; title: string } | null>(null)
+  const muestreoDetalleAction = isInformal ? registrarMuestreoDetalleInformalAction : registrarMuestreoDetalleAction
   const [signState, signAction] = useActionState(
     isInformal ? signInformalReporteAction : signReporteAction,
     {},
@@ -990,12 +1349,12 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
     totalRecovered,
     totalIncidents,
     pzsPorIncidencia,
-    samplingItems,
     inspectionItems,
     operadores,
     turno,
-    tabletAlias,
     supervisorName,
+    signedBy,
+    signedByName,
     sampleSize,
     sampleNg,
     sampleApproved,
@@ -1042,7 +1401,6 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
   const ngPctClass = realTotals.inspected > 0 ? getNgColorClass(ngPct) : 'text-slate-500'
 
   const isAssigned = sessionCreatedAt !== null
-  const isCaptured = sessionFinishedAt !== null
   const isSampling = ['sampling', 'signed', 'published'].includes(status)
 
   const samplingDetail = isSampling
@@ -1053,17 +1411,6 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
 
   const operadoresInitials = operadores !== '-' ? getInitials(operadores) : '?'
   const hasOperadores = operadores !== '-'
-
-  const initialDefects = useMemo(() => {
-    return Object.fromEntries(samplingItems.map((item) => [item.id, '0']))
-  }, [samplingItems])
-
-  useEffect(() => {
-    if (samplingState.ok) {
-      setSamplingOpen(false)
-      router.refresh()
-    }
-  }, [samplingState.ok, router])
 
   useEffect(() => {
     if (signState.ok) {
@@ -1100,12 +1447,6 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
     }
   }, [editItemState, router])
 
-  function openSamplingModal() {
-    setDefectsByItem(initialDefects)
-    setSamplingNotes('')
-    setSamplingOpen(true)
-  }
-
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-5">
@@ -1131,28 +1472,33 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
           <div className="ml-auto flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
             <StatusBadge status={status} />
 
-            {/* submitted → registrar muestreo */}
-            {!isLegacy && status === 'submitted' && canMuestreo && (
-              <button
-                type="button"
-                onClick={openSamplingModal}
-                className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-              >
-                <CheckCircle2 size={14} aria-hidden="true" />
-                Registrar muestreo
-              </button>
-            )}
-
-            {/* sampling → firmar */}
-            {!isLegacy && status === 'sampling' && canFirmar && (
-              <button
-                type="button"
-                onClick={() => setShowSignConfirm(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-              >
-                Firmar reporte
-              </button>
-            )}
+            {/* firmar: visible desde 'submitted', pero habilitado solo cuando el
+                reporte está totalmente muestreado (status derivado 'sampling') Y
+                el usuario actual tiene su firma configurada (obligatoria). */}
+            {!isLegacy && canFirmar && (status === 'submitted' || status === 'sampling') && (() => {
+              const notSampled = status !== 'sampling'
+              const signDisabled = notSampled || !currentUserHasSignature
+              const signTitle = notSampled
+                ? 'Faltan detalles por muestrear (o aprobar) para poder firmar'
+                : !currentUserHasSignature
+                  ? 'Configura tu firma en Configuración › Mi firma para poder firmar.'
+                  : undefined
+              return (
+                <button
+                  type="button"
+                  onClick={() => setShowSignConfirm(true)}
+                  disabled={signDisabled}
+                  title={signTitle}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    !signDisabled
+                      ? 'bg-blue-600 text-white hover:bg-blue-500'
+                      : 'cursor-not-allowed bg-slate-200 text-slate-400 dark:bg-slate-700/60 dark:text-slate-500'
+                  }`}
+                >
+                  Firmar reporte
+                </button>
+              )
+            })()}
 
             {/* signed → publicar (no existe en el flujo informal) */}
             {!isLegacy && !isInformal && status === 'signed' && canPublicar && (
@@ -1178,6 +1524,12 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
         {isLegacy && (
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-300">
             Reporte historico del sistema anterior. Datos en modo solo-lectura.
+          </div>
+        )}
+
+        {!isLegacy && canFirmar && status === 'sampling' && !currentUserHasSignature && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+            Configura tu firma en Configuración › Mi firma para poder firmar este reporte.
           </div>
         )}
 
@@ -1222,7 +1574,7 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
                     <Clock size={32} className="text-amber-400/60" aria-hidden="true" />
                     <p className="text-sm font-medium text-slate-400">Esperando captura del inspector</p>
                     <p className="text-xs text-slate-500">
-                      El reporte está pendiente en {tabletAlias || 'Sin tablet asignada'}
+                      El reporte está pendiente de captura
                     </p>
                   </div>
                 ) : (
@@ -1265,10 +1617,6 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
                         <span className="text-xs text-slate-500">{turno}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 pl-0.5">
-                      <TabletSmartphone size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />
-                      <span className="text-xs text-slate-500">{tabletAlias}</span>
-                    </div>
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">Sin asignacion</p>
@@ -1286,9 +1634,24 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
                 <div className="flex flex-col" role="list" aria-label="Historial de etapas del reporte">
                   <TimelineStep label="Creado por supervisor" actor={supervisorName} date={createdAt} done dotClass="bg-green-400" />
                   <TimelineStep label="Asignado a operador" actor={operadores} date={sessionCreatedAt} done={isAssigned} dotClass="bg-green-400" />
-                  <TimelineStep label="Capturado por operador" actor={operadores} date={sessionFinishedAt} done={isCaptured} dotClass="bg-green-400" />
                   <TimelineStep label="Muestreo aprobado" actor={supervisorName} date={sampledAt} done={isSampling} dotClass="bg-blue-400" detail={samplingDetail} />
-                  <TimelineStep label="Firmado" actor={supervisorName} date={signedAt} done={isSigned} dotClass="bg-slate-400" />
+                  <TimelineStep label="Firmado" actor={signedByName || supervisorName} date={signedAt} done={isSigned} dotClass="bg-slate-400">
+                    {isSigned && signedBy != null && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFirmaModal({
+                            src: `/api/signatures/${signedBy}`,
+                            title: `Firma de ${signedByName || 'el firmante'}`,
+                          })
+                        }
+                        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                      >
+                        <PenLine size={12} aria-hidden="true" />
+                        Ver firma
+                      </button>
+                    )}
+                  </TimelineStep>
                   {!isInformal && (
                     <TimelineStep label="Publicado" actor={supervisorName} date={publishedAt} done={isPublished} dotClass="bg-green-400" />
                   )}
@@ -1304,21 +1667,21 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
             items={inspectionItems}
             totals={realTotals}
             onEditItem={status === 'submitted' && canEditar ? setEditItem : undefined}
+            onMuestreo={status === 'submitted' && canMuestreo ? setMuestreoItem : undefined}
+            onVerDetalle={setDetalleItem}
           />
         )}
       </div>
 
 
-      {samplingOpen && (
-        <SamplingModal
-          reporte={reporte}
-          state={samplingState}
-          action={samplingAction}
-          defectsByItem={defectsByItem}
-          setDefectsByItem={setDefectsByItem}
-          notes={samplingNotes}
-          setNotes={setSamplingNotes}
-          onClose={() => setSamplingOpen(false)}
+      {muestreoItem && (
+        <MuestreoDetalleModal
+          key={muestreoItem.id}
+          item={muestreoItem}
+          reportId={reportId}
+          action={muestreoDetalleAction}
+          onClose={() => setMuestreoItem(null)}
+          onSuccess={() => router.refresh()}
         />
       )}
 
@@ -1332,6 +1695,14 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
         />
       )}
 
+      {detalleItem && (
+        <ItemDetalleModal item={detalleItem} onClose={() => setDetalleItem(null)} />
+      )}
+
+      {firmaModal && (
+        <SignatureModal src={firmaModal.src} title={firmaModal.title} onClose={() => setFirmaModal(null)} />
+      )}
+
       {showSignConfirm && (
         <ConfirmWorkflowModal
           title="Firmar reporte"
@@ -1343,7 +1714,14 @@ export function ReporteDetallePage({ reporte, rol, permisos, backHref = '/superv
           action={signAction}
           state={signState}
           onClose={() => setShowSignConfirm(false)}
-        />
+        >
+          {currentUserHasSignature && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-slate-500">Tu firma</span>
+              <SignatureThumbnail src="/api/signatures/me" alt="Vista previa de tu firma" />
+            </div>
+          )}
+        </ConfirmWorkflowModal>
       )}
 
       {showPublishConfirm && (

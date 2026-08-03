@@ -58,9 +58,6 @@ export const PERMISOS = [
   'reportes_informales.editar',
   'reportes_informales.firmar',
   'reportes_informales.promover',
-  // Tablets
-  'tablets.ver',
-  'tablets.gestionar',
   // Administración (CRUD de catálogos)
   'usuarios.crud',
   'usuarios.crear_cliente',
@@ -106,10 +103,6 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.ver',
     'ordenes.asignar',
     'ordenes.documentos',
-    // tablets.ver: supervisor tiene su página de control de tablets (solo lectura).
-    // NO tablets.gestionar: el alta/edición/baja de tablets es admin-only (la UI de
-    // mutación vive únicamente en /admin).
-    'tablets.ver',
     'usuarios.crear_cliente',
     'historial.ver',
     // Órdenes/reportes informales: mecánica completa
@@ -136,7 +129,6 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.ver',
     'ordenes.asignar',
     'ordenes.documentos',
-    'tablets.ver',
     'usuarios.crear_cliente',
     'historial.ver',
     'ordenes_informales.ver',

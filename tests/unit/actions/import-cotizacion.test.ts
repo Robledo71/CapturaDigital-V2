@@ -251,7 +251,7 @@ describe('importCotizacionAction', () => {
     const { order } = result as { ok: true; order: OrderWorkload }
     // The persisted DB id must be used (not the QB id)
     expect(order.id).toBe(999)
-    // The item that existed in DB must carry its persisted state (id=42, tablet assigned)
+    // The item that existed in DB must carry its persisted state (id=42, inspector assigned)
     expect(order.items).toHaveLength(1)
     expect(order.items[0].id).toBe(42)
     expect(order.items[0].status).toBe('in_progress')

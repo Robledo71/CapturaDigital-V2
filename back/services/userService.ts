@@ -172,9 +172,15 @@ export async function createUsuario(
   return { ok: true, usuario: mapExternalUser(raw) }
 }
 
-export async function getNextCodigoEmpleado(accessToken: string): Promise<string | null> {
+export async function getNextCodigoEmpleado(
+  accessToken: string,
+  rol?: string,
+): Promise<string | null> {
   try {
-    const res = await fetch(`${baseUrl()}/qb_sync/users/next-codigo`, {
+    const url = rol
+      ? `${baseUrl()}/qb_sync/users/next-codigo?rol=${encodeURIComponent(rol)}`
+      : `${baseUrl()}/qb_sync/users/next-codigo`
+    const res = await fetch(url, {
       headers: apiHeaders(accessToken),
       cache: 'no-store',
     })

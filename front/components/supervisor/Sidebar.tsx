@@ -15,9 +15,10 @@ import {
   UserCheck,
   History,
   HardHat,
+  PenLine,
   X,
 } from 'lucide-react'
-import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
+import { can, canAny, type Permiso, type SessionLike } from '@/front/lib/permisos'
 
 interface NavItem {
   label: string
@@ -29,6 +30,8 @@ interface NavItem {
   exact?: boolean
   /** Permiso requerido para ver el link. Si se omite, siempre visible. */
   permiso?: Permiso
+  /** Alternativa a `permiso`: visible si el usuario tiene AL MENOS uno de estos. */
+  permisoAny?: Permiso[]
 }
 
 interface NavSection {
@@ -86,7 +89,20 @@ const NAV_SECTIONS: NavSection[] = [
         permiso: 'historial.ver',
       },
     ],
-  }
+  },
+  {
+    heading: 'CONFIGURACIÓN',
+    items: [
+      {
+        label: 'Mi firma',
+        icon: <PenLine size={16} />,
+        href: '/supervisor/configuracion',
+        // Líder solo tiene 'reportes_informales.firmar' (no 'reportes.firmar') —
+        // debe ver este link igual porque también firma reportes informales.
+        permisoAny: ['reportes.firmar', 'reportes_informales.firmar'],
+      },
+    ],
+  },
 ]
 
 interface SidebarProps {
@@ -165,9 +181,10 @@ export function Sidebar({ user }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-5" aria-label="Menú principal">
         {NAV_SECTIONS.map((section) => {
-          const visibleItems = section.items.filter(
-            (item) => !item.permiso || can(session, item.permiso),
-          )
+          const visibleItems = section.items.filter((item) => {
+            if (item.permisoAny) return canAny(session, item.permisoAny)
+            return !item.permiso || can(session, item.permiso)
+          })
           if (visibleItems.length === 0) return null
           return (
           <div key={section.heading} className="flex flex-col gap-1">

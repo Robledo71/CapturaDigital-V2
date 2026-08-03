@@ -1,14 +1,18 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState, startTransition } from 'react'
+import { useActionState, useEffect, useState, startTransition } from 'react'
 import { useFormStatus } from 'react-dom'
 import { X, Loader2, Eye, EyeOff } from 'lucide-react'
 import { createUser } from '@/app/actions/create-user'
-import { getNextEmployeeCodeAction, checkEmployeeCodeAction } from '@/app/actions/employee-code'
+import { getNextEmployeeCodeAction } from '@/app/actions/employee-code'
 import type { UsuarioRow } from '@/shared/types/usuario'
 import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+// Roles cuyos usuarios están anclados a una o más plantas físicas. El resto
+// (roles administrativos/cross-planta) no muestran el fieldset de Plantas.
+const PLANT_ROLES = new Set(['supervisor', 'lider', 'inspector', 'supervisor_regional'])
 
 interface NuevoUsuarioModalProps {
   plantas: PlantaRow[]
@@ -68,58 +72,51 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
   const [showPwd, setShowPwd] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  // Prefill state
-  const [prefillLoading, setPrefillLoading] = useState(true)
-  const userHasTypedCodigo = useRef(false)
+  // Código auto-generado a partir del rol seleccionado
+  const [codigoLoading, setCodigoLoading] = useState(false)
 
-  // Live uniqueness check state
-  const [codigoExists, setCodigoExists] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const checkingRef = useRef(false)
-
-  // ── Prefill: fetch suggested code on mount ─────────────────────────────────
+  // ── Derivar código de empleado del rol seleccionado ────────────────────────
   useEffect(() => {
+    if (!values.rol) {
+      setCodigoLoading(false)
+      return
+    }
     let cancelled = false
-    setPrefillLoading(true)
+    setCodigoLoading(true)
     startTransition(() => {
-      getNextEmployeeCodeAction().then(({ codigo }) => {
+      getNextEmployeeCodeAction(values.rol).then(({ codigo }) => {
         if (cancelled) return
-        setPrefillLoading(false)
-        if (codigo && !userHasTypedCodigo.current) {
-          setValues((prev) => ({ ...prev, codigoEmpleado: codigo }))
-        }
+        setCodigoLoading(false)
+        setValues((prev) => ({ ...prev, codigoEmpleado: codigo ?? '' }))
       })
     })
     return () => {
       cancelled = true
     }
-  }, [])
-
-  // ── Live uniqueness check ──────────────────────────────────────────────────
-  function scheduleCheck(codigo: string) {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    setCodigoExists(false)
-    if (!codigo.trim() || prefillLoading) return
-    debounceRef.current = setTimeout(() => {
-      checkingRef.current = true
-      startTransition(() => {
-        checkEmployeeCodeAction(codigo).then(({ exists }) => {
-          checkingRef.current = false
-          setCodigoExists(exists)
-        })
-      })
-    }, 400)
-  }
+  }, [values.rol])
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
     const { name, value } = e.target
-    setValues((prev) => ({ ...prev, [name]: value }))
-    if (name === 'codigoEmpleado') {
-      userHasTypedCodigo.current = true
-      scheduleCheck(value)
+
+    // El rol determina el código (auto-generado) y qué campos aplican:
+    // se limpia el código (se recalcula vía effect), las plantas si el nuevo
+    // rol no es de planta, y el correo si el nuevo rol es inspector.
+    if (name === 'rol') {
+      setValues((prev) => ({
+        ...prev,
+        rol: value,
+        codigoEmpleado: '',
+        correo: value === 'inspector' ? '' : prev.correo,
+      }))
+      if (!PLANT_ROLES.has(value)) {
+        setPlantaIds([])
+      }
+      return
     }
+
+    setValues((prev) => ({ ...prev, [name]: value }))
   }
 
   function togglePlanta(id: string) {
@@ -128,39 +125,12 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
     )
   }
 
-  function handleCodigoBlur(e: React.FocusEvent<HTMLInputElement>) {
-    const codigo = e.target.value
-    if (!codigo.trim() || prefillLoading) return
-    // Cancel any pending debounce and check immediately on blur
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    startTransition(() => {
-      checkEmployeeCodeAction(codigo).then(({ exists }) => {
-        setCodigoExists(exists)
-      })
-    })
-  }
-
-  // Clear existence warning when the server action returns a field-level error
-  // for codigoEmpleado (the submit validation already communicated it)
-  useEffect(() => {
-    if (state?.errors?.codigoEmpleado) {
-      setCodigoExists(false)
-    }
-  }, [state?.errors?.codigoEmpleado])
-
   useEffect(() => {
     if (state?.success === true && state.usuario) {
       onSuccess(state.usuario)
       onClose()
     }
   }, [state])
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
 
   return (
     <div
@@ -188,7 +158,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
 
         {/* Form */}
         <form action={dispatch} className="flex flex-col flex-1 min-h-0">
-          <div className="p-6 flex flex-col gap-4 overflow-y-auto flex-1">
+          <div className="p-6 flex flex-col gap-4 overflow-y-auto overflow-x-hidden flex-1">
 
             {/* Error general */}
             {state?.errors?.general && (
@@ -264,91 +234,7 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
                 )}
               </div>
 
-              {/* Código de empleado — col span 2 */}
-              <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="codigoEmpleado" className="text-xs font-medium text-black dark:text-slate-400">
-                  Código de empleado
-                </label>
-                <div className="relative">
-                  <input
-                    id="codigoEmpleado"
-                    name="codigoEmpleado"
-                    type="text"
-                    autoComplete="off"
-                    placeholder={prefillLoading ? 'Generando…' : 'Ej. 0005'}
-                    value={values.codigoEmpleado}
-                    onChange={handleChange}
-                    onBlur={handleCodigoBlur}
-                    className={inputCls}
-                    aria-describedby={
-                      codigoExists
-                        ? 'codigo-exists-warning'
-                        : state?.errors?.codigoEmpleado
-                          ? 'codigo-error'
-                          : undefined
-                    }
-                  />
-                  {prefillLoading && (
-                    <span
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-                      aria-hidden="true"
-                    >
-                      <Loader2 size={14} className="animate-spin" />
-                    </span>
-                  )}
-                </div>
-                {/* Live uniqueness warning — amber to distinguish from blocking submit errors */}
-                {codigoExists && !state?.errors?.codigoEmpleado && (
-                  <p id="codigo-exists-warning" role="status" className="text-amber-500 text-xs">
-                    Este código ya está registrado
-                  </p>
-                )}
-                {/* Submit-time validation error */}
-                {state?.errors?.codigoEmpleado && (
-                  <p id="codigo-error" className="text-red-400 text-xs">
-                    {state.errors.codigoEmpleado[0]}
-                  </p>
-                )}
-              </div>
-
-              {/* Plantas — selección múltiple (opcional: roles cross-planta pueden no tener ninguna) */}
-              <div className="col-span-2 flex flex-col gap-1">
-                <fieldset className="flex flex-col gap-1">
-                  <legend className="text-xs font-medium text-black dark:text-slate-400">
-                    Plantas <span className="text-slate-400 font-normal">(opcional)</span>
-                  </legend>
-                  <div className="max-h-36 overflow-y-auto rounded-lg border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-2 flex flex-col gap-1">
-                    {plantas.length === 0 ? (
-                      <p className="text-xs text-slate-500 px-1 py-1">No hay plantas disponibles</p>
-                    ) : (
-                      plantas.map((p) => {
-                        const id = String(p.id)
-                        return (
-                          <label
-                            key={p.id}
-                            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              name="plantaIds"
-                              value={id}
-                              checked={plantaIds.includes(id)}
-                              onChange={() => togglePlanta(id)}
-                              className="h-4 w-4 flex-shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40"
-                            />
-                            <span className="flex-1 truncate">{p.nombre}</span>
-                          </label>
-                        )
-                      })
-                    )}
-                  </div>
-                </fieldset>
-                {state?.errors?.plantaIds && (
-                  <p className="text-red-400 text-xs">{state.errors.plantaIds[0]}</p>
-                )}
-              </div>
-
-              {/* Rol */}
+              {/* Rol — determina el código auto-generado y qué otros campos aplican */}
               <div className="flex flex-col gap-1">
                 <label htmlFor="rol" className="text-xs font-medium text-black dark:text-slate-400">
                   Rol
@@ -378,25 +264,100 @@ export function NuevoUsuarioModal({ plantas, onClose, onSuccess }: NuevoUsuarioM
                 )}
               </div>
 
-              {/* Correo — col span 2 */}
+              {/* Código de empleado — auto-generado a partir del rol, solo lectura */}
               <div className="col-span-2 flex flex-col gap-1">
-                <label htmlFor="correo" className="text-xs font-medium text-black dark:text-slate-400">
-                  Correo electrónico <span className="text-slate-400 font-normal">(opcional)</span>
+                <label htmlFor="codigoEmpleado" className="text-xs font-medium text-black dark:text-slate-400">
+                  Código de empleado
                 </label>
-                <input
-                  id="correo"
-                  name="correo"
-                  type="email"
-                  autoComplete="off"
-                  placeholder="usuario@empresa.com"
-                  value={values.correo}
-                  onChange={handleChange}
-                  className={inputCls}
-                />
-                {state?.errors?.correo && (
-                  <p className="text-red-400 text-xs">{state.errors.correo[0]}</p>
+                <div className="relative">
+                  <input
+                    id="codigoEmpleado"
+                    name="codigoEmpleado"
+                    type="text"
+                    autoComplete="off"
+                    readOnly
+                    placeholder={!values.rol ? 'Selecciona un rol primero' : codigoLoading ? 'Generando…' : ''}
+                    value={values.codigoEmpleado}
+                    className={`${inputCls} cursor-not-allowed`}
+                    aria-describedby={state?.errors?.codigoEmpleado ? 'codigo-error' : undefined}
+                  />
+                  {codigoLoading && (
+                    <span
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+                      aria-hidden="true"
+                    >
+                      <Loader2 size={14} className="animate-spin" />
+                    </span>
+                  )}
+                </div>
+                {/* Submit-time validation error (p. ej. 409 duplicado) */}
+                {state?.errors?.codigoEmpleado && (
+                  <p id="codigo-error" className="text-red-400 text-xs">
+                    {state.errors.codigoEmpleado[0]}
+                  </p>
                 )}
               </div>
+
+              {/* Plantas — solo para roles anclados a planta */}
+              {PLANT_ROLES.has(values.rol) && (
+                <div className="col-span-2 flex flex-col gap-1">
+                  <fieldset className="flex flex-col gap-1 min-w-0">
+                    <legend className="text-xs font-medium text-black dark:text-slate-400">
+                      Plantas <span className="text-slate-400 font-normal">(opcional)</span>
+                    </legend>
+                    <div className="max-h-36 overflow-y-auto overflow-x-hidden rounded-lg border border-blue-200 dark:border-[#1a2d4d] bg-white dark:bg-[#0c1829] p-2 flex flex-col gap-1">
+                      {plantas.length === 0 ? (
+                        <p className="text-xs text-slate-500 px-1 py-1">No hay plantas disponibles</p>
+                      ) : (
+                        plantas.map((p) => {
+                          const id = String(p.id)
+                          return (
+                            <label
+                              key={p.id}
+                              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-800 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                name="plantaIds"
+                                value={id}
+                                checked={plantaIds.includes(id)}
+                                onChange={() => togglePlanta(id)}
+                                className="h-4 w-4 flex-shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40"
+                              />
+                              <span className="flex-1 min-w-0 truncate">{p.nombre}</span>
+                            </label>
+                          )
+                        })
+                      )}
+                    </div>
+                  </fieldset>
+                  {state?.errors?.plantaIds && (
+                    <p className="text-red-400 text-xs">{state.errors.plantaIds[0]}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Correo — oculto para inspector */}
+              {values.rol !== 'inspector' && (
+                <div className="col-span-2 flex flex-col gap-1">
+                  <label htmlFor="correo" className="text-xs font-medium text-black dark:text-slate-400">
+                    Correo electrónico <span className="text-slate-400 font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    id="correo"
+                    name="correo"
+                    type="email"
+                    autoComplete="off"
+                    placeholder="usuario@empresa.com"
+                    value={values.correo}
+                    onChange={handleChange}
+                    className={inputCls}
+                  />
+                  {state?.errors?.correo && (
+                    <p className="text-red-400 text-xs">{state.errors.correo[0]}</p>
+                  )}
+                </div>
+              )}
 
               {/* Contraseña */}
               <div className="flex flex-col gap-1">

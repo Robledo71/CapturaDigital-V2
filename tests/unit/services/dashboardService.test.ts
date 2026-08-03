@@ -43,7 +43,6 @@ function makeProduccionPayload(hasSubmitted: boolean) {
       {
         inspector_name: 'Ana Lopez',
         quotation_consecutive: 'QT-2026-001',
-        id_tablet: 'TAB-001',
         has_submitted_report: hasSubmitted,
         inventory_done: 10,
         inventory: 50,
@@ -183,7 +182,6 @@ describe('getDashboardProduccion', () => {
       operadores: 'Ana Lopez',
       initials: 'AL',
       report: 'QT-2026-001',
-      tabletCode: 'TAB-001',
       current: 10,
       total: 50,
     })

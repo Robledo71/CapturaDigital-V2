@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { getInformalReporteDetalle } from '@/back/services/informalReportesService'
+import { getSignatureStatus } from '@/back/services/signatureService'
 import { TopBar } from '@/front/components/supervisor/TopBar'
 import { ReporteDetallePage } from '@/front/components/supervisor/ReporteDetallePage'
 import { AutoRefresh } from '@/front/components/supervisor/AutoRefresh'
@@ -32,6 +33,8 @@ export default async function ReporteInformalDetallePageRoute({
 
   if (!reporte) notFound()
 
+  const { hasSignature } = await getSignatureStatus(session.accessToken)
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <TopBar crumb={reporte.consecutiveNumber} />
@@ -41,6 +44,7 @@ export default async function ReporteInformalDetallePageRoute({
         permisos={session.permisos}
         backHref="/supervisor/reportes-informales"
         variant="informal"
+        currentUserHasSignature={hasSignature}
       />
       <AutoRefresh />
     </div>

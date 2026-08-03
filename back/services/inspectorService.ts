@@ -7,7 +7,8 @@ import type { InspectorRow } from '@/shared/types/inspector'
 // ---------------------------------------------------------------------------
 
 export type CreateInspectorInput = {
-  codigoEmpleado: string
+  // Opcional: si se omite, el backend genera el código automáticamente (INS-00x).
+  codigoEmpleado?: string
   nombreEmpleado: string
   apellidoPaterno: string
   // Opcional: si se omite, la BD asigna 'X' por defecto en catalogos.empleados.
@@ -120,6 +121,22 @@ export async function getInspectores(
   }
 }
 
+// Preview read-only del próximo código de inspector (INS-00x) para el modal de
+// creación. Devuelve null si el backend no responde OK.
+export async function getNextInspectorCodigo(accessToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${baseUrl()}/qb_sync/inspectors/next-codigo`, {
+      headers: apiHeaders(accessToken),
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const body = await res.json()
+    return typeof body?.data?.codigo === 'string' ? body.data.codigo : null
+  } catch {
+    return null
+  }
+}
+
 export async function createInspector(
   input: CreateInspectorInput,
   accessToken: string,
@@ -128,7 +145,8 @@ export async function createInspector(
     method: 'POST',
     headers: apiHeaders(accessToken),
     body: JSON.stringify({
-      codigo_empleado: input.codigoEmpleado,
+      // Se omite si no viene → el backend genera el código automáticamente.
+      codigo_empleado: input.codigoEmpleado || undefined,
       nombre_empleado: input.nombreEmpleado,
       apellido_paterno: input.apellidoPaterno,
       // Se omite si viene vacío/undefined → la BD asigna 'X' por defecto.

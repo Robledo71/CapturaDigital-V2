@@ -1,5 +1,5 @@
 'use server'
-// TODO Fase 2: DailyReport schema cambió — tabletId eliminado. Action stubbeada.
+// TODO Fase 2: DailyReport schema cambió. Action stubbeada.
 
 export type AssignDailyReportState =
   | { ok: true }

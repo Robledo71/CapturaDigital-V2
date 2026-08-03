@@ -34,7 +34,11 @@ function baseSession(rol: string, empleadoId: number | null = 9, permisos?: stri
   }
 }
 
-function validFormData(overrides: Record<string, string> = {}, inspectorIds: string[] = []): FormData {
+function validFormData(
+  overrides: Record<string, string> = {},
+  inspectorIds: string[] = [],
+  incidencias: string[] = [],
+): FormData {
   const defaults: Record<string, string> = {
     tipo_orden: 'OV',
     cliente_id: '5',
@@ -49,6 +53,9 @@ function validFormData(overrides: Record<string, string> = {}, inspectorIds: str
   }
   for (const id of inspectorIds) {
     fd.append('inspectorIds', id)
+  }
+  for (const incidencia of incidencias) {
+    fd.append('incidencias', incidencia)
   }
   return fd
 }
@@ -152,6 +159,26 @@ describe('crearOrdenInformalAction', () => {
 
     const payload = vi.mocked(createInformalOrder).mock.calls[0][0]
     expect(payload.inspectionSession).toEqual({ idSupervisor: '9', idInspectores: ['1', '2'] })
+  })
+
+  it('con incidencias → une los valores en item.incidentes separados por coma, filtrando vacíos', async () => {
+    vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)
+    vi.mocked(createInformalOrder).mockResolvedValue({ ok: true, data: {} })
+
+    await crearOrdenInformalAction(undefined, validFormData({}, [], ['  a  ', 'b', '', '   ', 'c']))
+
+    const payload = vi.mocked(createInformalOrder).mock.calls[0][0]
+    expect(payload.item.incidentes).toBe('a, b, c')
+  })
+
+  it('sin incidencias → item.incidentes es undefined', async () => {
+    vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)
+    vi.mocked(createInformalOrder).mockResolvedValue({ ok: true, data: {} })
+
+    await crearOrdenInformalAction(undefined, validFormData())
+
+    const payload = vi.mocked(createInformalOrder).mock.calls[0][0]
+    expect(payload.item.incidentes).toBeUndefined()
   })
 
   it('con inspectorIds pero sin empleadoId asociado → error, no llama al servicio', async () => {

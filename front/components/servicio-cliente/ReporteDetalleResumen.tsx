@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
-import { AlertTriangle, ListChecks, TabletSmartphone } from 'lucide-react'
+import { AlertTriangle, ListChecks } from 'lucide-react'
 import type { InspectionItemRow, ReporteDetalleData } from '@/back/services/reporteDetalleService'
 import { LegacyCsvTable } from '@/front/components/supervisor/LegacyCsvTable'
 
@@ -148,7 +148,7 @@ export function ReporteDetalleResumen({ reporte }: { reporte: ReporteDetalleData
   const {
     cliente, planta, cotizacion, parte, totalInspected, totalOk, totalNg,
     totalScrap, totalRecovered, totalIncidents, pzsPorIncidencia, inspectionItems,
-    operadores, turno, tabletAlias, isLegacy, legacyCsvTable,
+    operadores, turno, isLegacy, legacyCsvTable,
   } = reporte
 
   const totals = useMemo(() => {
@@ -190,12 +190,6 @@ export function ReporteDetalleResumen({ reporte }: { reporte: ReporteDetalleData
           <InfoField label="Total inspeccionadas" value={`${totals.inspected.toLocaleString('es-MX')} pzs`} />
           <InfoField label="% NG" value={ngPctDisplay} valueClass={ngPctClass} />
         </dl>
-        {tabletAlias && (
-          <div className="mt-4 flex items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-[#1a2d4d]">
-            <TabletSmartphone size={14} className="flex-shrink-0 text-slate-500" aria-hidden="true" />
-            <span className="text-xs text-slate-500">{tabletAlias}</span>
-          </div>
-        )}
       </div>
 
       {/* Resumen de piezas */}

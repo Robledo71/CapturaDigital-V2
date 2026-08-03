@@ -94,7 +94,8 @@ describe('crearInspectorAction', () => {
     },
   )
 
-  it.each(['admin', 'capturacion', 'servicio_cliente', 'cliente', 'gerente'])(
+  // admin sí está autorizado a crear inspectores desde su portal (ver create-inspector.ts ALLOWED_ROLES).
+  it.each(['capturacion', 'servicio_cliente', 'cliente', 'gerente'])(
     'rol %s NO autorizado → { ok: false, error: "No autorizado." }',
     async (rol) => {
       vi.mocked(getSession).mockResolvedValue(baseSession(rol) as never)
@@ -105,13 +106,8 @@ describe('crearInspectorAction', () => {
     },
   )
 
-  it('código de empleado vacío → error de validación, no llama al servicio', async () => {
-    vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)
-
-    const result = await crearInspectorAction(undefined, validFormData({ codigo_empleado: '' }))
-    expect(result).toMatchObject({ ok: false })
-    expect(createInspector).not.toHaveBeenCalled()
-  })
+  // El código de empleado ya no se captura ni valida en el form: lo autogenera el
+  // backend (INS-00x). Por eso ya no hay test de "código vacío → error".
 
   it('creación exitosa → { ok: true, generatedPassword, inspector } y revalida ambos portales', async () => {
     vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)

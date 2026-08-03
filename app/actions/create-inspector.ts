@@ -4,12 +4,12 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import type { InspectorRow } from '@/shared/types/inspector'
 import { getSession } from '@/back/services/session'
-import { createInspector } from '@/back/services/inspectorService'
+import { createInspector, getNextInspectorCodigo } from '@/back/services/inspectorService'
 
 // No existe un permiso fino para este módulo — se gatea directamente por rol.
 // supervisor/lider solo ven/gestionan inspectores de su(s) propia(s) planta(s);
 // superusuario/supervisor_regional ven todos (lo aplica el backend).
-const ALLOWED_ROLES = new Set(['superusuario', 'supervisor_regional', 'supervisor', 'lider'])
+const ALLOWED_ROLES = new Set(['superusuario', 'admin', 'supervisor_regional', 'supervisor', 'lider'])
 
 export type CreateInspectorState =
   | { ok: true; generatedPassword: string; inspector: InspectorRow }
@@ -17,13 +17,29 @@ export type CreateInspectorState =
   | undefined
 
 const CreateInspectorSchema = z.object({
-  codigo_empleado: z.string().min(1, 'El código de empleado es requerido').trim(),
+  // El código de inspector lo genera automáticamente el backend (INS-00x); ya
+  // no se captura en el formulario.
   nombre_empleado: z.string().min(1, 'El nombre es requerido').trim(),
   apellido_paterno: z.string().min(1, 'El apellido paterno es requerido').trim(),
   // Apellido materno opcional: si se deja vacío, la BD asigna 'X' por defecto.
   apellido_materno: z.string().trim().optional(),
   plantaIds: z.array(z.number().int().positive()),
 })
+
+// Preview read-only del próximo código de inspector (INS-00x) para el modal.
+// Se gatea por los mismos roles que pueden crear inspectores.
+export async function getNextInspectorCodeAction(): Promise<{ codigo: string | null }> {
+  try {
+    const session = await getSession()
+    if (!session || !ALLOWED_ROLES.has(session.rol)) {
+      return { codigo: null }
+    }
+    const codigo = await getNextInspectorCodigo(session.accessToken)
+    return { codigo }
+  } catch {
+    return { codigo: null }
+  }
+}
 
 export async function crearInspectorAction(
   _state: CreateInspectorState,
@@ -45,7 +61,6 @@ export async function crearInspectorAction(
   const apellidoMaternoRaw = String(formData.get('apellido_materno') ?? '').trim()
 
   const raw = {
-    codigo_empleado: String(formData.get('codigo_empleado') ?? '').trim(),
     nombre_empleado: String(formData.get('nombre_empleado') ?? '').trim(),
     apellido_paterno: String(formData.get('apellido_paterno') ?? '').trim(),
     // Vacío → undefined para que quede opcional (la BD pone 'X').
@@ -62,7 +77,6 @@ export async function crearInspectorAction(
   try {
     const result = await createInspector(
       {
-        codigoEmpleado: validated.data.codigo_empleado,
         nombreEmpleado: validated.data.nombre_empleado,
         apellidoPaterno: validated.data.apellido_paterno,
         apellidoMaterno: validated.data.apellido_materno,
@@ -80,6 +94,7 @@ export async function crearInspectorAction(
 
     revalidatePath('/supervisor/inspectores')
     revalidatePath('/superusuario/inspectores')
+    revalidatePath('/admin/inspectores')
 
     return { ok: true, generatedPassword: result.generatedPassword, inspector: result.inspector }
   } catch {

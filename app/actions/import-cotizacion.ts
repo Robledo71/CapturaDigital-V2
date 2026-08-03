@@ -66,7 +66,7 @@ function toItemArray(value: unknown): QBOrderItem[] {
 
 /**
  * Builds an OrderWorkload purely from QB API data — NO database writes.
- * All items start with status 'pending' and no assigned tablet because
+ * All items start with status 'pending' and no assigned inspector because
  * the assignment hasn't happened yet.
  */
 function buildOrderWorkloadFromQB(

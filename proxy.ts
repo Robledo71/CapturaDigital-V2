@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decrypt, encrypt, getAccessTokenExp, refreshTokens, type JWTPayload } from '@/back/services/session'
 
-const PUBLIC_ROUTES = ['/', '/tablet/login', '/reset-password']
+const PUBLIC_ROUTES = ['/', '/reset-password']
 
 // El accessToken embebido en la sesión vive 15 min (JWT_ACCESS_EXPIRES en el
 // backend), muy por debajo de las 8h que dura la cookie 'session'. Sin un

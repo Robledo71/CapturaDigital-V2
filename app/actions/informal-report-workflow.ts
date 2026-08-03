@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import {
-  registerInformalSamplingDecision,
+  registerSamplingDetalleInformal,
   signInformalReporte,
 } from '@/back/services/informalReportesService'
 
@@ -12,6 +12,11 @@ export type WorkflowActionState = {
   ok?: true
   error?: string
 }
+
+export type MuestreoDetalleState =
+  | { ok: true; approved: boolean; itemId: number; message: string }
+  | { ok: false; error: string }
+  | Record<string, never>
 
 const REVALIDATE_PATHS = [
   '/supervisor/reportes-informales',
@@ -24,58 +29,45 @@ function getReportePaths(reportId: number) {
   return REVALIDATE_PATHS.map((base) => `${base}/${reportId}`)
 }
 
-function parseDefects(formData: FormData): Record<number, number> {
-  const defects: Record<number, number> = {}
-
-  for (const [key, value] of formData.entries()) {
-    if (!key.startsWith('defects_')) continue
-
-    const itemId = Number(key.replace('defects_', ''))
-    if (!Number.isInteger(itemId)) continue
-
-    defects[itemId] = Math.max(0, Math.floor(Number(value) || 0))
-  }
-
-  return defects
+const MUESTREO_DETALLE_ERRORS: Record<
+  'not_found' | 'invalid_status' | 'no_sampling_items' | 'item_not_found' | 'error',
+  string
+> = {
+  not_found: 'Reporte no encontrado.',
+  invalid_status: 'El reporte no está en un estado válido para muestreo.',
+  no_sampling_items: 'Este detalle no requiere muestreo.',
+  item_not_found: 'El detalle no pertenece al reporte.',
+  error: 'No se pudo registrar el muestreo.',
 }
 
-export async function registerInformalSamplingAction(
-  _state: WorkflowActionState,
+export async function registrarMuestreoDetalleInformalAction(
+  _prevState: MuestreoDetalleState,
   formData: FormData,
-): Promise<WorkflowActionState> {
+): Promise<MuestreoDetalleState> {
   const session = await getSession()
   if (!session || !can(session, 'reportes_informales.muestreo')) {
-    return { error: 'No autorizado' }
+    return { ok: false, error: 'No autorizado' }
   }
 
   const reportId = parseInt(String(formData.get('reportId') ?? ''), 10)
-  if (isNaN(reportId)) return { error: 'Reporte requerido' }
+  const itemId = parseInt(String(formData.get('item_id') ?? ''), 10)
+  const defects = Math.max(0, Math.floor(Number(formData.get('defects')) || 0))
+  const observations = String(formData.get('observations') ?? '').trim() || null
 
-  const decision = String(formData.get('decision') ?? '')
-  const notes = String(formData.get('notes') ?? '').trim()
-
-  if (decision !== 'approve' && decision !== 'reject') {
-    return { error: 'Decisión de muestreo inválida' }
+  if (isNaN(reportId) || isNaN(itemId)) {
+    return { ok: false, error: 'Reporte o ítem inválido' }
   }
 
-  const result = await registerInformalSamplingDecision({
+  const result = await registerSamplingDetalleInformal({
     reportId,
+    itemId,
+    defects,
+    observations,
     accessToken: session.accessToken,
-    decision,
-    defectsByItem: parseDefects(formData),
-    notes,
   })
 
   if (!result.ok) {
-    const errors: Record<typeof result.reason, string> = {
-      not_found: 'Reporte no encontrado',
-      invalid_status: 'El reporte no está listo para muestreo',
-      no_sampling_items: 'No hay piezas inspeccionadas con rango de muestreo válido',
-      rule_failed: 'El muestreo no cumple la regla AQL. Reenvíalo al inspector.',
-      notes_required: 'Agrega un motivo para reenviar al inspector',
-    }
-
-    return { error: errors[result.reason] }
+    return { ok: false, error: MUESTREO_DETALLE_ERRORS[result.reason] }
   }
 
   revalidatePath('/supervisor')
@@ -83,7 +75,12 @@ export async function registerInformalSamplingAction(
     revalidatePath(path)
   }
 
-  return { ok: true }
+  return {
+    ok: true,
+    approved: result.approved,
+    itemId,
+    message: result.approved ? 'Muestreo aprobado' : 'Muestreo NO aprobado',
+  }
 }
 
 export async function signInformalReporteAction(
@@ -101,12 +98,11 @@ export async function signInformalReporteAction(
   const result = await signInformalReporte(reportId, session.accessToken)
 
   if (!result.ok) {
-    return {
-      error:
-        result.reason === 'not_found'
-          ? 'Reporte no encontrado'
-          : 'Primero aprueba el muestreo para poder firmar',
+    if (result.reason === 'not_found') return { error: 'Reporte no encontrado' }
+    if (result.reason === 'no_signature') {
+      return { error: 'Configura tu firma en Configuración › Mi firma para poder firmar.' }
     }
+    return { error: 'Primero aprueba el muestreo para poder firmar' }
   }
 
   revalidatePath('/supervisor')

@@ -22,6 +22,12 @@ export type ItemSampling = {
   result: 'aprobado' | 'no_aprobado' | null
   sampledPieces: number
   ng: number | null
+  // true = el último muestreo NO fue aprobado y el detalle aún no se edita → hay
+  // que editar la información antes de poder volver a muestrear.
+  needsEdit: boolean
+  observations: string | null
+  sampledByName: string | null
+  sampledAt: string | null
 }
 
 export type InspectionItemRow = {
@@ -36,7 +42,10 @@ export type InspectionItemRow = {
   incidents: IncidentEntry[]
   lote: string | null
   serie: string | null
+  // Representación legible para la tabla ("LPN: 123DG, ASN: KL34").
   identificadores: string | null
+  // Pares crudos { tipo: valor } (sin lote/serie) para pre-llenar el editor.
+  identificadoresRaw: Record<string, string>
   sampling: ItemSampling
 }
 
@@ -70,33 +79,45 @@ export type ReporteDetalleData = {
 
   operadores: string
   turno: string
-  tabletAlias: string
 
   sessionCreatedAt: Date | null
   sessionFinishedAt: Date | null
 
   supervisorName: string
 
+  /**
+   * usuario_id del firmante real (report.signed_by) — usado para pedir su
+   * firma vía `/api/signatures/${signedBy}`. `null` mientras el reporte no
+   * esté firmado, o si el contrato no expone un id numérico (ver variante
+   * informal en informalReportesService.ts).
+   */
+  signedBy: number | null
+  /** Nombre del firmante real (report.signed_by_name), para el paso "Firmado" del timeline. */
+  signedByName: string | null
+
   isLegacy: boolean
   legacyCsvTable: unknown
 }
 
 
-export type SamplingDecisionInput = {
+export type SamplingDetalleInput = {
   reportId: number
+  itemId: number
+  defects: number
+  observations?: string | null
   accessToken: string
-  decision: 'approve' | 'reject'
-  defectsByItem: Record<number, number>
-  notes?: string
 }
 
-export type SamplingDecisionResult =
-  | { ok: true; status: 'sampling' | 'pending' }
-  | { ok: false; reason: 'not_found' | 'invalid_status' | 'no_sampling_items' | 'rule_failed' | 'notes_required' }
+export type SamplingDetalleResult =
+  | { ok: true; approved: boolean; sampledPieces: number; ng: number; maxDefects: number }
+  | {
+      ok: false
+      reason: 'not_found' | 'invalid_status' | 'no_sampling_items' | 'item_not_found' | 'error'
+    }
 
 export type ReportStatusTransitionResult =
   | { ok: true; status: 'signed' | 'published' }
-  | { ok: false; reason: 'not_found' | 'invalid_status' }
+  | { ok: false; reason: 'not_found' | 'invalid_status' | 'no_signature' }
 
 // ── Internal API response types ─────────────────────────────────────────────
 
@@ -113,12 +134,17 @@ type ApiItemSampling = {
   ok_pieces: number | null
   ng_pieces: number | null
   result: 'aprobado' | 'no_aprobado' | null
+  needs_edit?: boolean
+  observations?: string | null
   sampled_by_name: string | null
   sampled_at: string | null
 }
 
 type ApiItem = {
   id: number
+  // Número de parte específico que inspeccionó este detalle (captura.pieza_inspeccionada).
+  // Un ítem/reporte puede abarcar varios números de parte; cada detalle apunta al suyo.
+  inspected_part: string | null
   total_pieces: number
   ok_pieces: number
   ng_pieces: number
@@ -167,8 +193,6 @@ type ApiOrderContext = {
   id_session: number | null
   id_supervisor: string | null
   supervisor_name: string | null
-  id_tablet: string | null
-  tablet_alias: string | null
   session_status: string | null
   fecha_inicio: string | null
   fecha_fin: string | null
@@ -245,7 +269,9 @@ export async function getReporteDetalle(
   const inspectionItems: InspectionItemRow[] = report.items.map((item) => ({
     id: item.id,
     partName: ctx?.part_name ?? null,
-    partNumber: ctx?.part_number ?? null,
+    // Número de parte por fila: el que inspeccionó ese detalle. Fallback al
+    // número de parte del ítem/orden si el detalle no lo tiene (filas legacy).
+    partNumber: item.inspected_part ?? ctx?.part_number ?? null,
     inspected: item.total_pieces,
     ok: item.ok_pieces,
     ng: item.ng_pieces,
@@ -267,6 +293,10 @@ export async function getReporteDetalle(
         .map(([k, v]) => `${k}: ${String(v)}`)
       return pairs.length > 0 ? pairs.join(', ') : null
     })(),
+    identificadoresRaw:
+      item.identificadores && typeof item.identificadores === 'object'
+        ? (item.identificadores as Record<string, string>)
+        : {},
     sampling: item.sampling
       ? {
           required: item.sampling.required,
@@ -274,6 +304,10 @@ export async function getReporteDetalle(
           result: item.sampling.result,
           sampledPieces: item.sampling.sampled_pieces,
           ng: item.sampling.ng_pieces,
+          needsEdit: item.sampling.needs_edit ?? false,
+          observations: item.sampling.observations ?? null,
+          sampledByName: item.sampling.sampled_by_name ?? null,
+          sampledAt: item.sampling.sampled_at ?? null,
         }
       : {
           required: getSamplingRule(item.total_pieces) !== null,
@@ -281,6 +315,10 @@ export async function getReporteDetalle(
           result: null,
           sampledPieces: 0,
           ng: null,
+          needsEdit: false,
+          observations: null,
+          sampledByName: null,
+          sampledAt: null,
         },
   }))
 
@@ -366,26 +404,23 @@ export async function getReporteDetalle(
 
     operadores,
     turno: report.shift ?? '—',
-    tabletAlias: ctx?.tablet_alias ?? ctx?.id_tablet ?? '—',
 
     sessionCreatedAt: ctx?.fecha_inicio ? new Date(ctx.fecha_inicio) : null,
     sessionFinishedAt: ctx?.fecha_fin ? new Date(ctx.fecha_fin) : null,
 
     supervisorName: ctx?.supervisor_name ?? '',
 
+    signedBy: report.signed_by ?? null,
+    signedByName: report.signed_by_name ?? null,
+
     isLegacy: false,
     legacyCsvTable: null,
   }
 }
 
-export async function registerSamplingDecision(
-  input: SamplingDecisionInput,
-): Promise<SamplingDecisionResult> {
-  const defectsByItemStr: Record<string, number> = {}
-  for (const [key, val] of Object.entries(input.defectsByItem)) {
-    defectsByItemStr[String(key)] = val
-  }
-
+export async function registerSamplingDetalle(
+  input: SamplingDetalleInput,
+): Promise<SamplingDetalleResult> {
   const res = await fetch(
     `${process.env.QSYNC_API_URL}/qb_sync/daily-reports/${input.reportId}/sampling`,
     {
@@ -394,28 +429,32 @@ export async function registerSamplingDecision(
         'Content-Type': 'application/json',
         ...apiHeaders(input.accessToken),
       },
-      body: JSON.stringify({
-        decision: input.decision,
-        defects_by_item: defectsByItemStr,
-        notes: input.notes,
-      }),
+      body: JSON.stringify({ item_id: input.itemId, defects: input.defects, observations: input.observations ?? null }),
     },
   )
 
   if (res.status === 404) return { ok: false, reason: 'not_found' }
-  if (res.status === 409) return { ok: false, reason: 'invalid_status' }
 
-  if (res.status === 422) {
+  if (res.status === 409 || res.status === 422) {
     const body = await res.json().catch(() => ({}))
-    const knownReasons = ['notes_required', 'no_sampling_items', 'rule_failed', 'invalid_status'] as const
+    const knownReasons = ['invalid_status', 'no_sampling_items', 'item_not_found'] as const
     type KnownReason = (typeof knownReasons)[number]
     const r: KnownReason = knownReasons.includes(body.reason) ? body.reason : 'invalid_status'
     return { ok: false, reason: r }
   }
 
-  if (!res.ok) throw new Error(`sampling failed: ${res.status}`)
+  if (!res.ok) return { ok: false, reason: 'error' }
 
-  return { ok: true, status: input.decision === 'approve' ? 'sampling' : 'pending' }
+  const body = await res.json().catch(() => ({}))
+  const data = body?.data ?? {}
+
+  return {
+    ok: true,
+    approved: Boolean(data.approved),
+    sampledPieces: Number(data.sampled_pieces) || 0,
+    ng: Number(data.ng) || 0,
+    maxDefects: Number(data.max_defects) || 0,
+  }
 }
 
 export async function signReporte(
@@ -429,6 +468,10 @@ export async function signReporte(
 
   if (res.status === 404) return { ok: false, reason: 'not_found' }
   if (res.status === 409) return { ok: false, reason: 'invalid_status' }
+  if (res.status === 422) {
+    const body = await res.json().catch(() => ({}))
+    return { ok: false, reason: body.reason === 'no_signature' ? 'no_signature' : 'invalid_status' }
+  }
   if (!res.ok) throw new Error(`sign failed: ${res.status}`)
 
   return { ok: true, status: 'signed' }

@@ -58,6 +58,7 @@ describe('informalOrdersService', () => {
         plantaNombre: 'Honda Celaya',
         numeroParte: '83600-3BH',
         nombreParte: 'MAT SET FLOOR',
+        incidentes: null,
         solicitanteNombre: 'Juan Perez',
         inspectores: [{ id: 7, name: 'Ana Lopez' }],
         estadoReporte: null,
@@ -123,8 +124,27 @@ describe('informalOrdersService', () => {
       const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
       expect(body.tipo_orden).toBe('OV')
       expect(body.cliente_id).toBe(5)
-      expect(body.item).toEqual({ numero_parte: '83600-3BH', nombre_parte: undefined, planta_id: 2 })
+      expect(body.item).toEqual({
+        numero_parte: '83600-3BH',
+        nombre_parte: undefined,
+        planta_id: 2,
+        incidentes: undefined,
+      })
       expect(body).not.toHaveProperty('inspectionSession')
+    })
+
+    it('con item.incidentes → lo incluye en el body', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: {} }), { status: 201 }),
+      )
+
+      await createInformalOrder(
+        { ...input, item: { ...input.item, incidentes: 'a, b, c' } },
+        ACCESS_TOKEN,
+      )
+
+      const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]!.body as string)
+      expect(body.item.incidentes).toBe('a, b, c')
     })
 
     it('con inspectionSession → lo incluye en el body mapeado a snake_case', async () => {

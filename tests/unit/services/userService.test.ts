@@ -1,6 +1,11 @@
 // tests/unit/services/userService.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { getAllUsuarios, createUsuario, updateUsuario } from '@/back/services/userService'
+import {
+  getAllUsuarios,
+  createUsuario,
+  updateUsuario,
+  getNextCodigoEmpleado,
+} from '@/back/services/userService'
 
 const ACCESS_TOKEN = 'test-access-token'
 
@@ -203,6 +208,51 @@ describe('userService', () => {
       )
 
       await expect(createUsuario(input, ACCESS_TOKEN)).rejects.toThrow('API responded 500')
+    })
+  })
+
+  // ─── getNextCodigoEmpleado ──────────────────────────────────────────────────
+
+  describe('getNextCodigoEmpleado', () => {
+    it('con rol → agrega "?rol=" a la URL y devuelve el código role-prefijado', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: { codigo: 'SUP-01' } }), { status: 200 }),
+      )
+
+      const result = await getNextCodigoEmpleado(ACCESS_TOKEN, 'supervisor')
+
+      expect(result).toBe('SUP-01')
+      const [url] = vi.mocked(fetch).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/qb_sync/users/next-codigo?rol=supervisor')
+    })
+
+    it('sin rol → no agrega query string', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: { codigo: null } }), { status: 200 }),
+      )
+
+      await getNextCodigoEmpleado(ACCESS_TOKEN)
+
+      const [url] = vi.mocked(fetch).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/qb_sync/users/next-codigo')
+    })
+
+    it('codifica el rol en la URL', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(
+        new Response(JSON.stringify({ success: true, data: { codigo: 'SRE-01' } }), { status: 200 }),
+      )
+
+      await getNextCodigoEmpleado(ACCESS_TOKEN, 'supervisor_regional')
+
+      const [url] = vi.mocked(fetch).mock.calls[0]
+      expect(url).toBe('http://localhost:3001/qb_sync/users/next-codigo?rol=supervisor_regional')
+    })
+
+    it('respuesta no-ok (400 sin rol válido) devuelve null', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response('Bad Request', { status: 400 }))
+
+      const result = await getNextCodigoEmpleado(ACCESS_TOKEN)
+      expect(result).toBeNull()
     })
   })
 

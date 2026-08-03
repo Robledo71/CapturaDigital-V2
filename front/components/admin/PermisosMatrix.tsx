@@ -25,7 +25,6 @@ const MODULO_LABEL: Record<string, string> = {
   reportes: 'Reportes',
   cotizaciones: 'Cotizaciones',
   ordenes: 'Órdenes',
-  tablets: 'Tablets',
   usuarios: 'Usuarios',
   clientes: 'Clientes',
   plantas: 'Plantas',

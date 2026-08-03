@@ -1,4 +1,4 @@
-import { Plus, Tablet } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
@@ -25,7 +25,6 @@ export default async function DashboardSupervisorPage() {
   const plantaNombre = session?.plantaNombre ?? null
   const canVerReportes = can(session, 'reportes.ver')
   const canVerOrdenes = can(session, 'ordenes.ver')
-  const canVerTablets = can(session, 'tablets.ver')
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -45,15 +44,6 @@ export default async function DashboardSupervisorPage() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            {canVerTablets && (
-              <Link
-                href="/supervisor/tablets"
-                className="border border-black dark:border-[#1a2d4d] rounded-lg px-4 py-2 text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors"
-              >
-                <Tablet size={15} />
-                Tablets
-              </Link>
-            )}
             {canVerOrdenes && (
               <Link
                 href="/superusuario/carga-trabajo"

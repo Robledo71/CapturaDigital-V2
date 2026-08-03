@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { isInventarioPendiente } from '@/front/components/supervisor/CargaDeTrabajoPage'
 
 // ─── isInventarioPendiente ──────────────────────────────────────────────────
-// Regla de negocio: no se puede liberar la tablet de un item mientras el
+// Regla de negocio: no se puede liberar la asignación de un item mientras el
 // inventario esté pendiente por completar. El backend valida esto y responde
 // 409; esta función refleja la misma regla en el frontend para deshabilitar
 // el botón "Liberar" antes de intentar la petición.

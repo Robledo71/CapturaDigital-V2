@@ -6,7 +6,7 @@ import {
   signReporte,
   publishReporte,
   getReporteDetalle,
-  registerSamplingDecision,
+  registerSamplingDetalle,
 } from '@/back/services/reporteDetalleService'
 
 // ─── SAMPLING_RULES shape ────────────────────────────────────────────────────
@@ -270,8 +270,6 @@ const mockApiReport = {
     part_name: 'MAT SET FLOOR',
     client_name: 'Bimbo S.A.',
     plant_name: 'Honda Celaya',
-    tablet_alias: 'TAB-001',
-    id_tablet: 'TAB-001',
     supervisor_name: 'Pedro Ramírez',
     fecha_inicio: '2026-01-15T07:00:00Z',
     fecha_fin: null,
@@ -438,6 +436,10 @@ describe('getReporteDetalle', () => {
       result: 'no_aprobado',
       sampledPieces: 8,
       ng: 1,
+      needsEdit: false,
+      observations: null,
+      sampledByName: 'Pedro Ramírez',
+      sampledAt: '2026-01-15T09:00:00Z',
     })
   })
 
@@ -461,19 +463,22 @@ describe('getReporteDetalle', () => {
       result: null,
       sampledPieces: 0,
       ng: null,
+      needsEdit: false,
+      observations: null,
+      sampledByName: null,
+      sampledAt: null,
     })
   })
 })
 
-// ─── registerSamplingDecision ─────────────────────────────────────────────────
+// ─── registerSamplingDetalle ──────────────────────────────────────────────────
 
-describe('registerSamplingDecision', () => {
+describe('registerSamplingDetalle', () => {
   const baseInput = {
     reportId: 10,
+    itemId: 1,
+    defects: 0,
     accessToken: 'tok',
-    decision: 'approve' as const,
-    defectsByItem: { 1: 0 },
-    notes: '',
   }
 
   beforeEach(() => {
@@ -486,67 +491,87 @@ describe('registerSamplingDecision', () => {
     vi.unstubAllGlobals()
   })
 
-  it('aprobación exitosa → { ok: true, status: "sampling" }', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
-    const result = await registerSamplingDecision(baseInput)
-    expect(result).toEqual({ ok: true, status: 'sampling' })
+  it('respuesta exitosa aprobada → { ok: true, approved: true, ... }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ success: true, data: { approved: true, sampled_pieces: 2, ng: 0, max_defects: 1 } }),
+        { status: 201 },
+      ),
+    )
+    const result = await registerSamplingDetalle(baseInput)
+    expect(result).toEqual({ ok: true, approved: true, sampledPieces: 2, ng: 0, maxDefects: 1 })
   })
 
-  it('rechazo exitoso → { ok: true, status: "pending" }', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
-    const result = await registerSamplingDecision({ ...baseInput, decision: 'reject' })
-    expect(result).toEqual({ ok: true, status: 'pending' })
+  it('respuesta exitosa no aprobada → { ok: true, approved: false, ... }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ success: true, data: { approved: false, sampled_pieces: 2, ng: 2, max_defects: 1 } }),
+        { status: 201 },
+      ),
+    )
+    const result = await registerSamplingDetalle({ ...baseInput, defects: 2 })
+    expect(result).toEqual({ ok: true, approved: false, sampledPieces: 2, ng: 2, maxDefects: 1 })
   })
 
   it('respuesta 404 → { ok: false, reason: "not_found" }', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response('', { status: 404 }))
-    const result = await registerSamplingDecision(baseInput)
+    const result = await registerSamplingDetalle(baseInput)
     expect(result).toEqual({ ok: false, reason: 'not_found' })
   })
 
-  it('respuesta 409 → { ok: false, reason: "invalid_status" }', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response('', { status: 409 }))
-    const result = await registerSamplingDecision(baseInput)
+  it('respuesta 409 con reason "invalid_status" → { ok: false, reason: "invalid_status" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ reason: 'invalid_status' }), { status: 409 }),
+    )
+    const result = await registerSamplingDetalle(baseInput)
     expect(result).toEqual({ ok: false, reason: 'invalid_status' })
   })
 
-  it('respuesta 422 con reason "notes_required" → { ok: false, reason: "notes_required" }', async () => {
+  it('respuesta 422 con reason "no_sampling_items" → { ok: false, reason: "no_sampling_items" }', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ reason: 'notes_required' }), { status: 422 }),
+      new Response(JSON.stringify({ reason: 'no_sampling_items' }), { status: 422 }),
     )
-    const result = await registerSamplingDecision(baseInput)
-    expect(result).toEqual({ ok: false, reason: 'notes_required' })
+    const result = await registerSamplingDetalle(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'no_sampling_items' })
   })
 
-  it('respuesta 422 con reason "rule_failed" → { ok: false, reason: "rule_failed" }', async () => {
+  it('respuesta 422 con reason "item_not_found" → { ok: false, reason: "item_not_found" }', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(JSON.stringify({ reason: 'rule_failed' }), { status: 422 }),
+      new Response(JSON.stringify({ reason: 'item_not_found' }), { status: 422 }),
     )
-    const result = await registerSamplingDecision(baseInput)
-    expect(result).toEqual({ ok: false, reason: 'rule_failed' })
+    const result = await registerSamplingDetalle(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'item_not_found' })
   })
 
   it('respuesta 422 con reason desconocido → { ok: false, reason: "invalid_status" }', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(JSON.stringify({ reason: 'algo_raro' }), { status: 422 }),
     )
-    const result = await registerSamplingDecision(baseInput)
+    const result = await registerSamplingDetalle(baseInput)
     expect(result).toEqual({ ok: false, reason: 'invalid_status' })
   })
 
-  it('respuesta 500 → lanza error', async () => {
+  it('respuesta 400 (body inválido) → { ok: false, reason: "error" }', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 400 }))
+    const result = await registerSamplingDetalle(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'error' })
+  })
+
+  it('respuesta 500 → { ok: false, reason: "error" }', async () => {
     vi.mocked(fetch).mockResolvedValueOnce(new Response('error', { status: 500 }))
-    await expect(registerSamplingDecision(baseInput)).rejects.toThrow('sampling failed: 500')
+    const result = await registerSamplingDetalle(baseInput)
+    expect(result).toEqual({ ok: false, reason: 'error' })
   })
 
   it('llama al endpoint correcto con el body correcto', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(new Response('{}', { status: 200 }))
-    await registerSamplingDecision({ ...baseInput, defectsByItem: { 1: 2 }, notes: 'Observación' })
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { approved: true, sampled_pieces: 2, ng: 0, max_defects: 1 } }), { status: 201 }),
+    )
+    await registerSamplingDetalle({ ...baseInput, itemId: 7, defects: 2 })
     const [url, opts] = vi.mocked(fetch).mock.calls[0]
     expect(String(url)).toContain('/qb_sync/daily-reports/10/sampling')
     const body = JSON.parse((opts as RequestInit).body as string)
-    expect(body.decision).toBe('approve')
-    expect(body.defects_by_item).toEqual({ '1': 2 })
-    expect(body.notes).toBe('Observación')
+    expect(body.item_id).toBe(7)
+    expect(body.defects).toBe(2)
   })
 })

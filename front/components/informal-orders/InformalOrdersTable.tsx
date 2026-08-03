@@ -3,18 +3,19 @@
 import { useState } from 'react'
 import { Search, UserCheck, UserPlus } from 'lucide-react'
 import type { InformalOrderRow } from '@/shared/types/informalOrder'
+import { InformalOrderDetailModal } from './InformalOrderDetailModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface InformalOrdersTableProps {
   orders: InformalOrderRow[]
-  /** Cuando se provee, se muestra la columna de Acciones con el botón "Asignar" en filas sin inspectores. */
+  /** Cuando se provee, se muestra el botón "Asignar" en filas sin inspectores (además del "Ver detalles", siempre visible). */
   onAssign?: (order: InformalOrderRow) => void
 }
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function TipoOrdenBadge({ tipo }: { tipo: 'OV' | 'OA' }) {
+export function TipoOrdenBadge({ tipo }: { tipo: 'OV' | 'OA' }) {
   if (tipo === 'OV') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 dark:bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-400">
@@ -29,7 +30,7 @@ function TipoOrdenBadge({ tipo }: { tipo: 'OV' | 'OA' }) {
   )
 }
 
-function EstadoReporteBadge({ estado }: { estado: 'ENVIADO' | 'FIRMADO' | null }) {
+export function EstadoReporteBadge({ estado }: { estado: 'ENVIADO' | 'FIRMADO' | null }) {
   if (estado === 'FIRMADO') {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 dark:bg-green-500/10 px-2.5 py-1 text-xs font-medium text-green-700 dark:text-green-300">
@@ -54,7 +55,7 @@ function EstadoReporteBadge({ estado }: { estado: 'ENVIADO' | 'FIRMADO' | null }
   )
 }
 
-function InspectoresCell({ inspectores }: { inspectores: { id: number; name: string }[] }) {
+export function InspectoresCell({ inspectores }: { inspectores: { id: number; name: string }[] }) {
   if (inspectores.length === 0) {
     return <span className="text-xs text-slate-600 dark:text-slate-500">Sin asignar</span>
   }
@@ -77,6 +78,7 @@ function InspectoresCell({ inspectores }: { inspectores: { id: number; name: str
 
 export function InformalOrdersTable({ orders, onAssign }: InformalOrdersTableProps) {
   const [search, setSearch] = useState('')
+  const [detailOrder, setDetailOrder] = useState<InformalOrderRow | null>(null)
 
   const filtered = orders.filter((o) => {
     const q = search.trim().toLowerCase()
@@ -90,8 +92,6 @@ export function InformalOrdersTable({ orders, onAssign }: InformalOrdersTablePro
       o.inspectores.some((i) => i.name.toLowerCase().includes(q))
     )
   })
-
-  const showActions = typeof onAssign === 'function'
 
   return (
     <div className="flex flex-col gap-3">
@@ -139,17 +139,16 @@ export function InformalOrdersTable({ orders, onAssign }: InformalOrdersTablePro
                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                   Estado reporte
                 </th>
-                {showActions && (
-                  <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-black dark:text-white uppercase tracking-wider">
-                    <span className="sr-only">Acciones</span>
-                  </th>
-                )}
+                {/* "Ver detalles" siempre visible; "Asignar" solo cuando el portal provee onAssign. */}
+                <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-black dark:text-white uppercase tracking-wider">
+                  <span className="sr-only">Acciones</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={showActions ? 8 : 7} className="px-4 py-12 text-center text-slate-500 text-sm">
+                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500 text-sm">
                     No se encontraron órdenes informales con los filtros actuales.
                   </td>
                 </tr>
@@ -157,7 +156,17 @@ export function InformalOrdersTable({ orders, onAssign }: InformalOrdersTablePro
                 filtered.map((order) => (
                   <tr
                     key={order.itemOrdenInformalId}
-                    className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors"
+                    onClick={() => setDetailOrder(order)}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Ver detalles de ${order.numeroParte}`}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setDetailOrder(order)
+                      }
+                    }}
+                    className="cursor-pointer hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors"
                   >
                     <td className="px-4 py-3 whitespace-nowrap">
                       <TipoOrdenBadge tipo={order.tipoOrden} />
@@ -185,23 +194,24 @@ export function InformalOrdersTable({ orders, onAssign }: InformalOrdersTablePro
                     <td className="px-4 py-3 whitespace-nowrap">
                       <EstadoReporteBadge estado={order.estadoReporte} />
                     </td>
-                    {showActions && (
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end">
-                          {order.inspectores.length === 0 && (
-                            <button
-                              type="button"
-                              onClick={() => onAssign?.(order)}
-                              aria-label={`Asignar inspectores a ${order.numeroParte}`}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
-                            >
-                              <UserPlus size={12} className="flex-shrink-0" aria-hidden="true" />
-                              Asignar
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {onAssign && order.inspectores.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onAssign(order)
+                            }}
+                            aria-label={`Asignar inspectores a ${order.numeroParte}`}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
+                          >
+                            <UserPlus size={12} className="flex-shrink-0" aria-hidden="true" />
+                            Asignar
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -209,6 +219,10 @@ export function InformalOrdersTable({ orders, onAssign }: InformalOrdersTablePro
           </table>
         </div>
       </div>
+
+      {detailOrder !== null && (
+        <InformalOrderDetailModal orden={detailOrder} onClose={() => setDetailOrder(null)} />
+      )}
     </div>
   )
 }

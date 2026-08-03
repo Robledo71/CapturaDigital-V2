@@ -6,7 +6,6 @@ import {
   LayoutGrid,
   ClipboardList,
   FileText,
-  Tablet,
   Download,
   Unlock,
   Headset,
@@ -42,9 +41,8 @@ const GROUPS: ModuleGroup[] = [
   {
     heading: 'Operación',
     cards: [
-      { label: 'Carga de trabajo', description: 'Asignación de órdenes a tablets.', href: '/superusuario/carga-trabajo', icon: <ClipboardList size={20} /> },
+      { label: 'Carga de trabajo', description: 'Asignación de órdenes a inspectores.', href: '/superusuario/carga-trabajo', icon: <ClipboardList size={20} /> },
       { label: 'Reportes', description: 'Bandeja de reportes y su flujo.', href: '/superusuario/reportes', icon: <FileText size={20} /> },
-      { label: 'Tablets', description: 'Alta, edición y estado de tablets.', href: '/superusuario/tablets', icon: <Tablet size={20} /> },
     ],
   },
   {

@@ -8,6 +8,7 @@ export type InformalOrderRow = {
   plantaNombre: string | null
   numeroParte: string
   nombreParte: string | null
+  incidentes: string | null
   solicitanteNombre: string | null
   inspectores: { id: number; name: string }[]
   estadoReporte: 'ENVIADO' | 'FIRMADO' | null

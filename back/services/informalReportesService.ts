@@ -4,14 +4,14 @@ import type {
   ReporteDetalleData,
   InspectionItemRow,
   SamplingItemRule,
-  SamplingDecisionInput,
-  SamplingDecisionResult,
+  SamplingDetalleInput,
+  SamplingDetalleResult,
 } from '@/back/services/reporteDetalleService'
 
 // Re-exporta los tipos que el consumidor (acciones/UI) necesita para no acoplarse
 // también a reporteDetalleService — mismo patrón que reporteDetalleService hace con
 // front/lib/sampling.
-export type { ReporteDetalleData, InspectionItemRow, SamplingDecisionInput, SamplingDecisionResult }
+export type { ReporteDetalleData, InspectionItemRow, SamplingDetalleInput, SamplingDetalleResult }
 
 // ── Tipos públicos ──────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ export type InformalReporteListRow = {
 
 export type InformalSignResult =
   | { ok: true; status: 'signed' }
-  | { ok: false; reason: 'not_found' | 'invalid_status' }
+  | { ok: false; reason: 'not_found' | 'invalid_status' | 'no_signature' }
 
 // ── Tipos internos de la respuesta de qb_sync ───────────────────────────────
 // Ver qb_sync/src/modules/informal-reports/{repository,service}.js — la lista viene
@@ -63,12 +63,16 @@ type ApiInformalItemSampling = {
   ok_pieces: number | null
   ng_pieces: number | null
   result: 'aprobado' | 'no_aprobado' | null
+  needs_edit?: boolean
+  observations?: string | null
   sampled_by_name: string | null
   sampled_at: string | null
 }
 
 type ApiInformalItem = {
   id: number
+  // Número de parte específico que inspeccionó este detalle (captura.pieza_inspeccionada).
+  inspected_part: string | null
   identifier: {
     lote: string | null
     serie: string | null
@@ -100,6 +104,8 @@ type ApiInformalReportSummary = {
   incident_types: string[]
   signed_at: string | null
   signed_by: string | null
+  signed_by_id: number | null
+  signed_by_name: string | null
   operators: string[]
   items: ApiInformalItem[]
 }
@@ -158,8 +164,8 @@ export async function getInformalReportes(accessToken: string): Promise<Informal
 //
 // Reusa el mismo tipo ReporteDetalleData que el flujo formal para que
 // ReporteDetallePage no necesite un modelo de datos distinto. Varios campos del
-// formal (cotizacion, tablet, sesión de captura, supervisor) no existen en el
-// contrato informal (las órdenes informales no tienen cotización/tablet, y
+// formal (cotizacion, sesión de captura, supervisor) no existen en el
+// contrato informal (las órdenes informales no tienen cotización, y
 // getReportSummary() de qb_sync no expone fecha_inicio/fin ni supervisor_name)
 // — se rellenan con el fallback más razonable ('—' / null / '').
 
@@ -184,7 +190,9 @@ export async function getInformalReporteDetalle(
   const inspectionItems: InspectionItemRow[] = report.items.map((item) => ({
     id: item.id,
     partName: null,
-    partNumber: report.part_number ?? null,
+    // Número de parte por fila: el que inspeccionó ese detalle. Fallback al
+    // número de parte del reporte si el detalle no lo tiene (filas legacy).
+    partNumber: item.inspected_part ?? report.part_number ?? null,
     inspected: item.total_pieces,
     ok: item.ok_pieces,
     ng: item.ng_pieces,
@@ -197,6 +205,10 @@ export async function getInformalReporteDetalle(
     lote: item.identifier?.lote ?? null,
     serie: item.identifier?.serie ?? null,
     identificadores: formatIdentificadores(item.identifier?.otros ?? null),
+    identificadoresRaw:
+      item.identifier?.otros && typeof item.identifier.otros === 'object'
+        ? (item.identifier.otros as Record<string, string>)
+        : {},
     sampling: item.sampling
       ? {
           required: item.sampling.required,
@@ -204,6 +216,10 @@ export async function getInformalReporteDetalle(
           result: item.sampling.result,
           sampledPieces: item.sampling.sampled_pieces,
           ng: item.sampling.ng_pieces,
+          needsEdit: item.sampling.needs_edit ?? false,
+          observations: item.sampling.observations ?? null,
+          sampledByName: item.sampling.sampled_by_name ?? null,
+          sampledAt: item.sampling.sampled_at ?? null,
         }
       : {
           required: getSamplingRule(item.total_pieces) !== null,
@@ -211,6 +227,10 @@ export async function getInformalReporteDetalle(
           result: null,
           sampledPieces: 0,
           ng: null,
+          needsEdit: false,
+          observations: null,
+          sampledByName: null,
+          sampledAt: null,
         },
   }))
 
@@ -285,8 +305,6 @@ export async function getInformalReporteDetalle(
 
     operadores,
     turno: report.shift ?? '—',
-    // El contrato informal no expone tablet/dispositivo de captura.
-    tabletAlias: '—',
 
     // getReportSummary() no expone fecha_inicio/fecha_fin de la sesión de
     // inspección — se deja sin datos (la UI simplemente muestra esos pasos del
@@ -298,52 +316,57 @@ export async function getInformalReporteDetalle(
     // el firmante cuando existe, igual que en el formal se usa order_context.supervisor_name.
     supervisorName: report.signed_by ?? '',
 
+    // usuario_id numérico del firmante (para pedir su firma vía
+    // /api/signatures/:userId) + nombre. `signed_by` (string) queda como fallback.
+    signedBy: report.signed_by_id ?? null,
+    signedByName: report.signed_by_name ?? report.signed_by ?? null,
+
     isLegacy: false,
     legacyCsvTable: null,
   }
 }
 
-// ── registerInformalSamplingDecision ─────────────────────────────────────────
+// ── registerSamplingDetalleInformal ──────────────────────────────────────────
 //
 // A diferencia del flujo formal, el controller de informal-reports SIEMPRE
 // responde 422 con { reason, message } cuando el service lanza un error con
 // `.reason` (incluido 'invalid_status') — nunca 409 para este endpoint. Ver
 // qb_sync informal-reports.controller.js#handleRegisterInformalSampling.
 
-export async function registerInformalSamplingDecision(
-  input: SamplingDecisionInput,
-): Promise<SamplingDecisionResult> {
-  const defectsByItemStr: Record<string, number> = {}
-  for (const [key, val] of Object.entries(input.defectsByItem)) {
-    defectsByItemStr[String(key)] = val
-  }
-
+export async function registerSamplingDetalleInformal(
+  input: SamplingDetalleInput,
+): Promise<SamplingDetalleResult> {
   const res = await fetch(`${baseUrl()}/qb_sync/informal-reports/${input.reportId}/sampling`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...apiHeaders(input.accessToken),
     },
-    body: JSON.stringify({
-      decision: input.decision,
-      defects_by_item: defectsByItemStr,
-      notes: input.notes,
-    }),
+    body: JSON.stringify({ item_id: input.itemId, defects: input.defects, observations: input.observations ?? null }),
   })
 
   if (res.status === 404) return { ok: false, reason: 'not_found' }
 
-  if (res.status === 422) {
+  if (res.status === 409 || res.status === 422) {
     const body = await res.json().catch(() => ({}))
-    const knownReasons = ['notes_required', 'no_sampling_items', 'rule_failed', 'invalid_status'] as const
+    const knownReasons = ['invalid_status', 'no_sampling_items', 'item_not_found'] as const
     type KnownReason = (typeof knownReasons)[number]
     const r: KnownReason = knownReasons.includes(body.reason) ? body.reason : 'invalid_status'
     return { ok: false, reason: r }
   }
 
-  if (!res.ok) throw new Error(`informal sampling failed: ${res.status}`)
+  if (!res.ok) return { ok: false, reason: 'error' }
 
-  return { ok: true, status: input.decision === 'approve' ? 'sampling' : 'pending' }
+  const body = await res.json().catch(() => ({}))
+  const data = body?.data ?? {}
+
+  return {
+    ok: true,
+    approved: Boolean(data.approved),
+    sampledPieces: Number(data.sampled_pieces) || 0,
+    ng: Number(data.ng) || 0,
+    maxDefects: Number(data.max_defects) || 0,
+  }
 }
 
 // ── updateInformalReportItem ──────────────────────────────────────────────────
@@ -352,6 +375,9 @@ export type UpdateInformalReportItemInput = {
   reportId: number
   itemId: number
   accessToken: string
+  lote: string | null
+  serie: string | null
+  identificadores: Record<string, string> | null
   totalPieces: number
   okPieces: number
   ngPieces: number
@@ -375,6 +401,9 @@ export async function updateInformalReportItem(
         ...apiHeaders(input.accessToken),
       },
       body: JSON.stringify({
+        lote: input.lote,
+        serie: input.serie,
+        identificadores: input.identificadores,
         total_pieces: input.totalPieces,
         ok_pieces: input.okPieces,
         ng_pieces: input.ngPieces,
@@ -407,6 +436,10 @@ export async function signInformalReporte(
 
   if (res.status === 404) return { ok: false, reason: 'not_found' }
   if (res.status === 409) return { ok: false, reason: 'invalid_status' }
+  if (res.status === 422) {
+    const body = await res.json().catch(() => ({}))
+    return { ok: false, reason: body.reason === 'no_signature' ? 'no_signature' : 'invalid_status' }
+  }
   if (!res.ok) throw new Error(`sign informal report failed: ${res.status}`)
 
   return { ok: true, status: 'signed' }

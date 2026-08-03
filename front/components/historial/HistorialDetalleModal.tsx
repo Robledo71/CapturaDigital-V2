@@ -43,6 +43,16 @@ export function HistorialDetalleModal({ registro, onClose }: HistorialDetalleMod
   const incAfterMap = new Map(registro.incidencias.after.map((i) => [i.name, i.pieces]))
   const incNames = Array.from(new Set([...incBeforeMap.keys(), ...incAfterMap.keys()]))
 
+  // Comparativo de identificadores: lote, serie y pares { tipo: valor } (unión).
+  const idBefore = registro.identificadores?.before ?? { lote: null, serie: null, otros: {} }
+  const idAfter = registro.identificadores?.after ?? { lote: null, serie: null, otros: {} }
+  const otrosKeys = Array.from(new Set([...Object.keys(idBefore.otros ?? {}), ...Object.keys(idAfter.otros ?? {})]))
+  const identificadorRows = [
+    { label: 'Lote', antes: idBefore.lote, despues: idAfter.lote },
+    { label: 'Serie', antes: idBefore.serie, despues: idAfter.serie },
+    ...otrosKeys.map((k) => ({ label: k, antes: idBefore.otros?.[k] ?? null, despues: idAfter.otros?.[k] ?? null })),
+  ].filter((r) => r.antes != null || r.despues != null)
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -184,6 +194,57 @@ export function HistorialDetalleModal({ registro, onClose }: HistorialDetalleMod
                           </td>
                           <td
                             className={`px-3 py-2 text-right tabular-nums font-medium ${
+                              cambio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            {despues ?? '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Comparativo de identificadores */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+              Identificadores (antes → después)
+            </p>
+            {identificadorRows.length === 0 ? (
+              <p className="rounded-lg bg-slate-50 dark:bg-[#0f2138] px-3 py-3 text-sm text-slate-500 dark:text-slate-400">
+                Sin identificadores en esta edición.
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-[#0f2138] text-xs text-slate-500 dark:text-slate-400">
+                      <th className="px-3 py-2 text-left font-semibold">Identificador</th>
+                      <th className="px-3 py-2 text-right font-semibold">Antes</th>
+                      <th className="px-3 py-2 text-center font-semibold"></th>
+                      <th className="px-3 py-2 text-right font-semibold">Después</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {identificadorRows.map(({ label, antes, despues }) => {
+                      const cambio = antes !== despues
+                      return (
+                        <tr
+                          key={label}
+                          className={`border-t border-slate-100 dark:border-slate-800 ${cambio ? 'bg-blue-500/5' : ''}`}
+                        >
+                          <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{label}</td>
+                          <td className="px-3 py-2 text-right font-mono text-slate-500 dark:text-slate-400">
+                            {antes ?? '—'}
+                          </td>
+                          <td className="px-3 py-2 text-center text-slate-400">
+                            {cambio && <ArrowRight size={13} className="inline" aria-hidden="true" />}
+                          </td>
+                          <td
+                            className={`px-3 py-2 text-right font-mono font-medium ${
                               cambio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'
                             }`}
                           >

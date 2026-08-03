@@ -73,14 +73,6 @@ export function isInventarioCompleto(
   return !indefinite && item.inventario > 0 && item.inventarioTerminado >= item.inventario
 }
 
-function formatMXN(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2,
-  }).format(amount)
-}
-
 // ─── Status badge config ──────────────────────────────────────────────────────
 
 const ITEM_STATUS_CONFIG: Record<string, { label: string; pill: string; dot: string; text: string }> = {
@@ -110,24 +102,6 @@ const ITEM_STATUS_CONFIG: Record<string, { label: string; pill: string; dot: str
   },
 }
 
-const QUOTATION_STATUS_CONFIG: Record<string, { label: string; pill: string; text: string }> = {
-  pendiente: {
-    label: 'Pendiente',
-    pill: 'bg-slate-100 border border-slate-300 dark:bg-slate-500/10 dark:border-slate-500/20',
-    text: 'text-slate-600 dark:text-slate-400',
-  },
-  aprobada: {
-    label: 'Aprobada',
-    pill: 'bg-green-100 border border-green-300 dark:bg-green-500/10 dark:border-green-500/20',
-    text: 'text-green-700 dark:text-green-400',
-  },
-  rechazada: {
-    label: 'Rechazada',
-    pill: 'bg-red-100 border border-red-300 dark:bg-red-500/10 dark:border-red-500/20',
-    text: 'text-red-700 dark:text-red-400',
-  },
-}
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ItemStatusBadge({ status }: { status: string }) {
@@ -137,17 +111,6 @@ function ItemStatusBadge({ status }: { status: string }) {
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${cfg.pill} ${cfg.text}`}
     >
       <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${cfg.dot}`} aria-hidden="true" />
-      {cfg.label}
-    </span>
-  )
-}
-
-function QuotationStatusBadge({ status }: { status: string }) {
-  const cfg = QUOTATION_STATUS_CONFIG[status] ?? QUOTATION_STATUS_CONFIG.pendiente
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cfg.pill} ${cfg.text}`}
-    >
       {cfg.label}
     </span>
   )
@@ -986,15 +949,11 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
                   {order.quotations.map((q, idx) => (
                     <li
                       key={q.consecutiveNumber ?? `q-${idx}`}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628] px-3 py-2.5"
+                      className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628] px-3 py-2.5"
                     >
                       <span className="font-mono text-sm font-medium text-slate-800 dark:text-slate-200">
                         {q.consecutiveNumber}
                       </span>
-                      <div className="flex items-center gap-3">
-                        <QuotationStatusBadge status={q.status ?? ''} />
-                        <span className="text-sm text-slate-600 dark:text-slate-300">{formatMXN(q.total)}</span>
-                      </div>
                     </li>
                   ))}
                 </ul>

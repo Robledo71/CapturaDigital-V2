@@ -6,17 +6,17 @@ vi.mock('@/back/services/session', () => ({
 }))
 
 vi.mock('@/back/services/informalReportesService', () => ({
-  registerInformalSamplingDecision: vi.fn(),
+  registerSamplingDetalleInformal: vi.fn(),
   signInformalReporte: vi.fn(),
 }))
 
 import { getSession } from '@/back/services/session'
 import {
-  registerInformalSamplingDecision,
+  registerSamplingDetalleInformal,
   signInformalReporte,
 } from '@/back/services/informalReportesService'
 import {
-  registerInformalSamplingAction,
+  registrarMuestreoDetalleInformalAction,
   signInformalReporteAction,
 } from '@/app/actions/informal-report-workflow'
 
@@ -48,71 +48,84 @@ function makeFormData(fields: Record<string, string>): FormData {
   return fd
 }
 
-// ─── registerInformalSamplingAction ───────────────────────────────────────────
+// ─── registrarMuestreoDetalleInformalAction ────────────────────────────────────
 
-describe('registerInformalSamplingAction', () => {
+describe('registrarMuestreoDetalleInformalAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('sin sesión → { error: "No autorizado" }', async () => {
+  it('sin sesión → { ok: false, error: "No autorizado" }', async () => {
     vi.mocked(getSession).mockResolvedValue(null)
-    const fd = makeFormData({ reportId: '1', decision: 'approve' })
+    const fd = makeFormData({ reportId: '1', item_id: '1', defects: '0' })
 
-    const result = await registerInformalSamplingAction({}, fd)
-    expect(result).toMatchObject({ error: 'No autorizado' })
+    const result = await registrarMuestreoDetalleInformalAction({}, fd)
+    expect(result).toEqual({ ok: false, error: 'No autorizado' })
   })
 
-  it('rol capturacion (solo lectura) → { error: "No autorizado" }', async () => {
+  it('rol capturacion (solo lectura) → { ok: false, error: "No autorizado" }', async () => {
     vi.mocked(getSession).mockResolvedValue(capturacionSession())
-    const fd = makeFormData({ reportId: '1', decision: 'approve' })
+    const fd = makeFormData({ reportId: '1', item_id: '1', defects: '0' })
 
-    const result = await registerInformalSamplingAction({}, fd)
-    expect(result).toMatchObject({ error: 'No autorizado' })
-    expect(registerInformalSamplingDecision).not.toHaveBeenCalled()
+    const result = await registrarMuestreoDetalleInformalAction({}, fd)
+    expect(result).toEqual({ ok: false, error: 'No autorizado' })
+    expect(registerSamplingDetalleInformal).not.toHaveBeenCalled()
   })
 
-  it('reportId no numérico → { error: "Reporte requerido" }', async () => {
+  it('reportId no numérico → error', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
-    const fd = makeFormData({ reportId: 'abc', decision: 'approve' })
+    const fd = makeFormData({ reportId: 'abc', item_id: '1', defects: '0' })
 
-    const result = await registerInformalSamplingAction({}, fd)
-    expect(result).toMatchObject({ error: 'Reporte requerido' })
+    const result = await registrarMuestreoDetalleInformalAction({}, fd)
+    expect(result).toEqual({ ok: false, error: 'Reporte o ítem inválido' })
   })
 
-  it('decisión inválida → error de decisión', async () => {
+  it('éxito aprobado → { ok: true, approved: true, itemId, message }', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
-    const fd = makeFormData({ reportId: '5', decision: 'invalid' })
+    vi.mocked(registerSamplingDetalleInformal).mockResolvedValue({
+      ok: true,
+      approved: true,
+      sampledPieces: 2,
+      ng: 0,
+      maxDefects: 1,
+    })
+    const fd = makeFormData({ reportId: '42', item_id: '7', defects: '0' })
 
-    const result = await registerInformalSamplingAction({}, fd)
-    expect(result).toMatchObject({ error: 'Decisión de muestreo inválida' })
+    const result = await registrarMuestreoDetalleInformalAction({}, fd)
+    expect(result).toEqual({ ok: true, approved: true, itemId: 7, message: 'Muestreo aprobado' })
   })
 
-  it('éxito → { ok: true }', async () => {
+  it('éxito no aprobado → { ok: true, approved: false, message: "Muestreo NO aprobado" }', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
-    vi.mocked(registerInformalSamplingDecision).mockResolvedValue({ ok: true, status: 'sampling' })
-    const fd = makeFormData({ reportId: '42', decision: 'approve' })
+    vi.mocked(registerSamplingDetalleInformal).mockResolvedValue({
+      ok: true,
+      approved: false,
+      sampledPieces: 2,
+      ng: 2,
+      maxDefects: 1,
+    })
+    const fd = makeFormData({ reportId: '42', item_id: '7', defects: '2' })
 
-    const result = await registerInformalSamplingAction({}, fd)
-    expect(result).toEqual({ ok: true })
+    const result = await registrarMuestreoDetalleInformalAction({}, fd)
+    expect(result).toEqual({ ok: true, approved: false, itemId: 7, message: 'Muestreo NO aprobado' })
   })
 
-  it('qb_sync devuelve error → devuelve el mensaje de error', async () => {
+  it('qb_sync devuelve not_found → mensaje de error', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
-    vi.mocked(registerInformalSamplingDecision).mockResolvedValue({ ok: false, reason: 'not_found' })
-    const fd = makeFormData({ reportId: '42', decision: 'approve' })
+    vi.mocked(registerSamplingDetalleInformal).mockResolvedValue({ ok: false, reason: 'not_found' })
+    const fd = makeFormData({ reportId: '42', item_id: '7', defects: '0' })
 
-    const result = await registerInformalSamplingAction({}, fd)
-    expect(result).toMatchObject({ error: 'Reporte no encontrado' })
+    const result = await registrarMuestreoDetalleInformalAction({}, fd)
+    expect(result).toEqual({ ok: false, error: 'Reporte no encontrado.' })
   })
 
-  it('qb_sync devuelve rule_failed → devuelve mensaje AQL', async () => {
+  it('qb_sync devuelve invalid_status → mensaje de error', async () => {
     vi.mocked(getSession).mockResolvedValue(supervisorSession())
-    vi.mocked(registerInformalSamplingDecision).mockResolvedValue({ ok: false, reason: 'rule_failed' })
-    const fd = makeFormData({ reportId: '42', decision: 'reject' })
+    vi.mocked(registerSamplingDetalleInformal).mockResolvedValue({ ok: false, reason: 'invalid_status' })
+    const fd = makeFormData({ reportId: '42', item_id: '7', defects: '0' })
 
-    const result = await registerInformalSamplingAction({}, fd)
-    expect(result).toMatchObject({ error: expect.stringContaining('AQL') })
+    const result = await registrarMuestreoDetalleInformalAction({}, fd)
+    expect(result).toMatchObject({ error: expect.stringContaining('estado válido') })
   })
 })
 

@@ -53,30 +53,42 @@ export function ProductionPanel({ items }: ProductionPanelProps) {
                 <span className={STATUS_CLASSES[item.status]}>{item.status}</span>
               </div>
 
-              {/* Progress bar */}
-              <div
-                className="h-1 rounded-full bg-slate-200 dark:bg-[#1a2d4d] overflow-hidden"
-                role="progressbar"
-                aria-valuenow={percentage}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label={`Progreso de ${item.operadores}`}
-              >
-                <div
-                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                  style={{ width: fillWidth }}
-                />
-              </div>
+              {item.source === 'informal' ? (
+                /* Órdenes informales no tienen inventario/meta → en lugar de la barra
+                   de progreso se muestra un badge que identifica el tipo de orden. */
+                <div className="flex items-center">
+                  <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30 text-[10px] font-semibold px-2 py-0.5">
+                    Orden informal
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {/* Progress bar */}
+                  <div
+                    className="h-1 rounded-full bg-slate-200 dark:bg-[#1a2d4d] overflow-hidden"
+                    role="progressbar"
+                    aria-valuenow={percentage}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Progreso de ${item.operadores}`}
+                  >
+                    <div
+                      className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                      style={{ width: fillWidth }}
+                    />
+                  </div>
 
-              {/* Bottom row: count + percentage */}
-              <div className="flex items-center">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {item.current.toLocaleString()} / {item.total.toLocaleString()}
-                </span>
-                <span className="text-[10px] text-slate-700 dark:text-slate-300 ml-auto font-medium">
-                  {percentage}%
-                </span>
-              </div>
+                  {/* Bottom row: count + percentage */}
+                  <div className="flex items-center">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                      {item.current.toLocaleString()} / {item.total.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] text-slate-700 dark:text-slate-300 ml-auto font-medium">
+                      {percentage}%
+                    </span>
+                  </div>
+                </>
+              )}
 
             </div>
           )

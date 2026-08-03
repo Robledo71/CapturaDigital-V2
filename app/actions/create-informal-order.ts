@@ -58,6 +58,9 @@ export async function crearOrdenInformalAction(
 
   const inspectorIds = formData.getAll('inspectorIds').map(String).filter(Boolean)
 
+  const incidencias = formData.getAll('incidencias').map((v) => String(v).trim()).filter(Boolean)
+  const incidentes = incidencias.join(', ')
+
   let inspectionSession: { idSupervisor: string; idInspectores: string[] } | undefined
   if (inspectorIds.length > 0) {
     if (!session.empleadoId) {
@@ -78,6 +81,7 @@ export async function crearOrdenInformalAction(
           numeroParte: validated.data.numero_parte,
           nombreParte: validated.data.nombre_parte,
           plantaId: validated.data.planta_id,
+          incidentes: incidentes || undefined,
         },
         ...(inspectionSession ? { inspectionSession } : {}),
       },

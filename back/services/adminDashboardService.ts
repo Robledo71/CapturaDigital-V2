@@ -6,9 +6,7 @@ export type AdminDashboardStats = {
   usuariosActivos: number
   totalClientes: number
   plantasActivas: number
-  tabletsRegistradas: number
   reportesPendientes: number
-  tabletsActivas: number
   desglosePorRol: {
     admin: number
     supervisor: number
@@ -47,7 +45,6 @@ interface RawAdminDashboard {
   usuariosActivos: number
   porRol: Record<string, number>
   totalPlantas: number
-  totalTablets: number
   usuariosRecientes: RawUsuarioReciente[]
 }
 
@@ -80,9 +77,7 @@ export async function getAdminDashboardData(accessToken: string): Promise<AdminD
     usuariosActivos: raw.usuariosActivos ?? 0,
     totalClientes: 0,          // TODO Fase 4: no disponible en este endpoint
     plantasActivas: raw.totalPlantas ?? 0,
-    tabletsRegistradas: raw.totalTablets ?? 0,
     reportesPendientes: 0,     // TODO Fase 3: no disponible en este endpoint
-    tabletsActivas: 0,         // TODO: endpoint no devuelve desglose activa/total
     desglosePorRol: {
       admin: porRol['admin'] ?? 0,
       supervisor: porRol['supervisor'] ?? 0,
