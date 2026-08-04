@@ -7,11 +7,22 @@ import type { UsuarioRow } from '@/shared/types/usuario'
 // ---------------------------------------------------------------------------
 
 export type CreateUsuarioInput = {
-  nombreCompleto: string
+  nombreEmpleado: string
+  apellidoPaterno: string
+  // Opcional: si se omite, la BD asigna 'X' por defecto en catalogos.empleados.
+  apellidoMaterno?: string
   codigoEmpleado: string
-  puesto: string
-  plantaId: number | null
-  rol: 'supervisor' | 'capturacion' | 'admin' | 'lider' | 'servicio_cliente' | 'gerente' | 'cliente'
+  plantaIds: number[]
+  rol:
+    | 'superusuario'
+    | 'admin'
+    | 'gerente'
+    | 'supervisor_regional'
+    | 'supervisor'
+    | 'lider'
+    | 'servicio_cliente'
+    | 'capturacion'
+    | 'inspector'
   correo: string
   contrasena: string
 }
@@ -22,11 +33,22 @@ export type CreateUsuarioResult =
 
 export type UpdateUsuarioInput = {
   id: number
-  nombreCompleto: string
+  nombreEmpleado: string
+  apellidoPaterno: string
+  // Opcional: si se omite/vacío, el backend guarda 'X' por defecto.
+  apellidoMaterno?: string
   codigoEmpleado: string
-  puesto: string
-  plantaId: number | null
-  rol: 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'gerente' | 'cliente'
+  plantaIds: number[]
+  rol:
+    | 'superusuario'
+    | 'admin'
+    | 'gerente'
+    | 'supervisor_regional'
+    | 'supervisor'
+    | 'lider'
+    | 'servicio_cliente'
+    | 'capturacion'
+    | 'inspector'
   correo: string
 }
 
@@ -42,13 +64,19 @@ type ExternalUser = {
   id?: number
   nombre_completo?: string
   nombreCompleto?: string
+  nombre_empleado?: string
+  nombreEmpleado?: string
+  apellido_paterno?: string
+  apellidoPaterno?: string
+  apellido_materno?: string
+  apellidoMaterno?: string
   codigo_empleado?: string
   codigoEmpleado?: string
-  puesto?: string
   planta_id?: number | null
   plantaId?: number | null
   planta_nombre?: string | null
   plantaNombre?: string | null
+  plantas?: { id: number; nombre: string }[]
   rol?: string
   correo?: string
   is_active?: boolean
@@ -56,13 +84,19 @@ type ExternalUser = {
 }
 
 function mapExternalUser(u: ExternalUser): UsuarioRow {
+  // 'X' es el default que la BD asigna a apellido_materno cuando no se
+  // capturó; se normaliza a cadena vacía para no mostrarlo en el formulario.
+  const apellidoMaternoRaw = u.apellido_materno ?? u.apellidoMaterno ?? ''
   return {
     id: u.id ?? 0,
     nombreCompleto: u.nombre_completo ?? u.nombreCompleto ?? '',
+    nombreEmpleado: u.nombre_empleado ?? u.nombreEmpleado ?? '',
+    apellidoPaterno: u.apellido_paterno ?? u.apellidoPaterno ?? '',
+    apellidoMaterno: apellidoMaternoRaw === 'X' ? '' : apellidoMaternoRaw,
     codigoEmpleado: u.codigo_empleado ?? u.codigoEmpleado ?? '',
-    puesto: u.puesto ?? '',
     plantaId: u.planta_id ?? u.plantaId ?? null,
     plantaNombre: u.planta_nombre ?? u.plantaNombre ?? null,
+    plantas: Array.isArray(u.plantas) ? u.plantas.map((p) => ({ id: p.id, nombre: p.nombre })) : [],
     rol: (u.rol ?? 'capturacion') as UsuarioRow['rol'],
     correo: u.correo ?? '',
     isActive: u.is_active ?? u.isActive ?? true,
@@ -108,11 +142,12 @@ export async function createUsuario(
     method: 'POST',
     headers: apiHeaders(accessToken),
     body: JSON.stringify({
-      nombre_completo: input.nombreCompleto,
+      nombre_empleado: input.nombreEmpleado,
+      apellido_paterno: input.apellidoPaterno,
+      // Se omite si viene vacío/undefined → la BD asigna 'X' por defecto.
+      apellido_materno: input.apellidoMaterno || undefined,
       codigo_empleado: input.codigoEmpleado,
-      puesto: input.puesto,
-      // El endpoint de creación no acepta planta_id null; se omite para clientes.
-      planta_id: input.plantaId ?? undefined,
+      planta_ids: input.plantaIds,
       rol: input.rol,
       correo: input.correo,
       contrasena: input.contrasena,
@@ -137,9 +172,15 @@ export async function createUsuario(
   return { ok: true, usuario: mapExternalUser(raw) }
 }
 
-export async function getNextCodigoEmpleado(accessToken: string): Promise<string | null> {
+export async function getNextCodigoEmpleado(
+  accessToken: string,
+  rol?: string,
+): Promise<string | null> {
   try {
-    const res = await fetch(`${baseUrl()}/qb_sync/users/next-codigo`, {
+    const url = rol
+      ? `${baseUrl()}/qb_sync/users/next-codigo?rol=${encodeURIComponent(rol)}`
+      : `${baseUrl()}/qb_sync/users/next-codigo`
+    const res = await fetch(url, {
       headers: apiHeaders(accessToken),
       cache: 'no-store',
     })
@@ -181,9 +222,10 @@ export async function updateUsuario(
       method: 'PUT',
       headers: apiHeaders(accessToken),
       body: JSON.stringify({
-        nombre_completo: input.nombreCompleto,
-        puesto: input.puesto,
-        planta_id: input.plantaId,
+        nombre_empleado: input.nombreEmpleado,
+        apellido_paterno: input.apellidoPaterno,
+        apellido_materno: input.apellidoMaterno ?? '',
+        planta_ids: input.plantaIds,
         rol: input.rol,
         correo: input.correo,
       }),

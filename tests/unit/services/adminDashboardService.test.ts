@@ -9,14 +9,12 @@ function makeRawDashboard(overrides: Partial<{
   usuariosActivos: number
   porRol: Record<string, number>
   totalPlantas: number
-  totalTablets: number
   usuariosRecientes: object[]
 }> = {}) {
   return {
     usuariosActivos: 10,
     porRol: { admin: 1, supervisor: 3, capturacion: 5, lider: 1 },
     totalPlantas: 4,
-    totalTablets: 8,
     usuariosRecientes: [
       {
         id: 1,
@@ -24,7 +22,6 @@ function makeRawDashboard(overrides: Partial<{
         codigo_empleado: 'EMP010',
         correo: 'carlos@example.com',
         rol: 'supervisor',
-        puesto: 'Supervisor General',
         is_active: true,
         created_at: '2024-01-15T10:00:00.000Z',
       },
@@ -61,14 +58,13 @@ describe('getAdminDashboardData', () => {
     vi.unstubAllGlobals()
   })
 
-  it('fetch exitoso → mapea usuariosActivos, porRol, totalPlantas, totalTablets', async () => {
+  it('fetch exitoso → mapea usuariosActivos, porRol, totalPlantas', async () => {
     vi.mocked(fetch).mockResolvedValue(makeOkResponse(makeRawDashboard()))
 
     const result = await getAdminDashboardData('my-access-token')
 
     expect(result.stats.usuariosActivos).toBe(10)
     expect(result.stats.plantasActivas).toBe(4)
-    expect(result.stats.tabletsRegistradas).toBe(8)
   })
 
   it('fetch exitoso → mapea desglosePorRol correctamente', async () => {

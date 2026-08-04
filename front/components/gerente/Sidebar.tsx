@@ -8,7 +8,9 @@ import { logoutUser } from '@/app/actions/logout'
 import {
   LayoutDashboard,
   ClipboardList,
+  ClipboardPen,
   FileText,
+  FileWarning,
   History,
   ChevronDown,
   X,
@@ -41,10 +43,22 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         permiso: 'ordenes.ver',
       },
       {
+        label: 'Órdenes informales',
+        href: '/gerente/ordenes-informales',
+        icon: <ClipboardPen size={16} />,
+        permiso: 'ordenes_informales.ver',
+      },
+      {
         label: 'Reportes',
         href: '/gerente/reportes',
         icon: <FileText size={16} />,
         permiso: 'reportes.ver',
+      },
+      {
+        label: 'Reportes informales',
+        href: '/gerente/reportes-informales',
+        icon: <FileWarning size={16} />,
+        permiso: 'reportes_informales.ver',
       },
       {
         label: 'Historial',
@@ -145,7 +159,7 @@ export function Sidebar({ user }: SidebarProps) {
                 const isActive =
                   item.href === '/gerente'
                     ? pathname === '/gerente'
-                    : pathname.startsWith(item.href)
+                    : pathname === item.href || pathname.startsWith(item.href + '/')
                 return (
                   <Link
                     key={item.href}

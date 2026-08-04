@@ -18,10 +18,15 @@ vi.mock('@/back/services/cargaDeTrabajoService', () => ({
   getOrderWorkloadById: vi.fn(),
 }))
 
+vi.mock('@/back/services/plantService', () => ({
+  getAllPlantas: vi.fn(),
+}))
+
 import { getSession } from '@/back/services/session'
 import { searchOrder, searchCotizaciones } from '@/back/services/qb-api'
 import { orderExists } from '@/back/services/qb_sync-api'
 import { getOrderWorkloadById } from '@/back/services/cargaDeTrabajoService'
+import { getAllPlantas } from '@/back/services/plantService'
 import { importCotizacionAction } from '@/app/actions/import-cotizacion'
 import type { OrderWorkload, OrderItemWorkload } from '@/back/services/cargaDeTrabajoService'
 
@@ -39,6 +44,7 @@ function makeSession(overrides: Partial<{
     codigoEmpleado: 'EMP001',
     nombreCompleto: 'Ana Torres',
     plantaId: 5,
+    plantaIds: [5],
     plantaNombre: 'Honda Celaya',
     accessToken: 'access-token',
     refreshToken: 'refresh-token',
@@ -115,6 +121,12 @@ function makeFormData(orden: string): FormData {
 describe('importCotizacionAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Catálogo de plantas por defecto: la planta del supervisor de prueba (id 5)
+    // en MAYÚSCULAS, tal como vive en catalogos.plantas — así los tests ejercen
+    // la normalización (case/acentos/espacios) del filtro por planta.
+    vi.mocked(getAllPlantas).mockResolvedValue([
+      { id: 5, nombre: 'HONDA CELAYA', direccion: null, regionId: null, nombreRegion: null },
+    ])
   })
 
   // 1. Sin sesión
@@ -189,7 +201,7 @@ describe('importCotizacionAction', () => {
       inventario: 50,
       inventarioTerminado: 0,
       assignedAt: null,
-      assignedTablet: { id: 7, alias: 'T-07', serialNumber: null },
+      assignedInspectors: [{ id: 7, name: 'Inspector Siete' }],
       quotationConsecutive: 'COT-001',
       hasSubmittedReport: false,
       hoe: null,
@@ -239,11 +251,11 @@ describe('importCotizacionAction', () => {
     const { order } = result as { ok: true; order: OrderWorkload }
     // The persisted DB id must be used (not the QB id)
     expect(order.id).toBe(999)
-    // The item that existed in DB must carry its persisted state (id=42, tablet assigned)
+    // The item that existed in DB must carry its persisted state (id=42, inspector assigned)
     expect(order.items).toHaveLength(1)
     expect(order.items[0].id).toBe(42)
     expect(order.items[0].status).toBe('in_progress')
-    expect(order.items[0].assignedTablet).not.toBeNull()
+    expect(order.items[0].assignedInspectors.length).toBeGreaterThan(0)
   })
 
   // 5b. Merge: QB tiene un item nuevo (no persistido) → aparece como id=0 pending
@@ -256,7 +268,7 @@ describe('importCotizacionAction', () => {
       inventario: 50,
       inventarioTerminado: 0,
       assignedAt: null,
-      assignedTablet: { id: 7, alias: 'T-07', serialNumber: null },
+      assignedInspectors: [{ id: 7, name: 'Inspector Siete' }],
       quotationConsecutive: 'COT-001',
       hasSubmittedReport: false,
       hoe: null,
@@ -336,7 +348,7 @@ describe('importCotizacionAction', () => {
     const newItem = order.items.find((i) => i.partNumber === 'HN-9900')
     expect(newItem?.id).toBe(0)
     expect(newItem?.status).toBe('pending')
-    expect(newItem?.assignedTablet).toBeNull()
+    expect(newItem?.assignedInspectors).toEqual([])
   })
 
   // 5c. Merge: persisted tiene item que QB ya no lista → se conserva en el resultado
@@ -349,7 +361,7 @@ describe('importCotizacionAction', () => {
       inventario: 50,
       inventarioTerminado: 50,
       assignedAt: null,
-      assignedTablet: null,
+      assignedInspectors: [],
       quotationConsecutive: 'COT-001',
       hasSubmittedReport: true,
       hoe: null,
@@ -545,7 +557,7 @@ describe('importCotizacionAction', () => {
   })
 
   // 10. Orden con items correctamente mapeados a OrderItemWorkload
-  it('la orden importada tiene items con status "pending" y sin tablet asignada', async () => {
+  it('la orden importada tiene items con status "pending" y sin inspectores asignados', async () => {
     vi.mocked(getSession).mockResolvedValue(makeSession() as never)
     vi.mocked(searchOrder).mockResolvedValue({
       ok: true,
@@ -560,8 +572,8 @@ describe('importCotizacionAction', () => {
 
     const result = await importCotizacionAction(undefined, makeFormData('ORD-001'))
 
-    const successResult = result as { ok: true; order: { items: Array<{ status: string; assignedTablet: null }> } }
+    const successResult = result as { ok: true; order: { items: Array<{ status: string; assignedInspectors: unknown[] }> } }
     expect(successResult.order.items[0].status).toBe('pending')
-    expect(successResult.order.items[0].assignedTablet).toBeNull()
+    expect(successResult.order.items[0].assignedInspectors).toEqual([])
   })
 })

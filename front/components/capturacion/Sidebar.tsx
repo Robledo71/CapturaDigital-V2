@@ -10,6 +10,8 @@ import {
   Download,
   ChevronDown,
   Lock,
+  ClipboardList,
+  ClipboardCheck,
   X,
 } from 'lucide-react'
 import { can, type Permiso, type SessionLike } from '@/front/lib/permisos'
@@ -43,7 +45,19 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         href: '/capturacion/desbloquear',
         icon: <Lock size={16} />,
         permiso: 'cotizaciones.desbloquear',
-      }
+      },
+      {
+        label: 'Órdenes informales',
+        href: '/capturacion/ordenes-informales',
+        icon: <ClipboardList size={16} />,
+        permiso: 'ordenes_informales.ver',
+      },
+      {
+        label: 'Reportes informales',
+        href: '/capturacion/reportes-informales',
+        icon: <ClipboardCheck size={16} />,
+        permiso: 'reportes_informales.ver',
+      },
     ],
   },
 ]

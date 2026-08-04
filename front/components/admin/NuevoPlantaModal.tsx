@@ -4,23 +4,26 @@ import { useActionState, useEffect, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { X, Loader2 } from 'lucide-react'
 import { createPlanta } from '@/app/actions/create-planta'
-import type { PlantaRow } from '@/shared/types/planta'
+import type { PlantaRow, RegionRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface NuevoPlantaModalProps {
   onClose: () => void
   onSuccess: (planta: PlantaRow) => void
+  regiones: RegionRow[]
 }
 
 interface FormValues {
   nombre: string
   direccion: string
+  regionId: string
 }
 
 const EMPTY_VALUES: FormValues = {
   nombre: '',
   direccion: '',
+  regionId: '',
 }
 
 // ─── Submit button ─────────────────────────────────────────────────────────────
@@ -46,11 +49,11 @@ const inputCls =
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function NuevoPlantaModal({ onClose, onSuccess }: NuevoPlantaModalProps) {
+export function NuevoPlantaModal({ onClose, onSuccess, regiones }: NuevoPlantaModalProps) {
   const [state, dispatch] = useActionState(createPlanta, undefined)
   const [values, setValues] = useState<FormValues>(EMPTY_VALUES)
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setValues((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
@@ -124,13 +127,13 @@ export function NuevoPlantaModal({ onClose, onSuccess }: NuevoPlantaModalProps) 
             <div className="flex flex-col gap-1">
               <label htmlFor="direccion-planta" className="text-xs font-medium text-black dark:text-slate-400">
                 Dirección
-                <span className="text-slate-600 font-normal ml-1">(opcional)</span>
               </label>
               <input
                 id="direccion-planta"
                 name="direccion"
                 type="text"
                 autoComplete="off"
+                required
                 placeholder="Ej. Calle Manufactura 1, Silao"
                 value={values.direccion}
                 onChange={handleChange}
@@ -138,6 +141,29 @@ export function NuevoPlantaModal({ onClose, onSuccess }: NuevoPlantaModalProps) 
               />
               {state?.errors?.direccion && (
                 <p className="text-red-400 text-xs">{state.errors.direccion[0]}</p>
+              )}
+            </div>
+
+            {/* Región */}
+            <div className="flex flex-col gap-1">
+              <label htmlFor="region-planta" className="text-xs font-medium text-black dark:text-slate-400">
+                Región
+              </label>
+              <select
+                id="region-planta"
+                name="regionId"
+                required
+                value={values.regionId}
+                onChange={handleChange}
+                className={inputCls}
+              >
+                <option value="" disabled>Selecciona una región</option>
+                {regiones.map((r) => (
+                  <option key={r.id} value={r.id}>{r.nombre}</option>
+                ))}
+              </select>
+              {state?.errors?.regionId && (
+                <p className="text-red-400 text-xs">{state.errors.regionId[0]}</p>
               )}
             </div>
 

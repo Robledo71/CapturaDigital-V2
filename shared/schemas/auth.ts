@@ -1,8 +1,4 @@
-import { z } from 'zod'
-
-export const TabletLoginSchema = z.object({
-  identifier: z.string().min(1, 'El usuario o número de empleado es requerido').trim(),
-  password: z.string().min(1, 'La contraseña es requerida'),
-})
-
-export type TabletLoginInput = z.infer<typeof TabletLoginSchema>
+// Reservado para schemas de autenticación compartidos del portal staff.
+// El login (identifier/password) hoy se valida directamente en el server
+// action de login; no hay un schema Zod compartido en este momento.
+export {}

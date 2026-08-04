@@ -2,7 +2,7 @@
 
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
-import { assignItemToTablet } from '@/back/services/inspectionSessionService'
+import { assignItemToInspectors } from '@/back/services/inspectionSessionService'
 import type { OrderItemTree, OtherItemEntry } from '@/back/services/inspectionSessionService'
 
 export type AssignOrderItemState =
@@ -91,31 +91,30 @@ export async function assignOrderItemAction(
     return { ok: false, error: 'No autorizado.' }
   }
 
-  // 2. Tablet — el value del select es "dbId:codigoTablet"
-  const tabletValue = String(formData.get('tabletId') ?? '')
-  const colonIdx = tabletValue.indexOf(':')
-  if (colonIdx === -1) return { ok: false, error: 'Selecciona una tablet.' }
-  const codigoTablet = tabletValue.slice(colonIdx + 1)
-  if (!codigoTablet) return { ok: false, error: 'Selecciona una tablet.' }
-
-  // 3. ¿Item nuevo (desde QB, orderItemId === 0) o ya existente?
-  const orderItemId = Number(formData.get('orderItemId') ?? '0')
-  let tree: OrderItemTree | undefined
-  if (orderItemId === 0) {
-    if (!getStr(formData, 'qb_order_id') || !getStr(formData, 'qb_quotation_id')) {
-      return { ok: false, error: 'Datos de la orden incompletos. Busca la cotización nuevamente.' }
-    }
-    tree = buildTree(formData)
+  // 2. Inspectores seleccionados (checklist multi-select)
+  const inspectorIds = formData.getAll('inspectorIds').map(String).filter(Boolean)
+  if (inspectorIds.length === 0) {
+    return { ok: false, error: 'Selecciona al menos un inspector.' }
   }
 
-  // 4. Delegar la lógica de asignación al service
-  return assignItemToTablet(
+  // 3. Supervisor = usuario logueado (empleado_id), no seleccionable
+  const supervisorId = session.empleadoId
+  if (!supervisorId) {
+    return { ok: false, error: 'Tu usuario no tiene un empleado asociado; no puedes asignar.' }
+  }
+
+  // 4. La asignación siempre pasa por el árbol completo (order/quotation/orderItem)
+  if (!getStr(formData, 'qb_order_consecutive') || !getStr(formData, 'qb_quotation_consecutive')) {
+    return { ok: false, error: 'Datos de la orden incompletos. Busca la cotización nuevamente.' }
+  }
+  const tree = buildTree(formData)
+
+  // 5. Delegar la lógica de asignación al service
+  return assignItemToInspectors(
     {
-      orderItemId,
-      codigoTablet,
-      supervisorCode: session.codigoEmpleado,
-      fechaInicio: new Date().toISOString(),
       tree,
+      supervisorId,
+      inspectorIds,
     },
     session.accessToken,
   )

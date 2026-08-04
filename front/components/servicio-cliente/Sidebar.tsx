@@ -8,6 +8,8 @@ import { logoutUser } from '@/app/actions/logout'
 import {
   LayoutDashboard,
   Lock,
+  ClipboardList,
+  ClipboardCheck,
   ChevronDown,
   X,
 } from 'lucide-react'
@@ -37,6 +39,18 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         href: '/servicio-cliente/desbloquear',
         icon: <Lock size={16} />,
         permiso: 'cotizaciones.desbloquear',
+      },
+      {
+        label: 'Órdenes informales',
+        href: '/servicio-cliente/ordenes-informales',
+        icon: <ClipboardList size={16} />,
+        permiso: 'ordenes_informales.ver',
+      },
+      {
+        label: 'Reportes informales',
+        href: '/servicio-cliente/reportes-informales',
+        icon: <ClipboardCheck size={16} />,
+        permiso: 'reportes_informales.ver',
       },
     ],
   },

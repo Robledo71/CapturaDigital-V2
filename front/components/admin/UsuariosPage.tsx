@@ -12,17 +12,30 @@ import type { PlantaRow } from '@/shared/types/planta'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type UserRol = 'admin' | 'supervisor' | 'capturacion' | 'lider' | 'servicio_cliente' | 'gerente' | 'cliente'
+type UserRol =
+  | 'superusuario'
+  | 'admin'
+  | 'gerente'
+  | 'supervisor_regional'
+  | 'supervisor'
+  | 'lider'
+  | 'servicio_cliente'
+  | 'capturacion'
+  | 'inspector'
+  | 'cliente'
 type UserEstado = 'activo' | 'inactivo'
 
 interface Usuario {
   id: number
   nombre: string
+  nombreEmpleado: string
+  apellidoPaterno: string
+  apellidoMaterno: string
   codigo: string
-  puesto: string
   rol: UserRol
   plantaId: number | null
   plantaNombre: string | null
+  plantas: { id: number; nombre: string }[]
   estado: UserEstado
   correo: string
 }
@@ -64,14 +77,25 @@ function mapRow(u: UsuarioRow): Usuario {
   return {
     id: u.id,
     nombre: u.nombreCompleto,
+    nombreEmpleado: u.nombreEmpleado,
+    apellidoPaterno: u.apellidoPaterno,
+    apellidoMaterno: u.apellidoMaterno,
     codigo: u.codigoEmpleado,
-    puesto: u.puesto,
     rol: u.rol as UserRol,
     plantaId: u.plantaId ?? null,
     plantaNombre: u.plantaNombre ?? null,
+    plantas: u.plantas ?? [],
     estado: u.isActive ? 'activo' : 'inactivo',
     correo: u.correo,
   }
+}
+
+// Muestra las plantas de un usuario: nombre único, lista corta separada por
+// comas, o "primera + N" cuando hay demasiadas para no romper el layout de la fila.
+function formatPlantas(plantas: { id: number; nombre: string }[]): string {
+  if (plantas.length === 0) return '—'
+  if (plantas.length <= 2) return plantas.map((p) => p.nombre).join(', ')
+  return `${plantas[0].nombre} +${plantas.length - 1}`
 }
 
 // ─── Blocking rules ────────────────────────────────────────────────────────────
@@ -103,52 +127,97 @@ function canToggle(
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
+// Etiqueta legible por rol. Roles conocidos con estilo dedicado; cualquier
+// rol desconocido (p. ej. uno agregado en BD que la UI aún no mapea) cae en
+// un badge neutro que muestra el valor crudo en vez de romper o mentir.
+const ROL_LABEL: Record<string, string> = {
+  superusuario: 'Superusuario',
+  admin: 'Administrador',
+  gerente: 'Gerencia',
+  supervisor_regional: 'Supervisor Regional',
+  supervisor: 'Supervisor',
+  lider: 'Líder',
+  servicio_cliente: 'Servicio al Cliente',
+  capturacion: 'Capturación',
+  inspector: 'Inspector',
+  cliente: 'Cliente',
+}
+
 function RolBadge({ rol }: { rol: UserRol }) {
   if (rol === 'admin') {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20">
-        Administrador
+        {ROL_LABEL.admin}
+      </span>
+    )
+  }
+  if (rol === 'superusuario') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-fuchsia-100 text-fuchsia-700 border border-fuchsia-300 dark:bg-fuchsia-500/10 dark:text-fuchsia-300 dark:border-fuchsia-500/20">
+        {ROL_LABEL.superusuario}
+      </span>
+    )
+  }
+  if (rol === 'supervisor_regional') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-300 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20">
+        {ROL_LABEL.supervisor_regional}
       </span>
     )
   }
   if (rol === 'supervisor') {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20">
-        Supervisor
+        {ROL_LABEL.supervisor}
       </span>
     )
   }
   if (rol === 'lider') {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-500/10 dark:text-yellow-300 dark:border-yellow-500/20">
-        Líder
+        {ROL_LABEL.lider}
       </span>
     )
   }
   if (rol === 'cliente') {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-700 border border-teal-300 dark:bg-teal-500/10 dark:text-teal-300 dark:border-teal-500/20">
-        Cliente
+        {ROL_LABEL.cliente}
       </span>
     )
   }
   if (rol === 'servicio_cliente') {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700 border border-rose-300 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20">
-        Servicio al Cliente
+        {ROL_LABEL.servicio_cliente}
       </span>
     )
   }
   if (rol === 'gerente') {
     return (
       <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-500/20">
-        Gerencia
+        {ROL_LABEL.gerente}
       </span>
     )
   }
+  if (rol === 'inspector') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/20">
+        {ROL_LABEL.inspector}
+      </span>
+    )
+  }
+  if (rol === 'capturacion') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 border border-violet-300 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20">
+        {ROL_LABEL.capturacion}
+      </span>
+    )
+  }
+  // Rol desconocido: no debe romper la tabla. Se muestra el valor crudo.
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700 border border-violet-300 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-500/20">
-      Capturación
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-500/10 dark:text-slate-300 dark:border-slate-500/20">
+      {ROL_LABEL[rol] ?? rol}
     </span>
   )
 }
@@ -315,15 +384,18 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
   }
 
   const tabs: TabConfig[] = [
-    { key: 'todos',       label: 'Todos',           count: usuarios.length },
-    { key: 'admin',       label: 'Administradores', count: usuarios.filter((u) => u.rol === 'admin').length },
-    { key: 'supervisor',  label: 'Supervisores',    count: usuarios.filter((u) => u.rol === 'supervisor').length },
-    { key: 'lider',       label: 'Líderes',         count: usuarios.filter((u) => u.rol === 'lider').length },
-    { key: 'capturacion', label: 'Capturación',     count: usuarios.filter((u) => u.rol === 'capturacion').length },
-    { key: 'servicio_cliente', label: 'Servicio al Cliente', count: usuarios.filter((u) => u.rol === 'servicio_cliente').length },
-    { key: 'gerente',     label: 'Gerencia',        count: usuarios.filter((u) => u.rol === 'gerente').length },
-    { key: 'cliente',     label: 'Clientes',        count: usuarios.filter((u) => u.rol === 'cliente').length },
-    { key: 'inactivos',   label: 'Inactivos',       count: usuarios.filter((u) => u.estado === 'inactivo').length },
+    { key: 'todos',              label: 'Todos',              count: usuarios.length },
+    { key: 'superusuario',       label: 'Superusuarios',      count: usuarios.filter((u) => u.rol === 'superusuario').length },
+    { key: 'admin',              label: 'Administradores',    count: usuarios.filter((u) => u.rol === 'admin').length },
+    { key: 'gerente',            label: 'Gerencia',           count: usuarios.filter((u) => u.rol === 'gerente').length },
+    { key: 'supervisor_regional', label: 'Supervisores Regionales', count: usuarios.filter((u) => u.rol === 'supervisor_regional').length },
+    { key: 'supervisor',         label: 'Supervisores',       count: usuarios.filter((u) => u.rol === 'supervisor').length },
+    { key: 'lider',              label: 'Líderes',            count: usuarios.filter((u) => u.rol === 'lider').length },
+    { key: 'servicio_cliente',   label: 'Servicio al Cliente', count: usuarios.filter((u) => u.rol === 'servicio_cliente').length },
+    { key: 'capturacion',        label: 'Capturación',        count: usuarios.filter((u) => u.rol === 'capturacion').length },
+    { key: 'inspector',          label: 'Inspectores',        count: usuarios.filter((u) => u.rol === 'inspector').length },
+    { key: 'cliente',            label: 'Clientes',           count: usuarios.filter((u) => u.rol === 'cliente').length },
+    { key: 'inactivos',          label: 'Inactivos',          count: usuarios.filter((u) => u.estado === 'inactivo').length },
   ]
 
   const filtered = usuarios.filter((u) => {
@@ -457,7 +529,7 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
           <div
             role="tablist"
             aria-label="Filtrar por tipo"
-            className="shrink-0 flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto scrollbar-thin"
+            className="shrink-0 flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {tabs.map((tab) => {
               const isActive = activeTab === tab.key
@@ -502,9 +574,6 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
                       Código
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
-                      Puesto
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                       Rol
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
@@ -546,14 +615,14 @@ export function UsuariosPage({ initialUsuarios, plantas, currentUserId }: Usuari
                           <td className="px-4 py-3 font-mono text-slate-500 dark:text-slate-400 text-xs whitespace-nowrap">
                             {user.codigo}
                           </td>
-                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">
-                            {user.puesto}
-                          </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <RolBadge rol={user.rol} />
                           </td>
-                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">
-                            {user.plantaNombre ?? '—'}
+                          <td
+                            className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap"
+                            title={user.plantas.map((p) => p.nombre).join(', ') || undefined}
+                          >
+                            {formatPlantas(user.plantas)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <EstadoBadge estado={user.estado} />

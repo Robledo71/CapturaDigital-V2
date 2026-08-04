@@ -3,22 +3,22 @@
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileCheck, FileSearch, Loader2, Search, TabletSmartphone, Upload, X } from 'lucide-react'
+import { AlertTriangle, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileCheck, FileSearch, Loader2, Search, UserCheck, UserPlus, Upload, X } from 'lucide-react'
 import { getOrderInventory, isIndefiniteInventoryPlant } from '@/front/lib/inventory'
 import type {
   OrderWorkload,
   OrderItemWorkload,
-  TabletOption,
+  InspectorOption,
 } from '@/back/services/cargaDeTrabajoService'
 import {
   assignOrderItemAction,
   type AssignOrderItemState,
 } from '@/app/actions/assign-order-item'
 import {
-  releaseOrderItemAction,
-  type ReleaseOrderItemState,
-} from '@/app/actions/release-order-item'
-import { uploadOrderDocumentAction, type UploadOrderDocumentState } from '@/app/actions/upload-order-document'
+  desasignarInspectorAction,
+  type DesasignarInspectorState,
+} from '@/app/actions/desasignar-inspector'
+import { uploadOrderDocumentAction } from '@/app/actions/upload-order-document'
 import { SearchCotizacionModal } from './SearchCotizacionModal'
 import { can, type SessionLike } from '@/front/lib/permisos'
 import { OfflineBanner } from '@/front/components/ui/OfflineBanner'
@@ -32,7 +32,7 @@ const PAGE_SIZE = 10
 
 interface CargaDeTrabajoPageProps {
   orders: OrderWorkload[]
-  tablets: TabletOption[]
+  inspectors: InspectorOption[]
   rol: string
   permisos?: string[] | null
 }
@@ -47,16 +47,32 @@ interface UploadTarget {
 
 export function countPendingUnassigned(order: OrderWorkload): number {
   return order.items.filter(
-    (item) => item.status === 'pending' && item.assignedTablet === null,
+    (item) => item.status === 'pending' && item.assignedInspectors.length === 0,
   ).length
 }
 
-function formatMXN(amount: number): string {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2,
-  }).format(amount)
+/**
+ * true cuando el item aún tiene inventario pendiente por completar. Se conserva
+ * como utilidad pura (probada en tests); ya no hay flujo de "liberar" en la UI
+ * (no existe endpoint de liberación en el backend v2.0).
+ */
+export function isInventarioPendiente(
+  item: Pick<OrderItemWorkload, 'inventario' | 'inventarioTerminado'>,
+  indefinite: boolean,
+): boolean {
+  return !indefinite && item.inventario > 0 && item.inventarioTerminado < item.inventario
+}
+
+/**
+ * true cuando el inventario del item ya está terminado y por lo tanto NO se puede
+ * asignar un inspector (regla de negocio validada también por el backend, que
+ * responde 409 en ese caso). Plantas de inventario indefinido nunca se consideran terminadas.
+ */
+export function isInventarioCompleto(
+  item: Pick<OrderItemWorkload, 'inventario' | 'inventarioTerminado'>,
+  indefinite: boolean,
+): boolean {
+  return !indefinite && item.inventario > 0 && item.inventarioTerminado >= item.inventario
 }
 
 // ─── Status badge config ──────────────────────────────────────────────────────
@@ -88,24 +104,6 @@ const ITEM_STATUS_CONFIG: Record<string, { label: string; pill: string; dot: str
   },
 }
 
-const QUOTATION_STATUS_CONFIG: Record<string, { label: string; pill: string; text: string }> = {
-  pendiente: {
-    label: 'Pendiente',
-    pill: 'bg-slate-100 border border-slate-300 dark:bg-slate-500/10 dark:border-slate-500/20',
-    text: 'text-slate-600 dark:text-slate-400',
-  },
-  aprobada: {
-    label: 'Aprobada',
-    pill: 'bg-green-100 border border-green-300 dark:bg-green-500/10 dark:border-green-500/20',
-    text: 'text-green-700 dark:text-green-400',
-  },
-  rechazada: {
-    label: 'Rechazada',
-    pill: 'bg-red-100 border border-red-300 dark:bg-red-500/10 dark:border-red-500/20',
-    text: 'text-red-700 dark:text-red-400',
-  },
-}
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ItemStatusBadge({ status }: { status: string }) {
@@ -120,28 +118,145 @@ function ItemStatusBadge({ status }: { status: string }) {
   )
 }
 
-function QuotationStatusBadge({ status }: { status: string }) {
-  const cfg = QUOTATION_STATUS_CONFIG[status] ?? QUOTATION_STATUS_CONFIG.pendiente
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cfg.pill} ${cfg.text}`}
-    >
-      {cfg.label}
-    </span>
-  )
-}
-
-function AssignSubmitButton() {
+function AssignSubmitButton({ disabled = false }: { disabled?: boolean }) {
   const { pending } = useFormStatus()
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
       {pending ? 'Asignando...' : 'Asignar'}
     </button>
+  )
+}
+
+// ─── Inspector Chip (removable) ───────────────────────────────────────────────
+// Shown per-assigned-inspector when the user can asignar/desasignar — each chip
+// carries its own × so a single inspector's session can be closed without
+// touching the others still working the item.
+
+interface InspectorChipProps {
+  inspector: { id: number; name: string }
+  onRemove: () => void
+  disabled?: boolean
+}
+
+function InspectorChip({ inspector, onRemove, disabled = false }: InspectorChipProps) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-violet-500/30 bg-violet-500/10 py-1 pl-2.5 pr-1 text-xs font-medium text-violet-300">
+      <UserCheck size={11} className="flex-shrink-0" aria-hidden="true" />
+      {inspector.name}
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={disabled}
+        aria-label={`Desasignar a ${inspector.name}`}
+        className="ml-0.5 flex-shrink-0 rounded-full p-0.5 text-violet-400 transition-colors hover:bg-violet-500/20 hover:text-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <X size={10} aria-hidden="true" />
+      </button>
+    </span>
+  )
+}
+
+// ─── Desasignar Confirm Modal ─────────────────────────────────────────────────
+// Lightweight confirm dialog before closing an inspector's session — mirrors the
+// styling of AssignItemModal (same card chrome, header, footer button row).
+
+function DesasignarSubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+      {pending ? 'Desasignando...' : 'Desasignar'}
+    </button>
+  )
+}
+
+interface DesasignarConfirmModalProps {
+  orderItemId: number
+  inspector: { id: number; name: string }
+  state: DesasignarInspectorState
+  action: (formData: FormData) => void
+  onClose: () => void
+}
+
+function DesasignarConfirmModal({ orderItemId, inspector, state, action, onClose }: DesasignarConfirmModalProps) {
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === overlayRef.current) onClose()
+  }
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  return (
+    <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="desasignar-modal-titulo"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-fade-in"
+      onClick={handleOverlayClick}
+    >
+      <form
+        action={action}
+        className="w-full max-w-sm rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
+      >
+        <input type="hidden" name="orderItemId" value={String(orderItemId)} />
+        <input type="hidden" name="empleadoId" value={String(inspector.id)} />
+
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <h3 id="desasignar-modal-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
+            Desasignar inspector
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
+            aria-label="Cerrar"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 px-5 py-5">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            ¿Desasignar a <span className="font-medium text-slate-900 dark:text-white">{inspector.name}</span> de
+            este trabajo? Su sesión de inspección se cerrará.
+          </p>
+
+          {state && !state.ok && (
+            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {state.error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
+          >
+            Cancelar
+          </button>
+          <DesasignarSubmitButton />
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -260,54 +375,73 @@ function DocViewerModal({ href, title, onClose }: DocViewerModalProps) {
 interface AssignItemModalProps {
   /** DB id of the OrderItem, or 0 if the item is not yet persisted (came from QB search). */
   orderItemId: number
-  /** Full item data — needed to embed hidden QB fields when orderItemId === 0. */
+  /** Full item data — needed to embed hidden QB fields (order/quotation/item tree). */
   item: OrderItemWorkload
-  /** Parent order — needed to embed hidden QB order/quotation fields when orderItemId === 0. */
+  /** Parent order — needed to embed hidden QB order/quotation fields. */
   order: OrderWorkload
-  tablets: TabletOption[]
+  /** All inspectors (rol=inspector); filtered here by the order's plant. */
+  inspectors: InspectorOption[]
+  /** empleado_id of inspectors that already have an assignment on ANY item in the current workload. */
+  busyInspectorIds: Set<number>
   state: AssignOrderItemState
   action: (formData: FormData) => void
   onClose: () => void
 }
 
-function AssignItemModal({ orderItemId, item, order, tablets, state, action, onClose }: AssignItemModalProps) {
+function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorIds, state, action, onClose }: AssignItemModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
-  // When the item has not been persisted yet (id === 0), we need to find which
-  // quotation this item belongs to from the parent order's quotation list.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+
+  // Which quotation this item belongs to, from the parent order's quotation list.
   const parentQuotation = order.quotations.find(
     (q) => q.consecutiveNumber === item.quotationConsecutive
   ) ?? order.quotations[0]
 
-  // Build the list of OTHER items (all items in the order except the one being assigned).
-  // Used only when orderItemId === 0 (first-time upsert) so qb_sync can persist the full order.
+  // Build the list of OTHER items (all items in the order except the one being assigned)
+  // so qb_sync can persist/keep the full order tree on every upsert.
   // Identity is determined by reference — `item` is the exact object from `order.items`.
-  const otherItemsJson: string | null = orderItemId === 0
-    ? (() => {
-        const others = order.items
-          .filter((i) => i !== item)
-          .map((i) => {
-            const q = order.quotations.find((q) => q.consecutiveNumber === i.quotationConsecutive)
-            return {
-              quotation: {
-                consecutive_number: i.quotationConsecutive ?? '',
-                client_email: q?.clientEmail ?? null,
-                status: q?.status ?? null,
-                purchase_order_number: q?.purchaseOrderNumber ?? null,
-                contact_emails: q?.contactEmails ?? null,
-                order_user_name: q?.orderUserName ?? null,
-              },
-              orderItem: {
-                part_number: i.partNumber === '—' ? null : i.partNumber,
-                part_name: i.partName === '—' ? '' : i.partName,
-                inventory: i.inventario,
-                inventory_done: i.inventarioTerminado,
-                plant_name: order.plantName ?? '',
-              },
-            }
-          })
-        return others.length > 0 ? JSON.stringify(others) : null
-      })()
-    : null
+  const otherItemsJson: string | null = (() => {
+    const others = order.items
+      .filter((i) => i !== item)
+      .map((i) => {
+        const q = order.quotations.find((q) => q.consecutiveNumber === i.quotationConsecutive)
+        return {
+          quotation: {
+            consecutive_number: i.quotationConsecutive ?? '',
+            client_email: q?.clientEmail ?? null,
+            status: q?.status ?? null,
+            purchase_order_number: q?.purchaseOrderNumber ?? null,
+            contact_emails: q?.contactEmails ?? null,
+            order_user_name: q?.orderUserName ?? null,
+          },
+          orderItem: {
+            part_number: i.partNumber === '—' ? null : i.partNumber,
+            part_name: i.partName === '—' ? '' : i.partName,
+            inventory: i.inventario,
+            inventory_done: i.inventarioTerminado,
+            plant_name: order.plantName ?? '',
+          },
+        }
+      })
+    return others.length > 0 ? JSON.stringify(others) : null
+  })()
+
+  // Only inspectors assigned to the item's plant (an inspector may have several
+  // plants) — fall back to showing all when the order has no known plantId
+  // (e.g. a brand-new QB-search order not yet persisted).
+  const relevantInspectors = useMemo(
+    () => (order.plantId != null ? inspectors.filter((i) => i.plantIds.includes(order.plantId!)) : inspectors),
+    [inspectors, order.plantId],
+  )
+
+  function toggleInspector(empleadoId: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(empleadoId)) next.delete(empleadoId)
+      else next.add(empleadoId)
+      return next
+    })
+  }
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === overlayRef.current) onClose()
@@ -336,52 +470,45 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
       >
         <input type="hidden" name="orderItemId" value={String(orderItemId)} />
 
-        {/* When the item is not yet in DB (id=0), embed raw QB data so the
-            server action can persist Order → Quotation → OrderItem first. */}
-        {orderItemId === 0 && otherItemsJson !== null && (
+        {/* Every assignment upserts the full Order → Quotation → OrderItem tree,
+            whether the item is new (id===0) or already persisted. */}
+        {otherItemsJson !== null && (
           <input type="hidden" name="otherItems" value={otherItemsJson} />
         )}
 
-        {orderItemId === 0 && (
-          <>
-            {/* Order fields */}
-            <input type="hidden" name="qb_order_id" value={String(order.id)} />
-            <input type="hidden" name="qb_order_consecutive" value={order.consecutiveNumber ?? ''} />
-            <input type="hidden" name="qb_order_state" value={order.orderStatus ?? ''} />
-            <input type="hidden" name="qb_order_client_name" value={order.clientName ?? ''} />
-            <input type="hidden" name="qb_order_client_contact_name" value={order.clientContactName ?? ''} />
-            <input type="hidden" name="qb_order_client_contact_email" value={order.clientContactEmail ?? ''} />
-            <input type="hidden" name="qb_order_service_type_name" value={order.serviceType ?? ''} />
-            <input type="hidden" name="qb_order_region_name" value={order.regionName ?? ''} />
-            <input type="hidden" name="qb_order_service_type_detail" value={order.serviceTypeDetail ?? ''} />
-            <input type="hidden" name="qb_order_pieces_per_hour" value={order.piecesPerHour !== null && order.piecesPerHour !== undefined ? String(order.piecesPerHour) : ''} />
-            <input type="hidden" name="qb_order_authorized_hours" value={order.authorizedHours !== null && order.authorizedHours !== undefined ? String(order.authorizedHours) : ''} />
-            <input type="hidden" name="qb_order_price_per_hour" value={order.pricePerHour !== null && order.pricePerHour !== undefined ? String(order.pricePerHour) : ''} />
-            <input type="hidden" name="qb_order_language" value={order.language ?? ''} />
-            <input type="hidden" name="qb_order_user_name" value={order.userName ?? ''} />
-            <input type="hidden" name="qb_order_plant_name" value={order.plantName ?? ''} />
-            {/* Quotation fields */}
-            <input type="hidden" name="qb_quotation_id" value={String(parentQuotation?.id ?? '')} />
-            <input type="hidden" name="qb_quotation_consecutive" value={item.quotationConsecutive ?? ''} />
-            <input type="hidden" name="qb_quotation_client_email" value={parentQuotation?.clientEmail ?? ''} />
-            <input type="hidden" name="qb_quotation_purchase_order_number" value={parentQuotation?.purchaseOrderNumber ?? ''} />
-            <input type="hidden" name="qb_quotation_contact_emails" value={parentQuotation?.contactEmails ?? ''} />
-            <input type="hidden" name="qb_quotation_order_user_name" value={parentQuotation?.orderUserName ?? ''} />
-            <input type="hidden" name="qb_quotation_order_consecutive_number" value={parentQuotation?.orderConsecutiveNumber ?? order.consecutiveNumber ?? ''} />
-            <input type="hidden" name="qb_quotation_status" value={parentQuotation?.status ?? ''} />
-            <input type="hidden" name="qb_quotation_plant_name" value={order.plantName ?? ''} />
-            {/* OrderItem fields */}
-            <input type="hidden" name="qb_item_part_number" value={item.partNumber === '—' ? '' : item.partNumber} />
-            <input type="hidden" name="qb_item_part_name" value={item.partName === '—' ? '' : item.partName} />
-            <input type="hidden" name="qb_item_inventory" value={String(item.inventario)} />
-            <input type="hidden" name="qb_item_inventory_done" value={String(item.inventarioTerminado)} />
-            <input type="hidden" name="qb_item_plant_name" value={order.plantName ?? ''} />
-          </>
-        )}
+        {/* Order fields */}
+        <input type="hidden" name="qb_order_consecutive" value={order.consecutiveNumber ?? ''} />
+        <input type="hidden" name="qb_order_state" value={order.orderStatus ?? ''} />
+        <input type="hidden" name="qb_order_client_name" value={order.clientName ?? ''} />
+        <input type="hidden" name="qb_order_client_contact_name" value={order.clientContactName ?? ''} />
+        <input type="hidden" name="qb_order_client_contact_email" value={order.clientContactEmail ?? ''} />
+        <input type="hidden" name="qb_order_service_type_name" value={order.serviceType ?? ''} />
+        <input type="hidden" name="qb_order_region_name" value={order.regionName ?? ''} />
+        <input type="hidden" name="qb_order_service_type_detail" value={order.serviceTypeDetail ?? ''} />
+        <input type="hidden" name="qb_order_pieces_per_hour" value={order.piecesPerHour !== null && order.piecesPerHour !== undefined ? String(order.piecesPerHour) : ''} />
+        <input type="hidden" name="qb_order_authorized_hours" value={order.authorizedHours !== null && order.authorizedHours !== undefined ? String(order.authorizedHours) : ''} />
+        <input type="hidden" name="qb_order_price_per_hour" value={order.pricePerHour !== null && order.pricePerHour !== undefined ? String(order.pricePerHour) : ''} />
+        <input type="hidden" name="qb_order_language" value={order.language ?? ''} />
+        <input type="hidden" name="qb_order_user_name" value={order.userName ?? ''} />
+        <input type="hidden" name="qb_order_plant_name" value={order.plantName ?? ''} />
+        {/* Quotation fields */}
+        <input type="hidden" name="qb_quotation_consecutive" value={item.quotationConsecutive ?? ''} />
+        <input type="hidden" name="qb_quotation_client_email" value={parentQuotation?.clientEmail ?? ''} />
+        <input type="hidden" name="qb_quotation_purchase_order_number" value={parentQuotation?.purchaseOrderNumber ?? ''} />
+        <input type="hidden" name="qb_quotation_contact_emails" value={parentQuotation?.contactEmails ?? ''} />
+        <input type="hidden" name="qb_quotation_order_user_name" value={parentQuotation?.orderUserName ?? ''} />
+        <input type="hidden" name="qb_quotation_status" value={parentQuotation?.status ?? ''} />
+        {/* OrderItem fields */}
+        <input type="hidden" name="qb_item_part_number" value={item.partNumber === '—' ? '' : item.partNumber} />
+        <input type="hidden" name="qb_item_part_name" value={item.partName === '—' ? '' : item.partName} />
+        <input type="hidden" name="qb_item_inventory" value={String(item.inventario)} />
+        <input type="hidden" name="qb_item_inventory_done" value={String(item.inventarioTerminado)} />
+        <input type="hidden" name="qb_item_plant_name" value={order.plantName ?? ''} />
+        <input type="hidden" name="qb_item_incidents" value="" />
 
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
           <h3 id="sub-modal-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
-            Asignar tablet al item
+            Asignar inspector(es) al item
           </h3>
           <button
             type="button"
@@ -394,25 +521,50 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
         </div>
 
         <div className="flex flex-col gap-4 px-5 py-5">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Tablet</span>
-            <select
-              name="tabletId"
-              required
-              defaultValue=""
-              className="rounded-md border border-slate-300 bg-white dark:border-[#31476f] dark:bg-[#0c1426] px-3 py-2 text-sm text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            >
-              <option value="" disabled>
-                Selecciona una tablet
-              </option>
-              {tablets.map((tablet) => (
-                <option key={tablet.id} value={`${tablet.id}:${tablet.codigoTablet}`}>
-                  {tablet.codigoTablet}
-                  {tablet.plantName ? ` (${tablet.plantName})` : ''}
-                </option>
-              ))}
-            </select>
-          </label>
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+              Inspectores
+            </legend>
+
+            {relevantInspectors.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No hay inspectores disponibles para esta planta.
+              </p>
+            ) : (
+              <div className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border border-slate-200 dark:border-[#31476f] p-1.5">
+                {relevantInspectors.map((inspector) => {
+                  const isBusy = busyInspectorIds.has(inspector.empleadoId)
+                  const isChecked = selectedIds.has(inspector.empleadoId)
+                  return (
+                    <label
+                      key={inspector.empleadoId}
+                      className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                        isBusy
+                          ? 'cursor-not-allowed text-slate-400 dark:text-slate-500'
+                          : 'cursor-pointer text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="inspectorIds"
+                        value={String(inspector.empleadoId)}
+                        checked={isChecked}
+                        disabled={isBusy}
+                        onChange={() => toggleInspector(inspector.empleadoId)}
+                        className="h-4 w-4 flex-shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500/40 disabled:cursor-not-allowed"
+                      />
+                      <span className="flex-1 truncate">{inspector.name}</span>
+                      {isBusy && (
+                        <span className="flex-shrink-0 text-[10px] uppercase tracking-wide text-amber-500">
+                          ocupado
+                        </span>
+                      )}
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </fieldset>
 
           {state && !state.ok && (
             <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
@@ -429,120 +581,7 @@ function AssignItemModal({ orderItemId, item, order, tablets, state, action, onC
           >
             Cancelar
           </button>
-          <AssignSubmitButton />
-        </div>
-      </form>
-    </div>
-  )
-}
-
-// ─── Release Item Modal ───────────────────────────────────────────────────────
-
-interface ReleaseItemModalProps {
-  orderItemId: number
-  partNumber: string
-  isInProgress?: boolean
-  hasSubmittedReport?: boolean
-  state: ReleaseOrderItemState
-  action: (formData: FormData) => void
-  onClose: () => void
-}
-
-function ReleaseSubmitButton() {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
-      {pending ? 'Liberando...' : 'Confirmar'}
-    </button>
-  )
-}
-
-function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedReport = false, state, action, onClose }: ReleaseItemModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose])
-
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current) onClose()
-  }
-
-  return (
-    <div
-      ref={overlayRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="release-modal-titulo"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm animate-fade-in"
-      onClick={handleOverlayClick}
-    >
-      <form
-        action={action}
-        className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#111a30] shadow-2xl animate-scale-in"
-      >
-        <input type="hidden" name="orderItemId" value={String(orderItemId)} />
-
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
-          <h3 id="release-modal-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
-            Liberar tablet
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
-            aria-label="Cerrar"
-          >
-            <X size={15} />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-3 px-5 py-5">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            ¿Liberar la tablet asignada al item{' '}
-            <span className="font-mono font-medium text-slate-900 dark:text-white">{partNumber}</span>?
-          </p>
-          <p className="text-xs text-slate-500">
-            La tablet volverá a estar disponible para nuevas asignaciones.
-          </p>
-
-          {isInProgress && (
-            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-              Este ítem tiene una inspección en curso. Al liberar la tablet, la sesión activa será cancelada.
-            </p>
-          )}
-
-          {hasSubmittedReport && (
-            <p className="rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-300">
-              Este ítem tiene un reporte enviado. Al liberar la tablet, la sesión se cerrará y el reporte quedará disponible para revisión.
-            </p>
-          )}
-
-          {state && !state.ok && (
-            <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-              {state.error}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md border border-slate-300 dark:border-[#31476f] px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-          >
-            Cancelar
-          </button>
-          <ReleaseSubmitButton />
+          <AssignSubmitButton disabled={selectedIds.size === 0} />
         </div>
       </form>
     </div>
@@ -554,11 +593,12 @@ function ReleaseItemModal({ orderItemId, partNumber, isInProgress, hasSubmittedR
 
 interface OrderItemCardProps {
   item: OrderItemWorkload
-  /** Called with the full item object so the assign modal can embed QB hidden fields when item.id === 0. */
+  /** Called with the full item object so the assign modal can embed QB hidden fields. */
   onAssign: (item: OrderItemWorkload) => void
+  /** Opens the desasignar confirm modal for one specific assigned inspector. */
+  onDesasignar: (item: OrderItemWorkload, inspector: { id: number; name: string }) => void
   /** true cuando la planta no maneja inventario — muestra "Indefinido" en lugar de la cantidad. */
   indefinite?: boolean
-  onRelease: (itemId: number) => void
   canAsignar: boolean
   canDocumentos: boolean
   uploadingTarget: UploadTarget | null
@@ -570,7 +610,7 @@ interface OrderItemCardProps {
 function OrderItemCard({
   item,
   onAssign,
-  onRelease,
+  onDesasignar,
   canAsignar,
   indefinite = false,
   canDocumentos,
@@ -580,10 +620,13 @@ function OrderItemCard({
   uploadError,
 }: OrderItemCardProps) {
   const canAssign =
-    item.assignedTablet === null &&
+    item.assignedInspectors.length === 0 &&
     !item.hasSubmittedReport &&
     (item.status === 'pending' || item.status === 'completed')
-  const canRelease = item.status === 'assigned' || item.status === 'in_progress'
+  // Regla de negocio: no se puede asignar un inspector si el inventario del item ya
+  // está terminado (el backend responde 409 en ese caso). Indefinido nunca bloquea.
+  const inventarioCompleto = isInventarioCompleto(item, indefinite)
+  const assignBlocked = canAssign && inventarioCompleto
 
   // Document chips are only shown for persisted items (id !== 0)
   const showDocs = canDocumentos && item.id !== 0
@@ -620,15 +663,31 @@ function OrderItemCard({
         </span>
       </div>
 
-      {/* Row 3 — status badge + tablet chip + assign/release buttons (right-anchored) */}
+      {/* Row 3 — status badge + inspector chips + assign button (right-anchored) */}
       <div className="flex flex-wrap items-center gap-2">
         <ItemStatusBadge status={item.status} />
 
-        {item.assignedTablet ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-300">
-            <TabletSmartphone size={11} className="flex-shrink-0" aria-hidden="true" />
-            {item.assignedTablet.alias}
-          </span>
+        {item.assignedInspectors.length > 0 ? (
+          canAsignar ? (
+            // Con permiso de asignar, cada inspector se muestra en su propio chip
+            // (sin colapsar a "+N") para que el botón × individual siempre sea
+            // alcanzable — evita tener que abrir otra vista para desasignar.
+            <div className="flex flex-wrap items-center gap-1.5">
+              {item.assignedInspectors.map((inspector) => (
+                <InspectorChip
+                  key={inspector.id}
+                  inspector={inspector}
+                  onRemove={() => onDesasignar(item, inspector)}
+                />
+              ))}
+            </div>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-300">
+              <UserCheck size={11} className="flex-shrink-0" aria-hidden="true" />
+              {item.assignedInspectors.slice(0, 2).map((i) => i.name).join(', ')}
+              {item.assignedInspectors.length > 2 && ` +${item.assignedInspectors.length - 2}`}
+            </span>
+          )
         ) : (
           <span className="text-xs text-slate-600 dark:text-slate-500">Sin asignar</span>
         )}
@@ -637,31 +696,37 @@ function OrderItemCard({
           <span className="text-xs text-amber-500">Reporte enviado</span>
         )}
 
-        {/* Assign / release buttons — pushed to the far right */}
-        {canAsignar && (canAssign || canRelease) && (
+        {/* Assign button — pushed to the far right */}
+        {canAsignar && canAssign && (
           <div className="ml-auto flex items-center gap-2">
-            {canAssign && (
-              <button
-                type="button"
-                onClick={() => onAssign(item)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20"
-              >
-                Asignar tablet
-              </button>
-            )}
-
-            {canRelease && (
-              <button
-                type="button"
-                onClick={() => onRelease(item.id)}
-                className="inline-flex items-center rounded-lg border border-red-500/30 px-2.5 py-1 text-xs text-red-400 transition-colors hover:border-red-400 hover:bg-red-500/10"
-              >
-                Liberar
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={inventarioCompleto}
+              onClick={() => onAssign(item)}
+              title={
+                inventarioCompleto
+                  ? `No se puede asignar: el inventario ya está terminado (${item.inventarioTerminado.toLocaleString('es-MX')}/${item.inventario.toLocaleString('es-MX')} pzs)`
+                  : undefined
+              }
+              className={
+                inventarioCompleto
+                  ? 'inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-600/40 px-2.5 py-1 text-xs text-slate-400 dark:text-slate-500 opacity-50 cursor-not-allowed'
+                  : 'inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20'
+              }
+            >
+              <UserPlus size={12} className="flex-shrink-0" aria-hidden="true" />
+              Asignar inspector
+            </button>
           </div>
         )}
       </div>
+
+      {/* Row 3c — aviso de inventario terminado cuando bloquea la asignación */}
+      {canAsignar && assignBlocked && (
+        <p className="-mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+          Inventario terminado ({item.inventarioTerminado.toLocaleString('es-MX')}/{item.inventario.toLocaleString('es-MX')} pzs) — no se puede asignar
+        </p>
+      )}
 
       {/* Row 4 — document chips only */}
       {showDocs && (
@@ -699,21 +764,27 @@ function OrderItemCard({
 
 interface OrderDetailModalProps {
   order: OrderWorkload
-  tablets: TabletOption[]
+  inspectors: InspectorOption[]
+  busyInspectorIds: Set<number>
   onClose: () => void
   canAsignar: boolean
   canDocumentos: boolean
 }
 
-function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }: OrderDetailModalProps) {
+function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsignar, canDocumentos }: OrderDetailModalProps) {
   const router = useRouter()
   const overlayRef = useRef<HTMLDivElement>(null)
   // Store the full item object so AssignItemModal can embed QB hidden fields when item.id === 0
   const [assignItem, setAssignItem] = useState<OrderItemWorkload | null>(null)
-  const [releaseItemId, setReleaseItemId] = useState<number | null>(null)
   const [assignState, assignAction] = useActionState(assignOrderItemAction, undefined)
-  const [releaseState, releaseAction] = useActionState(releaseOrderItemAction, undefined)
   const [uploadState, uploadAction] = useActionState(uploadOrderDocumentAction, undefined)
+
+  // Target inspector (+ item) for the desasignar confirm modal.
+  const [desasignarTarget, setDesasignarTarget] = useState<{
+    item: OrderItemWorkload
+    inspector: { id: number; name: string }
+  } | null>(null)
+  const [desasignarState, desasignarAction] = useActionState(desasignarInspectorAction, undefined)
 
   // Single hidden file input; the pending target tells us which item+doc it's for.
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -782,11 +853,11 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
   }, [assignState, router])
 
   useEffect(() => {
-    if (releaseState?.ok === true) {
-      setReleaseItemId(null)
+    if (desasignarState?.ok === true) {
+      setDesasignarTarget(null)
       router.refresh()
     }
-  }, [releaseState, router])
+  }, [desasignarState, router])
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -797,14 +868,14 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && assignItem === null && releaseItemId === null && viewDoc === null) onClose()
+      if (e.key === 'Escape' && assignItem === null && viewDoc === null && desasignarTarget === null) onClose()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose, assignItem, releaseItemId, viewDoc])
+  }, [onClose, assignItem, viewDoc, desasignarTarget])
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current && assignItem === null && releaseItemId === null && viewDoc === null) onClose()
+    if (e.target === overlayRef.current && assignItem === null && viewDoc === null && desasignarTarget === null) onClose()
   }
 
   return (
@@ -877,18 +948,14 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
                 <p className="text-sm text-slate-600">Sin cotizaciones</p>
               ) : (
                 <ul className="flex flex-col gap-2">
-                  {order.quotations.map((q) => (
+                  {order.quotations.map((q, idx) => (
                     <li
-                      key={q.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628] px-3 py-2.5"
+                      key={q.consecutiveNumber ?? `q-${idx}`}
+                      className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628] px-3 py-2.5"
                     >
                       <span className="font-mono text-sm font-medium text-slate-800 dark:text-slate-200">
                         {q.consecutiveNumber}
                       </span>
-                      <div className="flex items-center gap-3">
-                        <QuotationStatusBadge status={q.status ?? ''} />
-                        <span className="text-sm text-slate-600 dark:text-slate-300">{formatMXN(q.total)}</span>
-                      </div>
                     </li>
                   ))}
                 </ul>
@@ -913,7 +980,7 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
                       key={item.id !== 0 ? item.id : `pending-${idx}`}
                       item={item}
                       onAssign={setAssignItem}
-                      onRelease={setReleaseItemId}
+                      onDesasignar={(target, inspector) => setDesasignarTarget({ item: target, inspector })}
                       canAsignar={canAsignar}
                       canDocumentos={canDocumentos}
                       indefinite={isIndefiniteInventoryPlant(order.plantName)}
@@ -946,22 +1013,11 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
           orderItemId={assignItem.id}
           item={assignItem}
           order={order}
-          tablets={tablets}
+          inspectors={inspectors}
+          busyInspectorIds={busyInspectorIds}
           state={assignState}
           action={assignAction}
           onClose={() => setAssignItem(null)}
-        />
-      )}
-
-      {releaseItemId !== null && (
-        <ReleaseItemModal
-          orderItemId={releaseItemId}
-          partNumber={order.items.find((i) => i.id === releaseItemId)?.partNumber ?? '—'}
-          isInProgress={order.items.find((i) => i.id === releaseItemId)?.status === 'in_progress'}
-          hasSubmittedReport={order.items.find((i) => i.id === releaseItemId)?.hasSubmittedReport ?? false}
-          state={releaseState}
-          action={releaseAction}
-          onClose={() => setReleaseItemId(null)}
         />
       )}
 
@@ -970,6 +1026,16 @@ function OrderDetailModal({ order, tablets, onClose, canAsignar, canDocumentos }
           href={viewDoc.href}
           title={viewDoc.title}
           onClose={() => setViewDoc(null)}
+        />
+      )}
+
+      {desasignarTarget !== null && (
+        <DesasignarConfirmModal
+          orderItemId={desasignarTarget.item.id}
+          inspector={desasignarTarget.inspector}
+          state={desasignarState}
+          action={desasignarAction}
+          onClose={() => setDesasignarTarget(null)}
         />
       )}
     </>
@@ -1159,7 +1225,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTrabajoPageProps) {
+export function CargaDeTrabajoPage({ orders, inspectors, rol, permisos }: CargaDeTrabajoPageProps) {
   const router = useRouter()
   const session: SessionLike = { rol, permisos }
   const canImportar = can(session, 'cotizaciones.importar')
@@ -1179,6 +1245,20 @@ export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTr
         (o.plantName ?? '').toLowerCase().includes(q),
     )
   }, [orders, searchQuery])
+
+  // Inspectors already assigned to ANY item across the whole workload — disabled
+  // in the assign modal's checklist ("ocupado") so a supervisor can't double-assign.
+  const busyInspectorIds = useMemo(() => {
+    const busy = new Set<number>()
+    for (const order of orders) {
+      for (const item of order.items) {
+        for (const inspector of item.assignedInspectors) {
+          busy.add(inspector.id)
+        }
+      }
+    }
+    return busy
+  }, [orders])
 
   // Sync selectedOrder when server data refreshes after assign/release/upload
   useEffect(() => {
@@ -1254,7 +1334,8 @@ export function CargaDeTrabajoPage({ orders, tablets, rol, permisos }: CargaDeTr
       {selectedOrder !== null && (
         <OrderDetailModal
           order={selectedOrder}
-          tablets={tablets}
+          inspectors={inspectors}
+          busyInspectorIds={busyInspectorIds}
           onClose={() => setSelectedOrder(null)}
           canAsignar={canAsignar}
           canDocumentos={canDocumentos}

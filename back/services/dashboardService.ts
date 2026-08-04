@@ -55,6 +55,7 @@ export async function getSupervisorDashboardStats(accessToken: string): Promise<
 
 export type BandejaReporteRow = {
   id: string
+  source: 'formal' | 'informal'
   cotizacion: string
   part: string
   client: string
@@ -77,6 +78,7 @@ export async function getDashboardBandeja(accessToken: string): Promise<BandejaR
     const json = await res.json()
     const bandeja: Array<{
       id: number
+      source?: 'formal' | 'informal'
       created_at: string
       part_number: string
       quotation_consecutive: string | null
@@ -89,7 +91,8 @@ export async function getDashboardBandeja(accessToken: string): Promise<BandejaR
       .slice(0, 6)
       .map((row) => ({
         id: String(row.id),
-        cotizacion: row.quotation_consecutive ?? '—',
+        source: row.source === 'informal' ? 'informal' : 'formal',
+        cotizacion: row.quotation_consecutive ?? (row.source === 'informal' ? 'Informal' : '—'),
         part: row.part_number,
         client: row.client_name,
         plant: row.plant_name,
@@ -103,10 +106,15 @@ export async function getDashboardBandeja(accessToken: string): Promise<BandejaR
 }
 
 export type ProduccionItem = {
+  // id de la sesión de inspección — key ÚNICA por fila. Un mismo trabajo/cotización
+  // ahora puede tener N inspectores (N sesiones activas), así que `report`
+  // (consecutivo) YA NO es único entre filas — usar id_session evita el warning
+  // de React "two children with the same key".
+  id: number
+  source: 'formal' | 'informal'
   operadores: string
   initials: string
   report: string
-  tabletCode: string
   status: 'Pendiente' | 'Enviado'
   current: number
   total: number
@@ -124,18 +132,23 @@ export async function getDashboardProduccion(accessToken: string): Promise<Produ
     if (!res.ok) return []
     const json = await res.json()
     const sessions: Array<{
+      id_session: number
+      source?: 'formal' | 'informal'
       inspector_name: string
-      quotation_consecutive: string
-      id_tablet: string | null
+      part_number: string | null
+      quotation_consecutive: string | null
       has_submitted_report: boolean
       inventory_done: number
       inventory: number
     }> = json?.data ?? []
     return sessions.map((s) => ({
+      id: s.id_session,
+      source: s.source === 'informal' ? 'informal' : 'formal',
       operadores: s.inspector_name,
       initials: getInitials(s.inspector_name),
-      report: s.quotation_consecutive,
-      tabletCode: s.id_tablet ?? '—',
+      // Formal → consecutivo de cotización; informal → no tiene cotización,
+      // se muestra el número de parte (o etiqueta de respaldo).
+      report: s.quotation_consecutive ?? s.part_number ?? 'Orden informal',
       status: s.has_submitted_report ? 'Enviado' : 'Pendiente',
       current: s.inventory_done,
       total: s.inventory,

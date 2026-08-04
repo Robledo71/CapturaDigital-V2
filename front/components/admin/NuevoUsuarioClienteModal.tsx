@@ -47,9 +47,6 @@ function SubmitButton() {
 const inputCls =
   'rounded-lg bg-white dark:bg-[#0c1829] border border-blue-200 dark:border-[#1a2d4d] text-slate-800 dark:text-slate-200 placeholder-slate-500 px-3 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition-colors w-full'
 
-const inputDisabledCls =
-  'rounded-lg bg-slate-100 dark:bg-[#0a1322] border border-blue-200 dark:border-[#1a2d4d] text-slate-500 dark:text-slate-400 px-3 py-2 text-sm cursor-not-allowed w-full'
-
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoUsuarioClienteModalProps) {
@@ -200,21 +197,6 @@ export function NuevoUsuarioClienteModal({ cliente, onClose, onSuccess }: NuevoU
               {state?.errors?.contrasena && (
                 <p className="text-red-400 text-xs">{state.errors.contrasena[0]}</p>
               )}
-            </div>
-
-            {/* Puesto (readonly — el service siempre envía "Cliente") */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="cu-puesto" className="text-xs font-medium text-black dark:text-slate-400">
-                Puesto
-              </label>
-              <input
-                id="cu-puesto"
-                type="text"
-                readOnly
-                disabled
-                value="Cliente"
-                className={inputDisabledCls}
-              />
             </div>
 
           </div>

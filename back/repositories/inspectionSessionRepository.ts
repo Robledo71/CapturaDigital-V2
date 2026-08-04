@@ -27,9 +27,7 @@ function baseUrl(): string {
 
 export type SessionPayload = {
   idSupervisor: string
-  idTablet: string
-  /** ISO timestamp marking when the assignment starts. */
-  fechaInicio: string
+  idInspectores: string[]
 }
 
 // order / quotation / orderItem are QB pass-through data forwarded to qb_sync
@@ -64,9 +62,7 @@ export type OrderItemTree = {
 function inspectionSessionBody(s: SessionPayload) {
   return {
     id_supervisor: s.idSupervisor,
-    id_tablet: s.idTablet,
-    status: 'assigned',
-    fecha_inicio: s.fechaInicio,
+    id_inspectores: s.idInspectores,
   }
 }
 
@@ -87,27 +83,11 @@ async function interpret(res: Response): Promise<SessionApiResult> {
 // Repository functions
 // ---------------------------------------------------------------------------
 
-/** Create an inspection session for an item that ALREADY exists in qb_sync. */
-export async function createSessionForItem(
-  orderItemId: number,
-  session: SessionPayload,
-  accessToken: string,
-): Promise<SessionApiResult> {
-  try {
-    const res = await fetch(`${baseUrl()}/qb_sync/order-items/${orderItemId}/session`, {
-      method: 'POST',
-      headers: apiHeaders(accessToken),
-      body: JSON.stringify(inspectionSessionBody(session)),
-    })
-    return interpret(res)
-  } catch {
-    return { ok: false, status: 0 }
-  }
-}
-
 /**
- * Materialize a NEW item (Order → Quotation → OrderItem) coming from a QB
- * search and create its inspection session in a single upsert call.
+ * Upsert the full Order → Quotation → OrderItem tree and create the
+ * inspection session(s) (one per inspector) in a single call. ALL assignment
+ * now goes through this endpoint — qb_sync upserts the item by consecutive
+ * numbers + part number, whether or not it already existed.
  */
 export async function createItemWithSession(
   tree: OrderItemTree,
@@ -135,16 +115,24 @@ export async function createItemWithSession(
   }
 }
 
-/** Delete the active session of an item (release its tablet). */
-export async function deleteSessionForItem(
+/**
+ * Close ONE inspector's session on an order-item, leaving any other assigned
+ * inspectors' sessions untouched. Idempotent on the backend (200 with
+ * `closed: 0` if there was nothing to close for that empleado_id).
+ */
+export async function closeInspectorSession(
   orderItemId: number,
+  empleadoId: number,
   accessToken: string,
 ): Promise<SessionApiResult> {
   try {
-    const res = await fetch(`${baseUrl()}/qb_sync/order-items/${orderItemId}/session`, {
-      method: 'DELETE',
-      headers: apiHeaders(accessToken),
-    })
+    const res = await fetch(
+      `${baseUrl()}/qb_sync/order-items/${orderItemId}/inspectors/${empleadoId}`,
+      {
+        method: 'DELETE',
+        headers: apiHeaders(accessToken),
+      },
+    )
     return interpret(res)
   } catch {
     return { ok: false, status: 0 }

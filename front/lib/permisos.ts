@@ -19,13 +19,16 @@
 // ─── Roles ──────────────────────────────────────────────────────────────────────
 
 export type Rol =
+  | 'superusuario'
   | 'admin'
   | 'supervisor'
+  | 'supervisor_regional'
   | 'lider'
   | 'capturacion'
   | 'servicio_cliente'
   | 'cliente'
   | 'gerente'
+  | 'inspector'
 
 // ─── Catálogo de permisos (acción fina, agrupados por módulo) ────────────────────
 
@@ -45,9 +48,16 @@ export const PERMISOS = [
   'ordenes.descargar',
   'ordenes.asignar',
   'ordenes.documentos',
-  // Tablets
-  'tablets.ver',
-  'tablets.gestionar',
+  // Órdenes informales (ad-hoc, fuera de SysQB)
+  'ordenes_informales.ver',
+  'ordenes_informales.crear',
+  'ordenes_informales.asignar',
+  // Reportes informales (muestreo/editar/firmar; NO publicar hasta promover a formal)
+  'reportes_informales.ver',
+  'reportes_informales.muestreo',
+  'reportes_informales.editar',
+  'reportes_informales.firmar',
+  'reportes_informales.promover',
   // Administración (CRUD de catálogos)
   'usuarios.crud',
   'usuarios.crear_cliente',
@@ -75,6 +85,9 @@ export type Permiso = (typeof PERMISOS)[number]
 const TODOS_LOS_PERMISOS = [...PERMISOS] as Permiso[]
 
 export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
+  // Superusuario: acceso absoluto a todos los módulos y acciones.
+  superusuario: TODOS_LOS_PERMISOS,
+
   // Acceso total
   admin: TODOS_LOS_PERMISOS,
 
@@ -90,12 +103,42 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.ver',
     'ordenes.asignar',
     'ordenes.documentos',
-    // tablets.ver: supervisor tiene su página de control de tablets (solo lectura).
-    // NO tablets.gestionar: el alta/edición/baja de tablets es admin-only (la UI de
-    // mutación vive únicamente en /admin).
-    'tablets.ver',
     'usuarios.crear_cliente',
     'historial.ver',
+    // Órdenes/reportes informales: mecánica completa
+    'ordenes_informales.ver',
+    'ordenes_informales.crear',
+    'ordenes_informales.asignar',
+    'reportes_informales.ver',
+    'reportes_informales.muestreo',
+    'reportes_informales.editar',
+    'reportes_informales.firmar',
+    'reportes_informales.promover',
+  ],
+
+  // Supervisor regional: mismo alcance operativo que el supervisor, pero cross-planta
+  // (el filtro de planta lo maneja el backend). Reusa el portal /supervisor.
+  supervisor_regional: [
+    'supervisor.ver',
+    'reportes.ver',
+    'reportes.editar',
+    'reportes.publicar',
+    'reportes.firmar',
+    'reportes.muestreo',
+    'cotizaciones.importar',
+    'ordenes.ver',
+    'ordenes.asignar',
+    'ordenes.documentos',
+    'usuarios.crear_cliente',
+    'historial.ver',
+    'ordenes_informales.ver',
+    'ordenes_informales.crear',
+    'ordenes_informales.asignar',
+    'reportes_informales.ver',
+    'reportes_informales.muestreo',
+    'reportes_informales.editar',
+    'reportes_informales.firmar',
+    'reportes_informales.promover',
   ],
 
   // Líder de planta (reusa la vista de supervisor y entra a captura)
@@ -108,6 +151,14 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.descargar',
     'ordenes.asignar',
     'historial.ver',
+    'ordenes_informales.ver',
+    'ordenes_informales.crear',
+    'ordenes_informales.asignar',
+    'reportes_informales.ver',
+    'reportes_informales.muestreo',
+    'reportes_informales.editar',
+    'reportes_informales.firmar',
+    'reportes_informales.promover',
   ],
 
   // Capturación (PIERDE el desbloqueo de cotizaciones)
@@ -116,6 +167,9 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'reportes.ver',
     'ordenes.ver',
     'ordenes.descargar',
+    // Consulta (lectura) de órdenes/reportes informales
+    'ordenes_informales.ver',
+    'reportes_informales.ver',
   ],
 
   // Servicio al cliente (rol nuevo): ve órdenes descargadas y bloquea/desbloquea
@@ -126,10 +180,16 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.descargar',
     'cotizaciones.bloquear',
     'cotizaciones.desbloquear',
+    'ordenes_informales.ver',
+    'reportes_informales.ver',
   ],
 
   // Cliente (pendiente de implementar su portal)
   cliente: [],
+
+  // Inspector: rol de la app móvil; no accede al portal web de staff (el backend
+  // lo bloquea con wrong_app). Sin permisos de portal.
+  inspector: [],
 
   // Gerente: solo lectura, ve todo sin filtro de planta
   gerente: [
@@ -138,6 +198,8 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'ordenes.ver',
     'ordenes.descargar',
     'historial.ver',
+    'ordenes_informales.ver',
+    'reportes_informales.ver',
   ],
 }
 

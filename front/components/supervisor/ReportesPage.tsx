@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Plus, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import type { ReporteRow, ReporteEstatus } from '@/back/services/reportesService'
+import { getReporteDetalleAction } from '@/app/actions/get-reporte-detalle'
 import { getAvatarColor } from '@/front/lib/avatarColor'
 import { FilterChips } from '@/front/components/ui/FilterChips'
 import { OfflineBanner } from '@/front/components/ui/OfflineBanner'
 import { ReporteCardList } from '@/front/components/supervisor/ReporteCardList'
+import { ReporteAccordionPanel, groupByPart, type RowDetail } from './ReporteAccordionPanel'
 
 // ─── Avatar helpers ────────────────────────────────────────────────────────────
 
@@ -113,11 +114,32 @@ export function ReportesPage({
   detailHrefBase = '/supervisor/reportes',
   newReportHref = '/supervisor/carga-trabajo',
 }: ReportesPageProps) {
-  const router = useRouter()
-
   const [activeTab, setActiveTab] = useState<TabKey>('todos')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+
+  // Acordeón: filas expandidas + caché de detalles (lazy-load al abrir).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [details, setDetails] = useState<Record<string, RowDetail>>({})
+
+  async function toggleRow(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    // Carga los detalles solo la primera vez que se expande la fila.
+    if (details[id]) return
+    setDetails((prev) => ({ ...prev, [id]: { status: 'loading' } }))
+    const res = await getReporteDetalleAction(id)
+    setDetails((prev) => ({
+      ...prev,
+      [id]: res.ok
+        ? { status: 'ready', groups: groupByPart(res.reporte.inspectionItems) }
+        : { status: 'error', error: res.error },
+    }))
+  }
 
   // Conteos globales sobre TODOS los reportes (no solo la página visible).
   const statusCounts = {
@@ -299,49 +321,66 @@ export function ReportesPage({
                     </td>
                   </tr>
                 ) : (
-                  paginated.map((r) => (
-                    <tr
-                      key={r.id}
-                      onClick={() => router.push(`${detailHrefBase}/${r.id}`)}
-                      className="hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors group cursor-pointer"
-                    >
-                      <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">
-                        {r.id}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm">{r.cliente}</p>
-                        <p className="text-slate-500 text-xs mt-0.5">{r.planta}</p>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
-                        {r.cotizacion}
-                      </td>
-                      <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400 text-xs max-w-[160px]">
-                        {r.parte}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <InspectorAvatar nombre={r.inspector} />
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">
-                        {r.turno}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <EstatusBadge estatus={r.estatus} />
-                      </td>
-                      <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400 text-sm tabular-nums whitespace-nowrap">
-                        {r.piezas}
-                      </td>
-                      <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400 text-sm tabular-nums whitespace-nowrap">
-                        {r.pctNG}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ChevronRight
-                          size={15}
-                          className="text-blue-400 group-hover:text-slate-600 dark:text-slate-400 transition-colors inline"
-                          aria-hidden="true"
-                        />
-                      </td>
-                    </tr>
-                  ))
+                  paginated.map((r) => {
+                    const isOpen = expanded.has(r.id)
+                    const detail = details[r.id]
+                    return (
+                      <Fragment key={r.id}>
+                        <tr
+                          onClick={() => toggleRow(r.id)}
+                          aria-expanded={isOpen}
+                          className={`hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors group cursor-pointer ${isOpen ? 'bg-blue-50/70 dark:bg-[#1a2d4d]/40' : ''}`}
+                        >
+                          <td className="px-4 py-3 font-mono text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">
+                            {r.id}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <p className="text-slate-800 dark:text-slate-200 font-medium text-sm">{r.cliente}</p>
+                            <p className="text-slate-500 text-xs mt-0.5">{r.planta}</p>
+                          </td>
+                          <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
+                            {r.cotizacion}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
+                            {r.parte}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <InspectorAvatar nombre={r.inspector} />
+                          </td>
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-sm whitespace-nowrap">
+                            {r.turno}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <EstatusBadge estatus={r.estatus} />
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400 text-sm tabular-nums whitespace-nowrap">
+                            {r.piezas}
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400 text-sm tabular-nums whitespace-nowrap">
+                            {r.pctNG}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <ChevronDown
+                              size={16}
+                              className={`text-blue-400 group-hover:text-slate-600 dark:text-slate-400 transition-transform inline ${isOpen ? 'rotate-180' : ''}`}
+                              aria-hidden="true"
+                            />
+                          </td>
+                        </tr>
+
+                        {isOpen && (
+                          <tr className="bg-slate-50/70 dark:bg-[#0a1628]">
+                            <td colSpan={10} className="px-4 py-4">
+                              <ReporteAccordionPanel
+                                detail={detail}
+                                detailHref={`${detailHrefBase}/${r.id}`}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    )
+                  })
                 )}
               </tbody>
             </table>

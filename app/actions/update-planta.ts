@@ -10,6 +10,7 @@ export type UpdatePlantaState = {
   errors?: {
     nombre?: string[]
     direccion?: string[]
+    regionId?: string[]
     general?: string[]
   }
   success?: true
@@ -18,7 +19,8 @@ export type UpdatePlantaState = {
 
 const UpdatePlantaSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').trim(),
-  direccion: z.string().trim().optional(),
+  direccion: z.string().min(1, 'La dirección es requerida').trim(),
+  regionId: z.number().int().positive(),
 })
 
 export async function updatePlanta(
@@ -36,11 +38,12 @@ export async function updatePlanta(
     return { errors: { general: ['ID de planta inválido'] } }
   }
 
-  const direccionRaw = String(formData.get('direccion') ?? '').trim()
+  const regionIdRaw = formData.get('regionId')
 
   const raw = {
     nombre: String(formData.get('nombre') ?? '').trim(),
-    direccion: direccionRaw || undefined,
+    direccion: String(formData.get('direccion') ?? '').trim(),
+    regionId: regionIdRaw ? Number(regionIdRaw) : NaN,
   }
 
   const validated = UpdatePlantaSchema.safeParse(raw)
@@ -53,7 +56,8 @@ export async function updatePlanta(
       {
         id,
         nombre: validated.data.nombre,
-        direccion: direccionRaw === '' ? null : validated.data.direccion,
+        direccion: validated.data.direccion,
+        regionId: validated.data.regionId,
       },
       accessToken,
     )

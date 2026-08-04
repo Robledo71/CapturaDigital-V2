@@ -27,8 +27,8 @@ export async function deletePlantaAction(
     if (result.reason === 'not_found') {
       return { error: 'Planta no encontrada' }
     }
-    if (result.reason === 'has_tablets') {
-      return { error: 'No se puede eliminar: la planta tiene tablets asignadas.' }
+    if (result.reason === 'in_use') {
+      return { error: 'No se puede eliminar: la planta tiene recursos asignados.' }
     }
     return { error: 'Error inesperado al eliminar la planta' }
   }

@@ -6,6 +6,27 @@ import { type OrderWorkload, type OrderItemWorkload, type QuotationSummary, getO
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { orderExists } from '@/back/services/qb_sync-api'
+import { getAllPlantas } from '@/back/services/plantService'
+
+// Roles cross-planta (ven órdenes de cualquier planta) — se alinea con
+// CROSS_PLANT_ROLES del backend (src/shared/access/plantAccess.js). El resto
+// (supervisor, lider) queda acotado a sus plantas asignadas.
+const GLOBAL_PLANT_ROLES = new Set([
+  'admin', 'superusuario', 'supervisor_regional', 'capturacion', 'servicio_cliente', 'gerente',
+])
+
+// Normaliza un nombre de planta para comparar SysQB (may/min, con acentos) contra
+// el catálogo (catalogos.plantas, todo en MAYÚSCULAS): quita acentos, colapsa
+// espacios y pasa a MAYÚSCULAS. Evita el falso "otra planta" por diferencias de
+// formato entre ambas fuentes.
+function normalizePlantName(name: string | null | undefined): string {
+  return (name ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase()
+}
 
 const Schema = z.object({
   orden: z.string().min(1, 'El número de orden es requerido').trim(),
@@ -45,7 +66,7 @@ function toItemArray(value: unknown): QBOrderItem[] {
 
 /**
  * Builds an OrderWorkload purely from QB API data — NO database writes.
- * All items start with status 'pending' and no assigned tablet because
+ * All items start with status 'pending' and no assigned inspector because
  * the assignment hasn't happened yet.
  */
 function buildOrderWorkloadFromQB(
@@ -53,13 +74,17 @@ function buildOrderWorkloadFromQB(
   rawCotizaciones: QBCotizacion[],
 ): OrderWorkload {
   // SysQB puede devolver la MISMA cotización más de una vez. Si no la deduplicamos,
-  // tanto las cotizaciones (key q.id) como sus items se renderizarían duplicados
-  // (warning de React "two children with the same key").
-  const seenCotIds = new Set<number>()
+  // tanto las cotizaciones como sus items se renderizarían duplicados (warning de
+  // React "two children with the same key").
+  // Se deduplica por numero_consecutivo (la identidad ÚNICA de una cotización,
+  // formato OV-…-CO-…), NO por `id`: el id numérico de SysQB no es confiable
+  // (puede faltar/repetirse), lo que dejaba pasar duplicados con el mismo consecutivo.
+  const seenConsecutivos = new Set<string>()
   const cotizaciones = rawCotizaciones.filter((cotizacion) => {
-    const cid = Number(cotizacion.id)
-    if (seenCotIds.has(cid)) return false
-    seenCotIds.add(cid)
+    const key = (cotizacion.consecutive_number ?? '').trim().toUpperCase()
+    if (!key) return true // sin consecutivo no se puede deduplicar: se conserva
+    if (seenConsecutivos.has(key)) return false
+    seenConsecutivos.add(key)
     return true
   })
 
@@ -73,7 +98,7 @@ function buildOrderWorkloadFromQB(
       inventario: item.inventory !== '' && item.inventory !== null ? Number(item.inventory) : 0,
       inventarioTerminado: item.inventory_done !== '' && item.inventory_done !== null ? Number(item.inventory_done) : 0,
       assignedAt: null,
-      assignedTablet: null,
+      assignedInspectors: [],
       quotationConsecutive: cotizacion.consecutive_number ?? null,
       hasSubmittedReport: false,
       // QB items are never persisted yet — no documents uploaded
@@ -160,11 +185,20 @@ export async function importCotizacionAction(
   const orderId = Number(orderResult.data.id)
   const existsInDb = await orderExists(orderId, session.accessToken)
 
-  // --- Step 1c: filtro estricto por planta — admin ve todo, el resto solo su planta ---
-  if (session.rol !== 'admin') {
-    const userPlant = (session.plantaNombre ?? '').trim().toLowerCase()
-    const orderPlant = (orderResult.data.plant_name ?? '').trim().toLowerCase()
-    if (!userPlant || userPlant !== orderPlant) {
+  // --- Step 1c: filtro estricto por planta — roles cross-planta ven todo; el
+  // resto (supervisor/lider) solo sus plantas asignadas. Se compara por ID de
+  // planta (session.plantaIds), resolviendo el nombre de la orden contra el
+  // catálogo con nombre normalizado. Antes se comparaba texto contra
+  // session.plantaNombre, que el login v2.0 dejaba en null → SIEMPRE bloqueaba.
+  if (!GLOBAL_PLANT_ROLES.has(session.rol)) {
+    const plantas = await getAllPlantas(session.accessToken)
+    const orderPlantNorm = normalizePlantName(orderResult.data.plant_name)
+    const userPlantNames = new Set(
+      plantas
+        .filter((p) => (session.plantaIds ?? []).includes(p.id))
+        .map((p) => normalizePlantName(p.nombre)),
+    )
+    if (!orderPlantNorm || !userPlantNames.has(orderPlantNorm)) {
       return {
         ok: false,
         error: 'Esta orden pertenece a otra planta. Solo puedes gestionar órdenes de tu planta asignada.',

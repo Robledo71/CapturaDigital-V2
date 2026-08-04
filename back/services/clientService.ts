@@ -3,10 +3,15 @@ import type { ClienteRow } from '@/shared/types/cliente'
 
 interface QbSyncClienteRaw {
   id: number
-  name: string
-  user_id: number | null
-  nombre_completo: string | null
-  correo: string | null
+  nombre: string
+  razon_social: string | null
+  rfc: string | null
+  direccion: string | null
+  po: boolean | null
+  usuario_id: number | null
+  usuario_codigo: string | null
+  usuario_correo: string | null
+  usuario_activo?: boolean | null
 }
 
 interface QbSyncMutationResponse {
@@ -14,8 +19,22 @@ interface QbSyncMutationResponse {
   data: QbSyncClienteRaw
 }
 
-export type CreateClienteInput = { nombre: string }
-export type UpdateClienteInput = { id: number; nombre: string }
+export type CreateClienteInput = {
+  nombre: string
+  razonSocial?: string
+  rfc: string
+  direccion: string
+  po?: boolean
+}
+
+export type UpdateClienteInput = {
+  id: number
+  nombre: string
+  razonSocial?: string
+  rfc: string
+  direccion: string
+  po?: boolean
+}
 
 export type CreateClienteResult =
   | { ok: true; cliente: ClienteRow }
@@ -32,10 +51,14 @@ export type DeleteClienteResult =
 function mapRaw(raw: QbSyncClienteRaw): ClienteRow {
   return {
     id: raw.id,
-    nombre: raw.name,
-    userId: raw.user_id,
-    userNombre: raw.nombre_completo,
-    userCorreo: raw.correo,
+    nombre: raw.nombre,
+    razonSocial: raw.razon_social ?? '',
+    rfc: raw.rfc ?? '',
+    direccion: raw.direccion ?? '',
+    po: !!raw.po,
+    usuarioId: raw.usuario_id,
+    usuarioCodigo: raw.usuario_codigo,
+    usuarioCorreo: raw.usuario_correo,
   }
 }
 
@@ -66,7 +89,13 @@ export async function createCliente(
   const res = await fetch(`${BASE()}/qb_sync/clientes`, {
     method: 'POST',
     headers: apiHeaders(accessToken),
-    body: JSON.stringify({ name: input.nombre }),
+    body: JSON.stringify({
+      nombre: input.nombre,
+      razon_social: input.razonSocial,
+      rfc_tax_id: input.rfc,
+      direccion: input.direccion,
+      po: input.po,
+    }),
   })
   if (res.status === 409) return { ok: false, reason: 'duplicate_name' }
   if (!res.ok) return { ok: false, reason: 'error' }
@@ -81,7 +110,13 @@ export async function updateCliente(
   const res = await fetch(`${BASE()}/qb_sync/clientes/${input.id}`, {
     method: 'PUT',
     headers: apiHeaders(accessToken),
-    body: JSON.stringify({ name: input.nombre }),
+    body: JSON.stringify({
+      nombre: input.nombre,
+      razon_social: input.razonSocial,
+      rfc_tax_id: input.rfc,
+      direccion: input.direccion,
+      po: input.po,
+    }),
   })
   if (res.status === 404) return { ok: false, reason: 'not_found' }
   if (!res.ok) return { ok: false, reason: 'error' }
@@ -110,7 +145,6 @@ export type CreateClientUserInput = {
   codigoEmpleado: string
   correo: string
   contrasena: string
-  puesto?: string
 }
 
 export type CreateClientUserResult =
@@ -129,7 +163,6 @@ export async function createClientUser(
       codigo_empleado: input.codigoEmpleado,
       correo:          input.correo,
       contrasena:      input.contrasena,
-      puesto:          input.puesto ?? 'Cliente',
     }),
   })
   if (res.status === 404) return { ok: false, reason: 'not_found' }

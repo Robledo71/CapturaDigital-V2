@@ -20,7 +20,7 @@ export default async function GerenteOrdenesPage() {
       <TopBar crumb="Órdenes" homeHref="/gerente" />
       <CargaDeTrabajoPage
         orders={orders}
-        tablets={[]}
+        inspectors={[]}
         rol={session.rol}
         permisos={session.permisos}
       />

@@ -14,6 +14,13 @@ export type IncidenciaSnapshot = {
   pieces: number
 }
 
+/** Identificadores en un snapshot: lote, serie y pares { tipo: valor } (LPN, ASN, …). */
+export type IdentificadoresSnapshot = {
+  lote: string | null
+  serie: string | null
+  otros: Record<string, string>
+}
+
 export type EditHistoryRow = {
   id: number
   dailyReportId: number
@@ -26,6 +33,8 @@ export type EditHistoryRow = {
   valores: { before: PiezasSnapshot; after: PiezasSnapshot }
   /** Incidencias antes/después (lista vacía en registros previos a esta función). */
   incidencias: { before: IncidenciaSnapshot[]; after: IncidenciaSnapshot[] }
+  /** Identificadores antes/después (null/{} en registros previos a esta captura). */
+  identificadores: { before: IdentificadoresSnapshot; after: IdentificadoresSnapshot }
 }
 
 function apiHeaders(accessToken: string): Record<string, string> {

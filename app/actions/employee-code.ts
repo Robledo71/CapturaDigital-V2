@@ -7,13 +7,13 @@ import {
   checkCodigoEmpleadoExists,
 } from '@/back/services/userService'
 
-export async function getNextEmployeeCodeAction(): Promise<{ codigo: string | null }> {
+export async function getNextEmployeeCodeAction(rol?: string): Promise<{ codigo: string | null }> {
   try {
     const session = await getSession()
     if (!session || !can(session, 'usuarios.crud')) {
       return { codigo: null }
     }
-    const codigo = await getNextCodigoEmpleado(session.accessToken)
+    const codigo = await getNextCodigoEmpleado(session.accessToken, rol)
     return { codigo }
   } catch {
     return { codigo: null }

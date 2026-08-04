@@ -10,12 +10,13 @@ import {
   FileText,
   ClipboardList,
   Users,
+  HardHat,
   Building2,
   MapPin,
-  Tablet,
   ShieldCheck,
   ChevronDown,
   History,
+  PenLine,
   X,
 } from 'lucide-react'
 import { useMobileMenu } from '@/front/components/supervisor/MobileMenuContext'
@@ -54,6 +55,11 @@ const NAV_SECTIONS: NavSection[] = [
         icon: <Users size={16} />,
         href: '/admin/usuarios',
       },
+      {
+        label: 'Inspectores',
+        icon: <HardHat size={16} />,
+        href: '/admin/inspectores',
+      },
     ],
   },
   {
@@ -69,11 +75,6 @@ const NAV_SECTIONS: NavSection[] = [
         icon: <MapPin size={16} />,
         href: '/admin/plantas',
       },
-      {
-        label: 'Tablets',
-        icon: <Tablet size={16} />,
-        href: '/admin/tablets',
-      },
     ],
   },
   {
@@ -83,6 +84,11 @@ const NAV_SECTIONS: NavSection[] = [
         label: 'Permisos',
         icon: <ShieldCheck size={16} />,
         href: '/admin/permisos',
+      },
+      {
+        label: 'Mi firma',
+        icon: <PenLine size={16} />,
+        href: '/admin/configuracion',
       },
     ],
   },

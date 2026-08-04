@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useActionState } from 'react'
+import { useState, useEffect, useMemo, useRef, useActionState, startTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Plus, Pencil, Trash2, AlertTriangle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 import { NuevoPlantaModal } from './NuevoPlantaModal'
 import { EditarPlantaModal } from './EditarPlantaModal'
 import { deletePlantaAction } from '@/app/actions/delete-planta'
-import type { PlantaRow } from '@/shared/types/planta'
+import type { PlantaRow, RegionRow } from '@/shared/types/planta'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -18,10 +18,13 @@ interface Planta {
   id: number
   nombre: string
   direccion: string | null
+  regionId: number | null
+  nombreRegion: string | null
 }
 
 interface PlantasPageProps {
   initialPlantas: PlantaRow[]
+  regiones: RegionRow[]
 }
 
 // ─── Mapper ───────────────────────────────────────────────────────────────────
@@ -31,6 +34,8 @@ function mapRow(p: PlantaRow): Planta {
     id: p.id,
     nombre: p.nombre,
     direccion: p.direccion,
+    regionId: p.regionId,
+    nombreRegion: p.nombreRegion,
   }
 }
 
@@ -95,7 +100,7 @@ function ConfirmDeleteModal({
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function PlantasPage({ initialPlantas }: PlantasPageProps) {
+export function PlantasPage({ initialPlantas, regiones }: PlantasPageProps) {
   const router = useRouter()
   const [plantas, setPlantas] = useState<Planta[]>(() => initialPlantas.map(mapRow))
   const [search, setSearch] = useState('')
@@ -151,7 +156,9 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
     pendingDeleteIdRef.current = confirmDelete.id
     const fd = new FormData()
     fd.set('id', String(confirmDelete.id))
-    deleteDispatch(fd)
+    // El dispatch de useActionState debe invocarse dentro de una transición
+    // (si no, React advierte y isDeleting/isPending no se actualiza bien).
+    startTransition(() => deleteDispatch(fd))
   }
 
   // Procesa el resultado de la acción de borrado (éxito o error de negocio).
@@ -191,6 +198,7 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
         <NuevoPlantaModal
           onClose={() => setShowNuevoModal(false)}
           onSuccess={onPlantaCreada}
+          regiones={regiones}
         />
       )}
 
@@ -200,6 +208,7 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
           planta={editTarget}
           onClose={() => setEditTarget(null)}
           onSuccess={onPlantaActualizada}
+          regiones={regiones}
         />
       )}
 
@@ -279,6 +288,9 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
                     <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                       Dirección
                     </th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
+                      Región
+                    </th>
                     <th scope="col" className="px-4 py-3 text-right text-xs font-bold text-black dark:text-white uppercase tracking-wider">
                       <span className="sr-only">Acciones</span>
                     </th>
@@ -287,7 +299,7 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
                 <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                   {paginated.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-12 text-center text-slate-500 text-sm">
+                      <td colSpan={4} className="px-4 py-12 text-center text-slate-500 text-sm">
                         {search.trim()
                           ? `Sin resultados para "${search.trim()}"`
                           : 'No hay plantas registradas.'}
@@ -302,6 +314,11 @@ export function PlantasPage({ initialPlantas }: PlantasPageProps) {
                         <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm">
                           {planta.direccion ?? (
                             <span className="text-slate-400 dark:text-slate-600 italic">Sin dirección</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400 text-sm">
+                          {planta.nombreRegion ?? (
+                            <span className="text-slate-400 dark:text-slate-600 italic">Sin región</span>
                           )}
                         </td>
                         <td className="px-4 py-3">

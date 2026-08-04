@@ -33,6 +33,8 @@ export default async function GerenteReporteDetalleRoute({
 
   // Gerente es solo lectura: los botones de muestreo/firmar/publicar se ocultan
   // vía can() porque su rol no tiene esos permisos. El "volver" regresa a /gerente/reportes.
+  // currentUserHasSignature se deja en false (default) — gerente nunca ve el
+  // botón "Firmar reporte", así que no vale la pena pegarle a qb_sync por esto.
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       <TopBar crumb={reporte.consecutiveNumber} homeHref="/gerente" />
@@ -41,6 +43,7 @@ export default async function GerenteReporteDetalleRoute({
         rol={session.rol}
         permisos={session.permisos}
         backHref="/gerente/reportes"
+        currentUserHasSignature={false}
       />
     </div>
   )

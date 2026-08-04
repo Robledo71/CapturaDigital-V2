@@ -8,10 +8,11 @@ import { updateUsuario } from '@/back/services/userService'
 
 export type UpdateUserState = {
   errors?: {
-    nombreCompleto?: string[]
+    nombreEmpleado?: string[]
+    apellidoPaterno?: string[]
+    apellidoMaterno?: string[]
     codigoEmpleado?: string[]
-    puesto?: string[]
-    plantaId?: string[]
+    plantaIds?: string[]
     rol?: string[]
     correo?: string[]
     general?: string[]
@@ -22,19 +23,29 @@ export type UpdateUserState = {
 
 const UpdateUserSchema = z
   .object({
-    nombreCompleto: z.string().min(1, 'El nombre completo es requerido').trim(),
+    nombreEmpleado: z.string().min(1, 'El nombre es requerido').trim(),
+    apellidoPaterno: z.string().min(1, 'El apellido paterno es requerido').trim(),
+    // Apellido materno opcional: si se deja vacío, el backend asigna 'X' por defecto.
+    apellidoMaterno: z.string().trim().optional(),
     codigoEmpleado: z.string().min(1, 'El código de empleado es requerido').trim(),
-    puesto: z.string().min(1, 'El puesto es requerido').trim(),
-    plantaId: z.number().int().positive().nullable(),
-    rol: z.enum(['admin', 'supervisor', 'capturacion', 'lider', 'servicio_cliente', 'gerente', 'cliente'], {
-      error: 'Rol no válido',
-    }),
-    correo: z.string().email('El correo no es válido').trim(),
-  })
-  // Los clientes no tienen planta asignada; el resto de roles sí la requiere.
-  .refine((d) => d.rol === 'cliente' || d.plantaId !== null, {
-    message: 'Selecciona una planta',
-    path: ['plantaId'],
+    // Optativo: algunos roles (p. ej. cross-planta) pueden no tener planta asignada.
+    plantaIds: z.array(z.number().int().positive()),
+    rol: z.enum(
+      [
+        'superusuario',
+        'admin',
+        'gerente',
+        'supervisor_regional',
+        'supervisor',
+        'lider',
+        'servicio_cliente',
+        'capturacion',
+        'inspector',
+      ],
+      { error: 'Rol no válido' },
+    ),
+    // Correo opcional: puede ir vacío. Si trae algo, debe ser un email válido.
+    correo: z.string().trim().email('El correo no es válido').or(z.literal('')),
   })
 
 export async function updateUser(
@@ -53,13 +64,20 @@ export async function updateUser(
   }
   const id = idRaw
 
-  const plantaIdRaw = parseInt(String(formData.get('plantaId') ?? ''), 10)
+  const plantaIds = formData
+    .getAll('plantaIds')
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n) && n > 0)
+
+  const apellidoMaternoRaw = String(formData.get('apellidoMaterno') ?? '').trim()
 
   const raw = {
-    nombreCompleto: String(formData.get('nombreCompleto') ?? '').trim(),
+    nombreEmpleado: String(formData.get('nombreEmpleado') ?? '').trim(),
+    apellidoPaterno: String(formData.get('apellidoPaterno') ?? '').trim(),
+    // Vacío → undefined para que quede opcional (el backend guarda 'X').
+    apellidoMaterno: apellidoMaternoRaw || undefined,
     codigoEmpleado: String(formData.get('codigoEmpleado') ?? '').trim(),
-    puesto: String(formData.get('puesto') ?? '').trim(),
-    plantaId: isNaN(plantaIdRaw) ? null : plantaIdRaw,
+    plantaIds,
     rol: String(formData.get('rol') ?? '').trim(),
     correo: String(formData.get('correo') ?? '').trim(),
   }

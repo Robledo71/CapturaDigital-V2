@@ -10,6 +10,7 @@ export type CreatePlantaState = {
   errors?: {
     nombre?: string[]
     direccion?: string[]
+    regionId?: string[]
     general?: string[]
   }
   success?: true
@@ -18,7 +19,8 @@ export type CreatePlantaState = {
 
 const CreatePlantaSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').trim(),
-  direccion: z.string().trim().optional(),
+  direccion: z.string().min(1, 'La dirección es requerida').trim(),
+  regionId: z.number().int().positive(),
 })
 
 export async function createPlanta(
@@ -31,9 +33,12 @@ export async function createPlanta(
   }
   const accessToken = session.accessToken
 
+  const regionIdRaw = formData.get('regionId')
+
   const raw = {
     nombre: String(formData.get('nombre') ?? '').trim(),
-    direccion: String(formData.get('direccion') ?? '').trim() || undefined,
+    direccion: String(formData.get('direccion') ?? '').trim(),
+    regionId: regionIdRaw ? Number(regionIdRaw) : NaN,
   }
 
   const validated = CreatePlantaSchema.safeParse(raw)
@@ -46,6 +51,7 @@ export async function createPlanta(
       {
         nombre: validated.data.nombre,
         direccion: validated.data.direccion,
+        regionId: validated.data.regionId,
       },
       accessToken,
     )

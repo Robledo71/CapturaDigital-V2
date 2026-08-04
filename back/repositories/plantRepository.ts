@@ -1,4 +1,5 @@
 import 'server-only'
+import type { RegionRow } from '@/shared/types/planta'
 
 // ---------------------------------------------------------------------------
 // External API shape
@@ -11,12 +12,20 @@ type ExternalPlant = {
   address?: string | null
   regionId?: number | null
   region_id?: number | null
+  nombre_region?: string | null
+}
+
+type ExternalRegion = {
+  id?: number
+  nombre?: string
 }
 
 export type PlantRecord = {
   id: number
   name: string
   address: string | null
+  regionId: number | null
+  nombreRegion: string | null
 }
 
 function mapExternalPlant(p: ExternalPlant): PlantRecord {
@@ -24,6 +33,8 @@ function mapExternalPlant(p: ExternalPlant): PlantRecord {
     id: p.id ?? p.id_planta ?? 0,
     name: p.name ?? '',
     address: p.address ?? null,
+    regionId: p.region_id ?? p.regionId ?? null,
+    nombreRegion: p.nombre_region ?? null,
   }
 }
 
@@ -56,6 +67,21 @@ export async function findAllPlants(accessToken: string): Promise<PlantRecord[]>
   const body = await res.json()
   const data: ExternalPlant[] = Array.isArray(body.data) ? body.data : []
   return data.map(mapExternalPlant)
+}
+
+export async function findAllRegiones(accessToken: string): Promise<RegionRow[]> {
+  const res = await fetch(`${baseUrl()}/qb_sync/plants/regiones`, {
+    headers: apiHeaders(accessToken),
+    cache: 'no-store',
+  })
+
+  if (!res.ok) {
+    throw new Error(`findAllRegiones: API responded ${res.status}`)
+  }
+
+  const body = await res.json()
+  const data: ExternalRegion[] = Array.isArray(body.data) ? body.data : []
+  return data.map((r) => ({ id: r.id ?? 0, nombre: r.nombre ?? '' }))
 }
 
 export type CreatePlantData = {
@@ -123,7 +149,7 @@ export async function updatePlant(
 
 export type DeletePlantResult =
   | { ok: true }
-  | { ok: false; reason: 'not_found' | 'has_tablets' | 'error' }
+  | { ok: false; reason: 'not_found' | 'in_use' | 'error' }
 
 export async function deletePlant(
   id: number,
@@ -135,8 +161,8 @@ export async function deletePlant(
   })
 
   if (res.status === 404) return { ok: false, reason: 'not_found' }
-  // 409 = la planta tiene tablets asignadas (regla de negocio del backend).
-  if (res.status === 409) return { ok: false, reason: 'has_tablets' }
+  // 409 = la planta tiene recursos asignados que impiden su eliminación (regla de negocio del backend).
+  if (res.status === 409) return { ok: false, reason: 'in_use' }
   if (!res.ok) return { ok: false, reason: 'error' }
   return { ok: true }
 }

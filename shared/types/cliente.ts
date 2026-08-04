@@ -1,7 +1,11 @@
 export type ClienteRow = {
   id: number
   nombre: string
-  userId: number | null
-  userNombre: string | null
-  userCorreo: string | null
+  razonSocial: string
+  rfc: string
+  direccion: string
+  po: boolean
+  usuarioId: number | null
+  usuarioCodigo: string | null
+  usuarioCorreo: string | null
 }

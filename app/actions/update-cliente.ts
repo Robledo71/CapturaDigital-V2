@@ -10,6 +10,9 @@ import { updateCliente as serviceUpdateCliente } from '@/back/services/clientSer
 export type UpdateClienteState = {
   errors?: {
     nombre?: string[]
+    rfc?: string[]
+    direccion?: string[]
+    razonSocial?: string[]
     general?: string[]
   }
   success?: true
@@ -18,6 +21,9 @@ export type UpdateClienteState = {
 
 const UpdateClienteSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').trim(),
+  rfc: z.string().min(1, 'El RFC es requerido').trim(),
+  direccion: z.string().min(1, 'La dirección es requerida').trim(),
+  razonSocial: z.string().trim().optional(),
 })
 
 export async function updateCliente(
@@ -36,7 +42,11 @@ export async function updateCliente(
 
   const raw = {
     nombre: String(formData.get('nombre') ?? '').trim(),
+    rfc: String(formData.get('rfc') ?? '').trim(),
+    direccion: String(formData.get('direccion') ?? '').trim(),
+    razonSocial: String(formData.get('razonSocial') ?? '').trim() || undefined,
   }
+  const po = formData.get('po') === 'on'
 
   const validated = UpdateClienteSchema.safeParse(raw)
   if (!validated.success) {
@@ -44,7 +54,14 @@ export async function updateCliente(
   }
 
   const result = await serviceUpdateCliente(
-    { id, nombre: validated.data.nombre },
+    {
+      id,
+      nombre: validated.data.nombre,
+      rfc: validated.data.rfc,
+      direccion: validated.data.direccion,
+      razonSocial: validated.data.razonSocial,
+      po,
+    },
     session.accessToken,
   )
 

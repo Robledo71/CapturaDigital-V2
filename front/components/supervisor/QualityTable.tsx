@@ -59,8 +59,14 @@ export function QualityTable({ rows }: QualityTableProps) {
               </tr>
             ) : rows.map((row) => (
               <tr
-                key={row.id}
-                onClick={() => router.push(`/supervisor/reportes/${row.id}`)}
+                key={`${row.source}-${row.id}`}
+                onClick={() =>
+                  router.push(
+                    row.source === 'informal'
+                      ? `/supervisor/reportes-informales/${row.id}`
+                      : `/supervisor/reportes/${row.id}`,
+                  )
+                }
                 className="group border-b border-slate-100 dark:border-[#1a2d4d]/50 hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/50 cursor-pointer transition-colors"
               >
                 {/* COTIZACIÓN */}

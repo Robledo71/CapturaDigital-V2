@@ -1,20 +1,23 @@
 // tests/unit/actions/supervisor-login.test.ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/back/services/session', () => ({
-  createSession: vi.fn(),
-  getSession: vi.fn(),
+// Mock de cookies() de Next: el action las setea en login exitoso.
+const cookieSet = vi.fn()
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(async () => ({ set: cookieSet, get: vi.fn(), delete: vi.fn() })),
 }))
 
-// next/navigation redirect está en el alias del vitest.config.ts
-// pero lo necesitamos como vi.fn() real que NO lanza, para poder inspeccionar llamadas
+// redirect() y createSession() en el flujo de éxito.
+const redirectMock = vi.fn()
 vi.mock('next/navigation', () => ({
-  redirect: vi.fn(),
-  useRouter: vi.fn(),
+  redirect: (url: string) => redirectMock(url),
 }))
 
-import { createSession } from '@/back/services/session'
-import { redirect } from 'next/navigation'
+const createSessionMock = vi.fn()
+vi.mock('@/back/services/session', () => ({
+  createSession: (payload: unknown) => createSessionMock(payload),
+}))
+
 import { loginSupervisor } from '@/app/actions/supervisor-login'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -35,26 +38,21 @@ function makeFormData(overrides: Partial<{
   return fd
 }
 
+// Forma NUEVA del backend reestructurado: data.{accessToken,refreshToken,tipo,rol,permisos}
 function makeSuccessBody(overrides: Partial<{
+  tipo: string
   rol: string
-  id: number
-  nombreCompleto: string
-  plantaId: number | null
-  plantaNombre: string | null
+  permisos: string[]
 }> = {}) {
   return {
     success: true,
     data: {
       accessToken: 'access-token-abc',
       refreshToken: 'refresh-token-xyz',
-      user: {
-        id: 1,
-        rol: 'supervisor',
-        nombreCompleto: 'Ana Torres',
-        plantaId: 5,
-        plantaNombre: 'Honda Celaya',
-        ...overrides,
-      },
+      tipo: 'empleado',
+      rol: 'ADMIN',
+      permisos: ['ADMIN.VER', 'REPORTES.VER'],
+      ...overrides,
     },
   }
 }
@@ -80,12 +78,9 @@ describe('loginSupervisor', () => {
     vi.stubGlobal('fetch', vi.fn())
     process.env.QSYNC_API_URL = 'http://localhost:3001'
     process.env.X_APP_TOKEN = 'test-app-token'
-    // createSession no debe hacer nada por defecto
-    vi.mocked(createSession).mockResolvedValue(undefined)
-    // redirect no lanza en nuestros mocks — simplemente registra la llamada
-    vi.mocked(redirect).mockImplementation((_url: string) => {
-      // intencional: no lanza, solo registra
-    })
+    cookieSet.mockClear()
+    redirectMock.mockClear()
+    createSessionMock.mockClear()
   })
 
   afterEach(() => {
@@ -127,7 +122,6 @@ describe('loginSupervisor', () => {
     expect(result).toMatchObject({
       errors: { general: ['Credenciales incorrectas.'] },
     })
-    expect(createSession).not.toHaveBeenCalled()
   })
 
   // 4. QB API → inactive
@@ -156,66 +150,137 @@ describe('loginSupervisor', () => {
     })
   })
 
-  // 6. Login exitoso con rol supervisor → redirige a /supervisor
-  it('login exitoso con rol "supervisor" → redirect llamado con "/supervisor"', async () => {
+  // 6. Login exitoso → crea sesión y redirige al portal del rol
+  it('login exitoso (rol admin) → createSession y redirect a /admin', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse(makeSuccessBody({ rol: 'ADMIN' })))
+
+    await loginSupervisor(undefined, makeFormData())
+
+    expect(createSessionMock).toHaveBeenCalledOnce()
+    expect(redirectMock).toHaveBeenCalledWith('/admin')
+  })
+
+  // 6a. Login exitoso rol superusuario → redirige a /superusuario
+  it('login exitoso (rol superusuario) → redirect a /superusuario', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse(makeSuccessBody({ rol: 'SUPERUSUARIO' })))
+
+    await loginSupervisor(undefined, makeFormData())
+
+    expect(redirectMock).toHaveBeenCalledWith('/superusuario')
+  })
+
+  // 6b. El body enviado al backend incluye codigo_usuario, contrasena y origen: 'WEB'
+  it('envía codigo_usuario, contrasena y origen WEB al backend', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse(makeSuccessBody()))
+
+    await loginSupervisor(undefined, makeFormData({ employee_number: 'SUPERVISOR' }))
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(JSON.parse(init!.body as string)).toEqual({
+      codigo_usuario: 'SUPERVISOR',
+      contrasena: 'secret1234',
+      origen: 'WEB',
+    })
+  })
+
+  // 6c. Login exitoso → setea las cookies access_token y refresh_token
+  it('login exitoso → setea cookies access_token y refresh_token', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse(makeSuccessBody()))
+
+    await loginSupervisor(undefined, makeFormData())
+
+    expect(cookieSet).toHaveBeenCalledWith(
+      'access_token',
+      'access-token-abc',
+      expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/' }),
+    )
+    expect(cookieSet).toHaveBeenCalledWith(
+      'refresh_token',
+      'refresh-token-xyz',
+      expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/' }),
+    )
+  })
+
+  // 6d. Login fallido → NO setea cookies
+  it('login fallido → no setea cookies', async () => {
     vi.mocked(fetch).mockResolvedValue(
-      makeOkFetchResponse(makeSuccessBody({ rol: 'supervisor' })),
+      makeFailFetchResponse({ success: false, reason: 'not_found' }),
     )
 
     await loginSupervisor(undefined, makeFormData())
 
-    expect(createSession).toHaveBeenCalledOnce()
-    expect(redirect).toHaveBeenCalledWith('/supervisor')
+    expect(cookieSet).not.toHaveBeenCalled()
   })
 
-  // 7. Login exitoso con rol admin → redirige a /admin
-  it('login exitoso con rol "admin" → redirect llamado con "/admin"', async () => {
+  // 6e. Cuenta de mobile (wrong_app) → blocked: true + mensaje de acceso
+  it('reason "wrong_app" → blocked true y mensaje de acceso a la aplicación', async () => {
     vi.mocked(fetch).mockResolvedValue(
-      makeOkFetchResponse(makeSuccessBody({ rol: 'admin' })),
-    )
-
-    await loginSupervisor(undefined, makeFormData())
-
-    expect(redirect).toHaveBeenCalledWith('/admin')
-  })
-
-  // 8. Login exitoso con rol capturacion → redirige a /capturacion
-  it('login exitoso con rol "capturacion" → redirect llamado con "/capturacion"', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      makeOkFetchResponse(makeSuccessBody({ rol: 'capturacion' })),
-    )
-
-    await loginSupervisor(undefined, makeFormData())
-
-    expect(redirect).toHaveBeenCalledWith('/capturacion')
-  })
-
-  // 9. Login exitoso con rol lider → redirige a /supervisor (mismo destino)
-  it('login exitoso con rol "lider" → redirect llamado con "/supervisor"', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      makeOkFetchResponse(makeSuccessBody({ rol: 'lider' })),
-    )
-
-    await loginSupervisor(undefined, makeFormData())
-
-    expect(redirect).toHaveBeenCalledWith('/supervisor')
-  })
-
-  // 10. Rol desconocido → error general
-  it('rol desconocido "inspector" → errors.general con mensaje de rol no soportado', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      makeOkFetchResponse(makeSuccessBody({ rol: 'inspector' })),
+      makeFailFetchResponse({ success: false, reason: 'wrong_app' }),
     )
 
     const result = await loginSupervisor(undefined, makeFormData())
 
-    expect(result).toMatchObject({
-      errors: { general: expect.arrayContaining([expect.stringContaining('Rol')]) },
-    })
-    expect(redirect).not.toHaveBeenCalled()
+    expect(result?.blocked).toBe(true)
+    expect(result?.errors?.general?.[0]).toMatch(/acceso a esta aplicación/i)
+    expect(cookieSet).not.toHaveBeenCalled()
   })
 
-  // 11. Error de red → error de conexión
+  // 6f. reason en MAYÚSCULAS ("WRONG_APP") también dispara blocked
+  it('reason "WRONG_APP" (mayúsculas) → blocked true', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeFailFetchResponse({ success: false, reason: 'WRONG_APP' }),
+    )
+
+    const result = await loginSupervisor(undefined, makeFormData())
+
+    expect(result?.blocked).toBe(true)
+  })
+
+  // 6g. Otros errores NO marcan blocked
+  it('reason "not_found" → blocked no se activa', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      makeFailFetchResponse({ success: false, reason: 'not_found' }),
+    )
+
+    const result = await loginSupervisor(undefined, makeFormData())
+
+    expect(result?.blocked).toBe(false)
+  })
+
+  // 7. Login exitoso → createSession recibe rol y permisos normalizados a minúsculas
+  it('login exitoso → createSession con rol y permisos en minúsculas', async () => {
+    const body = makeSuccessBody({
+      rol: 'SUPERVISOR',
+      permisos: ['SUPERVISOR.VER', 'REPORTES.EDITAR'],
+    })
+    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse(body))
+
+    await loginSupervisor(undefined, makeFormData())
+
+    expect(createSessionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tipo: 'empleado',
+        rol: 'supervisor',
+        permisos: ['supervisor.ver', 'reportes.editar'],
+        accessToken: 'access-token-abc',
+        refreshToken: 'refresh-token-xyz',
+      }),
+    )
+    expect(redirectMock).toHaveBeenCalledWith('/supervisor')
+  })
+
+  // 8. Respuesta ok pero sin data → tratado como error, no redirige
+  it('respuesta ok sin data → errors.general', async () => {
+    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse({ success: true }))
+
+    const result = await loginSupervisor(undefined, makeFormData())
+
+    expect(result).toMatchObject({ errors: { general: expect.any(Array) } })
+    expect(redirectMock).not.toHaveBeenCalled()
+    expect(createSessionMock).not.toHaveBeenCalled()
+  })
+
+  // 9. Error de red → error de conexión
   it('fetch lanza → errors.general con mensaje de conexión', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('ECONNREFUSED'))
 
@@ -224,52 +289,10 @@ describe('loginSupervisor', () => {
     expect(result).toMatchObject({
       errors: { general: expect.arrayContaining([expect.stringContaining('conectar')]) },
     })
-    expect(createSession).not.toHaveBeenCalled()
-    expect(redirect).not.toHaveBeenCalled()
+    expect(redirectMock).not.toHaveBeenCalled()
   })
 
-  // 12. createSession recibe los datos correctos del usuario
-  it('createSession es llamado con userId, rol y datos de sesión correctos', async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      makeOkFetchResponse(
-        makeSuccessBody({ rol: 'supervisor', id: 42, nombreCompleto: 'Ana Torres' }),
-      ),
-    )
-
-    await loginSupervisor(undefined, makeFormData({ employee_number: 'EMP999' }))
-
-    expect(createSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userId: 42,
-        rol: 'supervisor',
-        codigoEmpleado: 'EMP999',
-        nombreCompleto: 'Ana Torres',
-        accessToken: 'access-token-abc',
-        refreshToken: 'refresh-token-xyz',
-      }),
-    )
-  })
-
-  // 12b. permisos del login (qb_sync) se propagan a createSession
-  it('createSession recibe los permisos que devuelve qb_sync', async () => {
-    const body = makeSuccessBody({ rol: 'servicio_cliente' })
-    ;(body.data as { permisos?: string[] }).permisos = [
-      'servicio_cliente.ver',
-      'cotizaciones.desbloquear',
-    ]
-    vi.mocked(fetch).mockResolvedValue(makeOkFetchResponse(body))
-
-    await loginSupervisor(undefined, makeFormData({ employee_number: 'EMP999' }))
-
-    expect(createSession).toHaveBeenCalledWith(
-      expect.objectContaining({
-        rol: 'servicio_cliente',
-        permisos: ['servicio_cliente.ver', 'cotizaciones.desbloquear'],
-      }),
-    )
-  })
-
-  // 13. Respuesta con body no parseable → trata como error
+  // 10. Respuesta con body no parseable → trata como error
   it('fetch con json malformado → errors.general', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: false,
@@ -278,8 +301,6 @@ describe('loginSupervisor', () => {
 
     const result = await loginSupervisor(undefined, makeFormData())
 
-    // Cuando res.json() falla, el .catch(() => ({})) del código produce body = {}
-    // y body.success === false/undefined, por lo que devuelve error general
     expect(result).toMatchObject({ errors: { general: expect.any(Array) } })
   })
 })

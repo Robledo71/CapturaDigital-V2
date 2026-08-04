@@ -59,14 +59,24 @@ describe('getNextEmployeeCodeAction', () => {
     expect(getNextCodigoEmpleado).not.toHaveBeenCalled()
   })
 
-  it('admin con código disponible → retorna { codigo: "0002" }', async () => {
+  it('admin con código disponible (sin rol) → retorna { codigo: "0002" }', async () => {
     vi.mocked(getSession).mockResolvedValue(adminSession())
     vi.mocked(getNextCodigoEmpleado).mockResolvedValue('0002')
 
     const result = await getNextEmployeeCodeAction()
 
     expect(result).toEqual({ codigo: '0002' })
-    expect(getNextCodigoEmpleado).toHaveBeenCalledWith('admin-token')
+    expect(getNextCodigoEmpleado).toHaveBeenCalledWith('admin-token', undefined)
+  })
+
+  it('admin con rol → pasa el rol al servicio y retorna el código role-prefijado', async () => {
+    vi.mocked(getSession).mockResolvedValue(adminSession())
+    vi.mocked(getNextCodigoEmpleado).mockResolvedValue('SUP-01')
+
+    const result = await getNextEmployeeCodeAction('supervisor')
+
+    expect(result).toEqual({ codigo: 'SUP-01' })
+    expect(getNextCodigoEmpleado).toHaveBeenCalledWith('admin-token', 'supervisor')
   })
 
   it('servicio retorna null (fallo de red) → { codigo: null }', async () => {
