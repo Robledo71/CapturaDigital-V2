@@ -5,6 +5,9 @@ import { Search, Download } from 'lucide-react'
 import { StatCard } from '@/front/components/supervisor/StatCard'
 import type { PublishedReporteRow, PublishedReportesStats } from '@/back/services/publishedReportesService'
 import { upsertDownloadRecord, getDownloadedIds } from '@/front/lib/downloadHistory'
+import { FilterChips } from '@/front/components/ui/FilterChips'
+import { OfflineBanner } from '@/front/components/ui/OfflineBanner'
+import { ReporteCardList } from '@/front/components/capturacion/ReporteCardList'
 
 type TabKey = 'todos' | 'sin-descargar' | 'descargados'
 
@@ -39,7 +42,7 @@ interface ReportesPublicadosClientProps {
   canDescargar: boolean
 }
 
-function StatusBadge({ status }: { status: 'Pendiente' | 'Descargado' }) {
+export function StatusBadge({ status }: { status: 'Pendiente' | 'Descargado' }) {
   if (status === 'Pendiente') {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 border border-yellow-300 dark:bg-yellow-500/15 dark:text-yellow-400 dark:border-yellow-500/30">
@@ -247,7 +250,7 @@ export function ReportesPublicadosClient({
       </div>
 
       {/* Tab bar */}
-      <div className="shrink-0 border-b border-blue-200 dark:border-[#1a2d4d] flex gap-1 overflow-x scrollbar-thin">
+      <div className="shrink-0 border-b border-blue-200 dark:border-[#1a2d4d] hidden md:flex gap-1 overflow-x scrollbar-thin">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -273,8 +276,16 @@ export function ReportesPublicadosClient({
         ))}
       </div>
 
+      <div className="md:hidden">
+        <FilterChips
+          items={tabs}
+          activeKey={activeTab}
+          onChange={(key) => setActiveTab(key as TabKey)}
+        />
+      </div>
+
       {/* Table card */}
-      <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0f2038] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
+      <div className="shrink-0 hidden md:block rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0f2038] dark:shadow-none bg-white dark:bg-[#0f2038] overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -421,6 +432,19 @@ export function ReportesPublicadosClient({
           </tbody>
         </table>
         </div>
+      </div>
+
+      <div className="md:hidden flex flex-col gap-3">
+        <OfflineBanner />
+        <ReporteCardList
+          rows={pagedRows}
+          canDescargar={canDescargar}
+          downloadedIds={downloadedIds}
+          selectedIds={selectedIds}
+          onToggleSelect={handleRowCheckboxChange}
+          onDownload={handleDownload}
+          onRowClick={onRowClick}
+        />
       </div>
 
       {totalPages > 1 && (

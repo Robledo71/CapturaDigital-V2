@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // Orígenes permitidos para assets en desarrollo (LAN).
   allowedDevOrigins: ["192.168.10.178"],
 
+  images: {
+    qualities: [100],
+  },
+
   experimental: {
     // Client Router Cache: reutiliza el render (RSC) de cada ruta en el navegador
     // durante esta ventana, evitando volver a llamar al server al cambiar de módulo.

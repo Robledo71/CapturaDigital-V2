@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { getReporteDetalle } from '@/back/services/reporteDetalleService'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { ReporteDetallePage } from '@/front/components/supervisor/ReporteDetallePage'
 import { AccesoRestringido } from '@/front/components/ui/AccesoRestringido'
 
@@ -19,6 +20,7 @@ export default async function GerenteReporteDetalleRoute({
   if (!can(session, 'reportes.ver')) {
     return (
       <div className="flex flex-col flex-1 overflow-hidden">
+        <TopBar crumb="Reportes" homeHref="/gerente" />
         <AccesoRestringido mensaje="No tienes permiso para ver los reportes." />
       </div>
     )
@@ -35,6 +37,7 @@ export default async function GerenteReporteDetalleRoute({
   // botón "Firmar reporte", así que no vale la pena pegarle a qb_sync por esto.
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
+      <TopBar crumb={reporte.consecutiveNumber} homeHref="/gerente" />
       <ReporteDetallePage
         reporte={reporte}
         rol={session.rol}

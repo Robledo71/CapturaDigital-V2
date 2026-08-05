@@ -24,6 +24,8 @@ import { promoverOrdenInformalAction } from '@/app/actions/promover-orden'
 import { SearchCotizacionModal } from './SearchCotizacionModal'
 import { PromoverModal } from '@/front/components/carga-trabajo/PromoverModal'
 import { can, type SessionLike } from '@/front/lib/permisos'
+import { OfflineBanner } from '@/front/components/ui/OfflineBanner'
+import { OrderCardList } from '@/front/components/supervisor/OrderCardList'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -49,7 +51,7 @@ interface UploadTarget {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function countPendingUnassigned(order: OrderWorkload): number {
+export function countPendingUnassigned(order: OrderWorkload): number {
   return order.items.filter(
     (item) => item.status === 'pending' && item.assignedInspectors.length === 0,
   ).length
@@ -1337,35 +1339,39 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
   const to = Math.min(page * PAGE_SIZE, orders.length)
 
   return (
-    <div className="shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:bg-[#0c1829] dark:shadow-none">
-      <div className="overflow-x-auto">
-      <table className="w-full table-auto text-sm">
+    <>
+    <div className="hidden md:block shrink-0 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:bg-[#0c1829] dark:shadow-none">
+      <div className="overflow-x-auto scrollbar-thin">
+      <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-100 dark:border-[#1a2d4d] dark:bg-[#0a1628]">
-            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
+          <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
+            <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
               Consecutivo
             </th>
-            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
+            <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
               Cliente
             </th>
-            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
+            <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
               Planta
             </th>
-            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
+            <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
               No. Parte
             </th>
-            <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-black dark:text-white">
+            <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
               Inventario
             </th>
-            <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white">
+            <th className="px-4 py-3 text-center text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
               Items
             </th>
-            <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-black dark:text-white">
+            <th className="px-4 py-3 text-center text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
               Sin asignar
+            </th>
+            <th className="px-4 py-3 text-right text-xs font-bold text-black dark:text-white uppercase tracking-wider">
+              <span className="sr-only">Abrir</span>
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
           {paged.map((order) => {
             const pending = countPendingUnassigned(order)
             const inv = getOrderInventory(order.items, isIndefiniteInventoryPlant(order.plantName))
@@ -1382,7 +1388,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
                     onRowClick(order)
                   }
                 }}
-                className="cursor-pointer border-b border-white transition-colors last:border-b-0 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:border-[#1a2d4d] dark:hover:bg-[#111a30]"
+                className="group cursor-pointer transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 dark:hover:bg-[#1a2d4d]/40"
               >
                 <td className="px-4 py-3">
                   <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">
@@ -1434,6 +1440,13 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
                     <span className="text-xs text-slate-700">—</span>
                   )}
                 </td>
+                <td className="px-4 py-3 text-right">
+                  <ChevronRight
+                    size={15}
+                    className="inline text-blue-400 transition-colors group-hover:text-slate-600 dark:text-slate-400"
+                    aria-hidden="true"
+                  />
+                </td>
               </tr>
             )
           })}
@@ -1441,8 +1454,15 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
       </table>
       </div>
 
+    </div>
+
+    <div className="md:hidden flex flex-col gap-3">
+      <OfflineBanner />
+      <OrderCardList orders={paged} onRowClick={onRowClick} />
+    </div>
+
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-3 px-4 pt-3 pb-4">
+        <div className="shrink-0 flex items-center justify-between gap-3 pt-1">
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Mostrando{' '}
             <span className="font-medium text-slate-900 dark:text-white">{from}–{to}</span>{' '}
@@ -1475,7 +1495,7 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
@@ -1534,7 +1554,7 @@ export function CargaDeTrabajoPage({ orders, inspectors, informalBusyInspectorId
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6 pb-24">
 
         <div className="shrink-0 flex items-start justify-between gap-4">
           <div>

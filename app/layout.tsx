@@ -1,17 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Nunito, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/front/components/ui/ThemeProvider";
 import { NoPinchZoom } from "@/front/components/ui/NoPinchZoom";
 
 // Tipografía principal de la app.
-const inter = Inter({
-  variable: "--font-inter",
+const nunito = Nunito({
+  variable: "--font-nunito",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const openSans = Open_Sans({
+  variable: "--font-open-sans",
   subsets: ["latin"],
 });
 
@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${nunito.variable} ${openSans.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="h-full overflow-hidden flex flex-col bg-background text-foreground font-sans" suppressHydrationWarning>

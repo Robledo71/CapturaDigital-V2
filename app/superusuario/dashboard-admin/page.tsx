@@ -1,4 +1,4 @@
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { DashboardPage } from '@/front/components/admin/DashboardPage'
 import { getAdminDashboardData } from '@/back/services/adminDashboardService'
 import { getSession } from '@/back/services/session'
@@ -9,7 +9,7 @@ export default async function DashboardAdminPage() {
 
   return (
     <>
-      <TopBar />
+      <TopBar homeHref="/superusuario" />
       <DashboardPage stats={stats} recentUsuarios={recentUsuarios} />
     </>
   )

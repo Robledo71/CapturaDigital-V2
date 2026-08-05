@@ -11,10 +11,10 @@ interface ProductionPanelProps {
 
 export function ProductionPanel({ items }: ProductionPanelProps) {
   return (
-    <div className="rounded-xl bg-white border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-[#0f2038] dark:border-[#0f2038] dark:shadow-none flex flex-col h-full overflow-hidden [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-[#1a2d4d] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-[#2a4070]">
+    <div className="rounded-2xl bg-white border border-slate-100 shadow-sm dark:bg-[#0f2038] dark:border-[#0f2038] dark:shadow-none flex flex-col h-full overflow-hidden [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-[#1a2d4d] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 dark:hover:[&::-webkit-scrollbar-thumb]:bg-[#2a4070]">
 
       {/* Header — pinned, with bottom border */}
-      <div className="flex items-center justify-between flex-shrink-0 px-5 py-4 border-b border-slate-100 dark:border-[#1a2d4d]">
+      <div className="flex items-center justify-between flex-shrink-0 px-6 py-4 border-b border-slate-100 dark:border-[#1a2d4d]">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
           Producción en vivo
         </span>
@@ -25,7 +25,7 @@ export function ProductionPanel({ items }: ProductionPanelProps) {
       </div>
 
       {/* Scrollable inspector items */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
+      <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-5">
         {items.length === 0 ? (
           <p className="text-slate-500 text-sm text-center py-4">
             No hay sesiones activas en este momento.

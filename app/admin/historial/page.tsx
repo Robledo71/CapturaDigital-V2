@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { getEditHistory } from '@/back/services/editHistoryService'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { AccesoRestringido } from '@/front/components/ui/AccesoRestringido'
 import { HistorialCambiosTable } from '@/front/components/historial/HistorialCambiosTable'
 
@@ -16,7 +16,7 @@ export default async function HistorialPage() {
   if (!can(session, 'historial.ver')) {
     return (
       <>
-        <TopBar crumb="Historial de cambios" />
+        <TopBar crumb="Historial de cambios" homeHref="/admin" />
         <AccesoRestringido mensaje="No tienes permiso para ver el historial de cambios." />
       </>
     )
@@ -26,7 +26,7 @@ export default async function HistorialPage() {
 
   return (
     <>
-      <TopBar crumb="Historial de cambios" />
+      <TopBar crumb="Historial de cambios" homeHref="/admin" />
       <HistorialCambiosTable rows={rows} />
     </>
   )

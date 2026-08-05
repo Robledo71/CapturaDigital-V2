@@ -25,7 +25,7 @@ export function LiveClock({ nombre, esperanRevision }: LiveClockProps) {
   if (!now) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-blue-950 dark:text-white">&nbsp;</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">&nbsp;</h1>
         <p className="text-sm text-blue-600 dark:text-slate-400 mt-0.5">&nbsp;</p>
       </div>
     )
@@ -44,8 +44,8 @@ export function LiveClock({ nombre, esperanRevision }: LiveClockProps) {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-black dark:text-white">
-        {greeting}, {nombre}
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        {greeting}, {nombre}! 👋
       </h1>
       <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
         {dateString} · {pendingText}

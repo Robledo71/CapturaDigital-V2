@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { getInformalReporteDetalle } from '@/back/services/informalReportesService'
 import { getSignatureStatus } from '@/back/services/signatureService'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { ReporteDetallePage } from '@/front/components/supervisor/ReporteDetallePage'
 
 export const metadata = {
@@ -26,7 +26,7 @@ export default async function ReporteInformalDetallePageRoute({
 
   return (
     <>
-      <TopBar crumb={reporte.consecutiveNumber} />
+      <TopBar crumb={reporte.consecutiveNumber} homeHref="/superusuario" />
       <ReporteDetallePage
         reporte={reporte}
         rol={session.rol}

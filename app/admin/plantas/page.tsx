@@ -1,4 +1,4 @@
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { PlantasPage } from '@/front/components/admin/PlantasPage'
 import { getAllPlantas, getRegiones } from '@/back/services/plantService'
 import { getSession } from '@/back/services/session'
@@ -13,7 +13,7 @@ export default async function Page() {
 
   return (
     <>
-      <TopBar crumb="Plantas" />
+      <TopBar crumb="Plantas" homeHref="/admin" />
       <PlantasPage initialPlantas={plantas} regiones={regiones} />
     </>
   )

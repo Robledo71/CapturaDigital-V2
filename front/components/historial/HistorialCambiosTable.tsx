@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Search } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import type { EditHistoryRow } from '@/back/services/editHistoryService'
 import { HistorialDetalleModal } from './HistorialDetalleModal'
+import { HistorialCardList } from './HistorialCardList'
+import { OfflineBanner } from '@/front/components/ui/OfflineBanner'
 
 interface HistorialCambiosTableProps {
   rows: EditHistoryRow[]
@@ -62,50 +64,54 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-slate-100 dark:border-[#0c1829] bg-white dark:bg-[#0c1829] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none overflow-x-auto">
+      {/* Table (desktop) */}
+      <div className="hidden md:block rounded-xl border border-slate-100 dark:border-[#0c1829] bg-white dark:bg-[#0c1829] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none overflow-hidden">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center py-16 px-6">
             <p className="text-sm text-slate-500 dark:text-slate-400">Sin cambios registrados</p>
           </div>
         ) : (
+          <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 dark:border-[#1a2d4d]">
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
+                <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                   Reporte
                 </th>
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
+                <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                   Ítem
                 </th>
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
+                <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                   Usuario
                 </th>
-                <th className="px-5 pb-3 pt-4 text-left text-xs font-bold text-black dark:text-white">
+                <th className="px-4 py-3 text-left text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                   Motivo
                 </th>
-                <th className="px-5 pb-3 pt-4 text-right text-xs font-bold text-black dark:text-white">
+                <th className="px-4 py-3 text-right text-xs font-bold text-black dark:text-white uppercase tracking-wider whitespace-nowrap">
                   Fecha
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-black dark:text-white uppercase tracking-wider">
+                  <span className="sr-only">Abrir</span>
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
               {filtered.map((row) => (
                 <tr
                   key={row.id}
                   onClick={() => setSelected(row)}
-                  className="border-b border-white dark:border-[#1a2d4d]/50 last:border-0 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer"
+                  className="group hover:bg-blue-50 dark:hover:bg-[#1a2d4d]/40 transition-colors cursor-pointer"
                 >
-                  <td className="px-5 py-3 text-xs font-mono text-blue-600 dark:text-blue-400">
+                  <td className="px-4 py-3 text-xs font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
                     #{row.dailyReportConsecutive}
                   </td>
-                  <td className="px-5 py-3 text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                  <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 tabular-nums whitespace-nowrap">
                     {row.reportItemId ?? '—'}
                   </td>
-                  <td className="px-5 py-3 text-sm text-slate-900 dark:text-white">
+                  <td className="px-4 py-3 text-sm text-slate-900 dark:text-white whitespace-nowrap">
                     {row.usuario}
                   </td>
-                  <td className="px-5 py-3 max-w-[320px]">
+                  <td className="px-4 py-3 max-w-[320px]">
                     <span
                       className="block truncate text-sm text-slate-700 dark:text-slate-300"
                       title={row.motivo}
@@ -113,14 +119,28 @@ export function HistorialCambiosTable({ rows }: HistorialCambiosTableProps) {
                       {row.motivo}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-right text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
+                  <td className="px-4 py-3 text-right text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
                     {formatFecha(row.createdAt)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <ChevronRight
+                      size={15}
+                      className="inline text-blue-400 transition-colors group-hover:text-slate-600 dark:text-slate-400"
+                      aria-hidden="true"
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
         )}
+      </div>
+
+      {/* Cards (mobile) */}
+      <div className="md:hidden flex flex-col gap-3">
+        <OfflineBanner />
+        <HistorialCardList rows={filtered} onRowClick={setSelected} formatFecha={formatFecha} />
       </div>
 
       {selected && (

@@ -20,6 +20,7 @@ import {
   bloquearTodasCotizacionesAction,
   type BloquearTodasState,
 } from '@/app/actions/bloquear-todas-cotizaciones'
+import { CotizacionCardList } from '@/front/components/capturacion/CotizacionCardList'
 
 const PAGE_SIZE = 10
 
@@ -255,7 +256,7 @@ interface ToggleButtonProps {
   registerSubmit: (id: number, fn: () => void) => void
 }
 
-function ToggleButton({ cotizacion, onToggle, onRequestConfirm, registerSubmit }: ToggleButtonProps) {
+export function ToggleButton({ cotizacion, onToggle, onRequestConfirm, registerSubmit }: ToggleButtonProps) {
   const [state, formAction] = useActionState<DesbloquearCotizacionState, FormData>(
     desbloquearCotizacionAction,
     undefined,
@@ -486,7 +487,7 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial, canBlockA
           </p>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-[#1a2d4d]">
@@ -562,6 +563,15 @@ export function DesbloquearCotizacionesClient({ cotizaciones: initial, canBlockA
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="md:hidden flex flex-col gap-3 p-3">
+              <CotizacionCardList
+                cotizaciones={paginated}
+                onToggle={handleToggle}
+                onRequestConfirm={handleRequestConfirm}
+                registerSubmit={registerSubmit}
+              />
             </div>
 
             {/* Pagination */}

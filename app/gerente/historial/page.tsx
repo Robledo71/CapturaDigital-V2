@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { getEditHistory } from '@/back/services/editHistoryService'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { HistorialCambiosTable } from '@/front/components/historial/HistorialCambiosTable'
 
 export const metadata = {
@@ -14,5 +15,10 @@ export default async function GerenteHistorialPage() {
 
   const rows = await getEditHistory(session.accessToken)
 
-  return <HistorialCambiosTable rows={rows} />
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <TopBar crumb="Historial de cambios" homeHref="/gerente" />
+      <HistorialCambiosTable rows={rows} />
+    </div>
+  )
 }
