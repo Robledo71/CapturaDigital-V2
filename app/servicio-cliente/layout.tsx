@@ -3,6 +3,7 @@ import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { Sidebar } from '@/front/components/servicio-cliente/Sidebar'
 import { MobileMenuProvider } from '@/front/components/supervisor/MobileMenuContext'
+import { TopBar } from '@/front/components/servicio-cliente/TopBar'
 
 export default async function ServicioClienteLayout({
   children,
@@ -11,6 +12,8 @@ export default async function ServicioClienteLayout({
 }) {
   const session = await getSession()
   if (!session || !can(session, 'servicio_cliente.ver')) redirect('/')
+
+  const canVerInformales = can(session, 'ordenes_informales.ver')
 
   return (
     <MobileMenuProvider>
@@ -22,7 +25,10 @@ export default async function ServicioClienteLayout({
             permisos: session.permisos,
           }}
         />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">{children}</div>
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <TopBar showNotifications={canVerInformales} />
+          {children}
+        </div>
       </div>
     </MobileMenuProvider>
   )

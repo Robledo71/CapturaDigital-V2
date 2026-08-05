@@ -2,6 +2,7 @@ import 'server-only'
 import {
   createItemWithSession,
   closeInspectorSession,
+  upsertOrderTree,
   type OrderItemTree,
   type SessionApiResult,
 } from '@/back/repositories/inspectionSessionRepository'
@@ -90,5 +91,41 @@ export async function desasignarInspector(
   const result = await closeInspectorSession(orderItemId, empleadoId, accessToken)
 
   if (!result.ok) return { ok: false, error: mapDesasignarError(result) }
+  return { ok: true }
+}
+
+// ---------------------------------------------------------------------------
+// Error mapping — descargar (upsert sin sesión) qb_sync status/message → Spanish
+// ---------------------------------------------------------------------------
+
+function mapDescargarError(result: Extract<SessionApiResult, { ok: false }>): string {
+  if (result.status === 0) {
+    return 'No se pudo conectar con el servidor. Intenta nuevamente.'
+  }
+  if (result.status === 409) {
+    return result.message ?? 'Conflicto al descargar la orden.'
+  }
+  if (result.status === 403) {
+    return result.message ?? 'No autorizado para descargar esta orden.'
+  }
+  return result.message ?? 'No se pudo descargar la orden.'
+}
+
+/**
+ * Persist (upsert) the full Order → Quotation → OrderItem tree WITHOUT
+ * assigning any inspector — the "Descargar orden" flow. Lets a supervisor
+ * bring an order found via QB search into the DB before deciding who works it.
+ *
+ * TODO CONTRATO ASUMIDO — ver el comentario en `upsertOrderTree`
+ * (`back/repositories/inspectionSessionRepository.ts`): depende de que el
+ * backend acepte `POST /qb_sync/order-items` sin `inspectionSession`.
+ */
+export async function descargarOrden(
+  tree: OrderItemTree,
+  accessToken: string,
+): Promise<AssignResult> {
+  const result = await upsertOrderTree(tree, accessToken)
+
+  if (!result.ok) return { ok: false, error: mapDescargarError(result) }
   return { ok: true }
 }

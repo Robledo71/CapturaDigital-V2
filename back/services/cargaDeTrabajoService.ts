@@ -141,8 +141,10 @@ function deriveItemStatus(sessionStatus: string | null): string {
 function mapWorkloadOrder(raw: RawOrder): OrderWorkload {
   const items: OrderItemWorkload[] = (raw.items ?? []).map((item) => ({
     id: item.id,
-    partNumber: item.partNumber ?? '—',
-    partName: item.partName ?? '—',
+    // El backend a veces devuelve el número de parte como number — forzamos string
+    // para cumplir el tipo y evitar crashes en operaciones de string (.trim/.toLowerCase).
+    partNumber: item.partNumber != null ? String(item.partNumber) : '—',
+    partName: item.partName != null ? String(item.partName) : '—',
     status: deriveItemStatus(item.sessionStatus),
     inventario: Number(item.inventory ?? 0),
     inventarioTerminado: Number(item.inventoryDone ?? 0),

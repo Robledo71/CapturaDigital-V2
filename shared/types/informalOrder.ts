@@ -10,6 +10,7 @@ export type InformalOrderRow = {
   nombreParte: string | null
   incidentes: string | null
   solicitanteNombre: string | null
+  fechaCreado: string | null
   inspectores: { id: number; name: string }[]
   estadoReporte: 'ENVIADO' | 'FIRMADO' | null
 }

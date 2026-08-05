@@ -10,6 +10,7 @@ import {
   Download,
   ChevronDown,
   Lock,
+  Briefcase,
   ClipboardList,
   ClipboardCheck,
   X,
@@ -45,6 +46,12 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         href: '/capturacion/desbloquear',
         icon: <Lock size={16} />,
         permiso: 'cotizaciones.desbloquear',
+      },
+      {
+        label: 'Carga de trabajo',
+        href: '/capturacion/carga-trabajo',
+        icon: <Briefcase size={16} />,
+        permiso: 'ordenes.ver',
       },
       {
         label: 'Órdenes informales',

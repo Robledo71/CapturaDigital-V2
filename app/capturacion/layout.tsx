@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { Sidebar } from '@/front/components/capturacion/Sidebar'
+import { TopBar } from '@/front/components/capturacion/TopBar'
 import { MobileMenuProvider } from '@/front/components/supervisor/MobileMenuContext'
+
 
 export default async function CapturacionLayout({
   children,
@@ -11,6 +13,8 @@ export default async function CapturacionLayout({
 }) {
   const session = await getSession()
   if (!session || !can(session, 'capturacion.ver')) redirect('/')
+
+  const canVerInformales = can(session, 'ordenes_informales.ver')
 
   return (
     <MobileMenuProvider>
@@ -22,7 +26,10 @@ export default async function CapturacionLayout({
             permisos: session.permisos,
           }}
         />
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">{children}</div>
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <TopBar showNotifications={canVerInformales} />
+          {children}
+        </div>
       </div>
     </MobileMenuProvider>
   )
