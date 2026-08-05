@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { getInspectores } from '@/back/services/inspectorService'
 import { getAllPlantas } from '@/back/services/plantService'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { InspectoresPage } from '@/front/components/supervisor/InspectoresPage'
 
 export const metadata = {
@@ -20,7 +20,7 @@ export default async function InspectoresRoute() {
 
   return (
     <>
-      <TopBar crumb="Inspectores" />
+      <TopBar crumb="Inspectores" homeHref="/superusuario" />
       <InspectoresPage
         initialInspectors={inspectors}
         count={count}

@@ -6,11 +6,14 @@ import { Search, Plus, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-rea
 import type { ReporteRow, ReporteEstatus } from '@/back/services/reportesService'
 import { getReporteDetalleAction } from '@/app/actions/get-reporte-detalle'
 import { getAvatarColor } from '@/front/lib/avatarColor'
+import { FilterChips } from '@/front/components/ui/FilterChips'
+import { OfflineBanner } from '@/front/components/ui/OfflineBanner'
+import { ReporteCardList } from '@/front/components/supervisor/ReporteCardList'
 import { ReporteAccordionPanel, groupByPart, type RowDetail } from './ReporteAccordionPanel'
 
 // ─── Avatar helpers ────────────────────────────────────────────────────────────
 
-function getInitialsFromName(nombre: string): string {
+export function getInitialsFromName(nombre: string): string {
   if (!nombre) return '?'
   const first = nombre.split(',')[0].trim()
   return first.split(' ').filter(Boolean).slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase() || '?'
@@ -18,7 +21,7 @@ function getInitialsFromName(nombre: string): string {
 
 // ─── Status badge config ───────────────────────────────────────────────────────
 
-const ESTATUS_CONFIG: Record<
+export const ESTATUS_CONFIG: Record<
   ReporteEstatus,
   { dot: string; text: string; pill: string }
 > = {
@@ -60,7 +63,7 @@ interface EstatusBadgeProps {
   estatus: ReporteEstatus
 }
 
-function EstatusBadge({ estatus }: EstatusBadgeProps) {
+export function EstatusBadge({ estatus }: EstatusBadgeProps) {
   const cfg = ESTATUS_CONFIG[estatus]
   return (
     <span
@@ -76,7 +79,7 @@ interface InspectorAvatarProps {
   nombre: string
 }
 
-function InspectorAvatar({ nombre }: InspectorAvatarProps) {
+export function InspectorAvatar({ nombre }: InspectorAvatarProps) {
   const iniciales = getInitialsFromName(nombre)
   const avatarColor = getAvatarColor(nombre)
   return (
@@ -183,7 +186,7 @@ export function ReportesPage({
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Scrollable area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-5">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 pb-24 flex flex-col gap-5">
 
         {/* Page header */}
         <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -228,7 +231,7 @@ export function ReportesPage({
         <div
           role="tablist"
           aria-label="Filtrar por estatus"
-          className="shrink-0 flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto scrollbar-thin"
+          className="shrink-0 hidden md:flex items-end gap-0 border-b border-blue-200 dark:border-[#1a2d4d] overflow-x-auto scrollbar-thin"
         >
           {TABS.map((tab) => {
             const isActive = activeTab === tab.key
@@ -258,8 +261,16 @@ export function ReportesPage({
           })}
         </div>
 
+        <div className="md:hidden">
+          <FilterChips
+            items={TABS.map((t) => ({ key: t.key, label: t.label, count: t.count }))}
+            activeKey={activeTab}
+            onChange={(key) => setActiveTab(key as TabKey)}
+          />
+        </div>
+
         {/* Table */}
-        <div className="shrink-0 rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
+        <div className="shrink-0 hidden md:block rounded-xl border border-slate-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:border-[#0c1829] dark:shadow-none bg-white dark:bg-[#0c1829] overflow-hidden">
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full text-sm" aria-label="Tabla de reportes de inspección">
               <thead>
@@ -296,7 +307,7 @@ export function ReportesPage({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white dark:divide-[#1a2d4d]">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#1a2d4d]">
                 {initialReportes.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="px-4 py-12 text-center text-slate-500 text-sm">
@@ -377,6 +388,11 @@ export function ReportesPage({
 
         </div>
 
+        <div className="md:hidden flex flex-col gap-3">
+          <OfflineBanner />
+          <ReporteCardList rows={paginated} detailHrefBase={detailHrefBase} />
+        </div>
+
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="shrink-0 flex items-center justify-between gap-3 pt-1">
@@ -416,6 +432,16 @@ export function ReportesPage({
         )}
 
       </div>
+
+      {newReportHref && (
+        <Link
+          href={newReportHref}
+          aria-label="Nueva inspección"
+          className="md:hidden fixed bottom-24 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg transition-colors"
+        >
+          <Plus size={22} />
+        </Link>
+      )}
 
     </div>
   )

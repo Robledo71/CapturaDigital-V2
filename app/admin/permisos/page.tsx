@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
 import { getPermisosConfig } from '@/back/services/permisosService'
@@ -13,7 +13,7 @@ export default async function Page() {
 
   return (
     <>
-      <TopBar crumb="Permisos" />
+      <TopBar crumb="Permisos" homeHref="/admin" />
       <PermisosMatrix
         permissions={config.permissions}
         matrix={config.matrix}

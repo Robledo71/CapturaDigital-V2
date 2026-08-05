@@ -1,6 +1,6 @@
 import { getSession } from '@/back/services/session'
 import { getEditHistory } from '@/back/services/editHistoryService'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { HistorialCambiosTable } from '@/front/components/historial/HistorialCambiosTable'
 
 export const metadata = {
@@ -13,7 +13,7 @@ export default async function HistorialPage() {
 
   return (
     <>
-      <TopBar crumb="Historial de cambios" />
+      <TopBar crumb="Historial de cambios" homeHref="/superusuario" />
       <HistorialCambiosTable rows={rows} />
     </>
   )

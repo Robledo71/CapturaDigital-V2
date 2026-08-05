@@ -4,7 +4,7 @@ import { getInformalOrders } from '@/back/services/informalOrdersService'
 import { getAllClientes } from '@/back/services/clientService'
 import { getAllPlantas } from '@/back/services/plantService'
 import { getAvailableInspectors } from '@/back/services/cargaDeTrabajoService'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { OrdenesInformalesPage } from '@/front/components/supervisor/OrdenesInformalesPage'
 
 export const metadata = {
@@ -24,7 +24,7 @@ export default async function OrdenesInformalesRoute() {
 
   return (
     <>
-      <TopBar crumb="Órdenes informales" />
+      <TopBar crumb="Órdenes informales" homeHref="/superusuario" />
       <OrdenesInformalesPage
         orders={orders}
         clientes={clientes}

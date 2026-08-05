@@ -8,6 +8,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  LabelList,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -21,12 +22,13 @@ import type { GerenteDashboardData, ReportePorEstado } from '@/back/services/ger
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
 const PALETTE = {
-  ok:        '#22c55e',
-  ng:        '#ef4444',
-  scrap:     '#f97316',
-  recovered: '#3b82f6',
-  ordenes:   '#8b5cf6',
-  reportes:  '#06b6d4',
+  ok:        '#1e3a5f',
+  ng:        '#f97316',
+  scrap:     '#93c5fd',
+  recovered: '#bfdbfe',
+  ordenes:   '#93c5fd',
+  reportes:  '#1e40af',
+  clientes:  '#1e40af',
   submitted: '#64748b',
   sampled:  '#f59e0b',
   signed:    '#3b82f6',
@@ -34,7 +36,8 @@ const PALETTE = {
 }
 
 const TICK_COLOR  = '#94a3b8'
-const GRID_COLOR  = '#1e293b'
+const GRID_COLOR  = '#e2e8f0'
+const LABEL_COLOR = '#475569'
 
 // ─── Estado labels ────────────────────────────────────────────────────────────
 
@@ -66,6 +69,11 @@ function formatMes(yyyymm: string): string {
   return `${label} ${shortYear}`
 }
 
+/** Trunca nombres largos de planta/cliente para que quepan en el eje. */
+function truncateLabel(name: string, max = 16): string {
+  return name.length > max ? `${name.slice(0, max)}…` : name
+}
+
 // ─── Semaphore color for %NG ──────────────────────────────────────────────────
 
 function ngSemaphoreColor(pctNG: number): string {
@@ -74,22 +82,44 @@ function ngSemaphoreColor(pctNG: number): string {
   return '#22c55e'                      // green <1%
 }
 
+function ngTextColor(pctNG: number): string {
+  if (pctNG > 0.05) return 'text-red-500 dark:text-red-400'
+  if (pctNG > 0.02) return 'text-yellow-500 dark:text-yellow-400'
+  return 'text-green-500 dark:text-green-400'
+}
+
 // ─── Tooltip styles ───────────────────────────────────────────────────────────
 
 const tooltipContentStyle = {
-  backgroundColor: '#0f2038',
-  border: '1px solid #1a2d4d',
+  backgroundColor: '#ffffff',
+  border: '1px solid #e2e8f0',
   borderRadius: '8px',
-  color: '#f1f5f9',
+  color: '#0f172a',
   fontSize: '12px',
+  boxShadow: '0 4px 12px -2px rgba(0,0,0,0.08)',
 }
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+interface SectionCardProps {
+  title: string
+  subtitle?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}
+
+function SectionCard({ title, subtitle, action, children }: SectionCardProps) {
   return (
-    <div className="shrink-0 rounded-xl bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#0c1829] shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none p-5 flex flex-col gap-4">
-      <h2 className="font-bold text-black dark:text-white text-sm">{title}</h2>
+    <div className="min-w-0 rounded-2xl bg-white dark:bg-[#0c1829] border border-slate-100 dark:border-[#0c1829] shadow-sm dark:shadow-none p-4 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="font-semibold text-slate-900 dark:text-white text-sm truncate">{title}</h2>
+          {subtitle && (
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{subtitle}</p>
+          )}
+        </div>
+        {action}
+      </div>
       {children}
     </div>
   )
@@ -97,7 +127,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-center py-10">
+    <div className="flex items-center justify-center py-8">
       <p className="text-sm text-slate-400">{label}</p>
     </div>
   )
@@ -112,12 +142,16 @@ interface GerenteDashboardProps {
 export function GerenteDashboard({ data }: GerenteDashboardProps) {
   const { totals, reportesPorEstado, piezas, porPlanta, reportesEnTiempo, ngPorPlanta, topClientes } = data
 
-  // Pie data for reportes por estado
-  const pieData = reportesPorEstado.map((r) => ({
-    name: ESTADO_LABEL[r.estado] ?? r.estado,
-    value: r.cantidad,
-    color: ESTADO_COLOR[r.estado] ?? '#94a3b8',
-  }))
+  // Pie data for reportes por estado — orden descendente para que la leyenda resalte lo más relevante
+  const pieData = reportesPorEstado
+    .map((r) => ({
+      name: ESTADO_LABEL[r.estado] ?? r.estado,
+      value: r.cantidad,
+      color: ESTADO_COLOR[r.estado] ?? '#94a3b8',
+    }))
+    .sort((a, b) => b.value - a.value)
+
+  const totalReportesEstado = pieData.reduce((sum, e) => sum + e.value, 0)
 
   // Bar data for piezas
   const piezasData = [
@@ -148,7 +182,7 @@ export function GerenteDashboard({ data }: GerenteDashboardProps) {
   }))
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-6">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-5 flex flex-col gap-4">
 
       {/* KPIs */}
       <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -178,38 +212,48 @@ export function GerenteDashboard({ data }: GerenteDashboardProps) {
         />
       </div>
 
-      {/* Reportes por estado + % NG */}
-      <div className="shrink-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Fila 1: Reportes por estado | Calidad de piezas | Reportes recibidos */}
+      <div className="shrink-0 grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-        {/* Reportes por estado — Pie chart */}
+        {/* Reportes por estado — Donut con total al centro */}
         <SectionCard title="Reportes por estado">
           {pieData.length === 0 ? (
             <EmptyState label="Sin datos" />
           ) : (
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipContentStyle} />
-                </PieChart>
-              </ResponsiveContainer>
-              <ul className="flex flex-col gap-2 shrink-0 min-w-0">
+            <div className="flex items-center gap-3">
+              <div className="relative shrink-0" style={{ width: 130, height: 130 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={60}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, idx) => (
+                        <Cell key={idx} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipContentStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                  <p className="text-lg font-bold text-slate-900 dark:text-white leading-none">
+                    {totalReportesEstado.toLocaleString('es-MX')}
+                  </p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mt-0.5">
+                    Total
+                  </p>
+                </div>
+              </div>
+              <ul className="flex flex-col gap-1.5 min-w-0 flex-1">
                 {pieData.map((entry) => (
                   <li key={entry.name} className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                     <span
-                      className="w-3 h-3 rounded-sm flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
                       style={{ backgroundColor: entry.color }}
                     />
                     <span className="truncate">{entry.name}</span>
@@ -221,108 +265,60 @@ export function GerenteDashboard({ data }: GerenteDashboardProps) {
           )}
         </SectionCard>
 
-        {/* % NG indicator */}
-        <SectionCard title="Calidad de piezas">
-          <div className="flex flex-col items-center gap-4">
-            {/* Big % NG indicator */}
-            <div className="flex flex-col items-center gap-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Porcentaje NG
-              </p>
-              <p
-                className={`text-5xl font-bold leading-none ${
-                  piezas.pctNG > 0.05
-                    ? 'text-red-500 dark:text-red-400'
-                    : piezas.pctNG > 0.02
-                    ? 'text-yellow-500 dark:text-yellow-400'
-                    : 'text-green-500 dark:text-green-400'
-                }`}
-              >
-                {pctNGFormatted}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {piezas.totalInspeccionadas.toLocaleString('es-MX')} piezas inspeccionadas
-              </p>
+        {/* Calidad de piezas */}
+        <SectionCard
+          title="Calidad de piezas"
+          subtitle={`${piezas.totalInspeccionadas.toLocaleString('es-MX')} piezas inspeccionadas`}
+          action={
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                % NG
+              </span>
+              <span className={`text-sm font-bold ${ngTextColor(piezas.pctNG)}`}>{pctNGFormatted}</span>
             </div>
-
-            {/* Piezas bar chart */}
-            {piezas.totalInspeccionadas === 0 ? (
-              <EmptyState label="Sin datos de piezas" />
-            ) : (
-              <ResponsiveContainer width="100%" height={130}>
-                <BarChart data={piezasData} barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: TICK_COLOR, fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
+          }
+        >
+          {piezas.totalInspeccionadas === 0 ? (
+            <EmptyState label="Sin datos de piezas" />
+          ) : (
+            <ResponsiveContainer width="100%" height={150}>
+              <BarChart data={piezasData} barCategoryGap="25%" margin={{ top: 16, right: 4, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: TICK_COLOR, fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: TICK_COLOR, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={36}
+                />
+                <Tooltip contentStyle={tooltipContentStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {piezasData.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.fill} />
+                  ))}
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    formatter={(v) => Number(v ?? 0).toLocaleString('es-MX')}
+                    style={{ fontSize: 10, fontWeight: 700, fill: LABEL_COLOR }}
                   />
-                  <YAxis
-                    tick={{ fill: TICK_COLOR, fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={40}
-                  />
-                  <Tooltip contentStyle={tooltipContentStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {piezasData.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </SectionCard>
-      </div>
 
-      {/* Órdenes y reportes por planta */}
-      <SectionCard title="Actividad por planta">
-        {porPlanta.length === 0 ? (
-          <EmptyState label="Sin datos por planta" />
-        ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart
-              data={porPlanta}
-              margin={{ top: 4, right: 8, left: 0, bottom: 24 }}
-              barCategoryGap="30%"
-              barGap={4}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
-              <XAxis
-                dataKey="plantName"
-                tick={{ fill: TICK_COLOR, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                interval={0}
-                angle={-30}
-                textAnchor="end"
-              />
-              <YAxis
-                tick={{ fill: TICK_COLOR, fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                width={36}
-              />
-              <Tooltip contentStyle={tooltipContentStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-              <Legend
-                wrapperStyle={{ fontSize: '12px', color: TICK_COLOR, paddingTop: '8px' }}
-              />
-              <Bar dataKey="ordenes" name="Órdenes"  fill={PALETTE.ordenes}  radius={[4, 4, 0, 0]} />
-              <Bar dataKey="reportes" name="Reportes" fill={PALETTE.reportes} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </SectionCard>
-
-      {/* Tendencia de reportes (últimos 6 meses) */}
-      <SectionCard title="Reportes recibidos (últimos 6 meses)">
-        {tendenciaData.length === 0 ? (
-          <EmptyState label="Sin datos" />
-        ) : (
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
+        {/* Tendencia de reportes (últimos 6 meses) */}
+        <SectionCard title="Reportes recibidos" subtitle="Últimos 6 meses">
+          {tendenciaData.length === 0 ? (
+            <EmptyState label="Sin datos" />
+          ) : (
+            <ResponsiveContainer width="100%" height={150}>
               <AreaChart
                 data={tendenciaData}
                 margin={{ top: 4, right: 8, left: 0, bottom: 4 }}
@@ -359,67 +355,110 @@ export function GerenteDashboard({ data }: GerenteDashboardProps) {
                   stroke={PALETTE.reportes}
                   strokeWidth={2}
                   fill="url(#gradReportes)"
-                  dot={{ r: 4, fill: PALETTE.reportes, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: PALETTE.reportes, strokeWidth: 0 }}
+                  dot={{ r: 3, fill: PALETTE.reportes, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: PALETTE.reportes, strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
-          </div>
-        )}
-      </SectionCard>
+          )}
+        </SectionCard>
+      </div>
 
-      {/* % NG por planta + Top clientes (2 columnas en desktop) */}
-      <div className="shrink-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Fila 2: Actividad por planta | % NG por planta | Top clientes */}
+      <div className="shrink-0 grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        {/* Órdenes y reportes por planta */}
+        <SectionCard title="Actividad por planta">
+          {porPlanta.length === 0 ? (
+            <EmptyState label="Sin datos por planta" />
+          ) : (
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart
+                data={porPlanta}
+                margin={{ top: 16, right: 8, left: 0, bottom: 4 }}
+                barCategoryGap="30%"
+                barGap={4}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} vertical={false} />
+                <XAxis
+                  dataKey="plantName"
+                  tick={{ fill: TICK_COLOR, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  tickFormatter={(name: string) => truncateLabel(name, 12)}
+                />
+                <YAxis
+                  tick={{ fill: TICK_COLOR, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={30}
+                />
+                <Tooltip contentStyle={tooltipContentStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  height={24}
+                  wrapperStyle={{ fontSize: '11px', color: TICK_COLOR }}
+                />
+                <Bar dataKey="reportes" name="Reportes" fill={PALETTE.reportes} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="ordenes" name="Órdenes"  fill={PALETTE.ordenes}  radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </SectionCard>
 
         {/* % NG por planta — horizontal BarChart */}
         <SectionCard title="% NG por planta">
           {ngPlantaData.length === 0 ? (
             <EmptyState label="Sin datos" />
           ) : (
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={ngPlantaData}
-                  layout="vertical"
-                  margin={{ top: 4, right: 40, left: 4, bottom: 4 }}
-                  barCategoryGap="25%"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tick={{ fill: TICK_COLOR, fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: number) => `${v.toFixed(1)}%`}
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart
+                data={ngPlantaData}
+                layout="vertical"
+                margin={{ top: 4, right: 32, left: 4, bottom: 4 }}
+                barCategoryGap="25%"
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} horizontal={false} />
+                <XAxis
+                  type="number"
+                  tick={{ fill: TICK_COLOR, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: number) => `${v.toFixed(0)}%`}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="plantName"
+                  tick={{ fill: TICK_COLOR, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={90}
+                  tickFormatter={(name: string) => truncateLabel(name, 14)}
+                />
+                <Tooltip
+                  contentStyle={tooltipContentStyle}
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  formatter={(value, _name, props) => {
+                    const pct = Number(value ?? 0)
+                    const pzas = (props.payload as { totalInspeccionadas?: number })?.totalInspeccionadas ?? 0
+                    return [`${pct.toFixed(2)}%  (${pzas.toLocaleString('es-MX')} pzas)`, '% NG']
+                  }}
+                />
+                <Bar dataKey="pctDisplay" name="% NG" radius={[0, 4, 4, 0]}>
+                  {ngPlantaData.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.barColor} />
+                  ))}
+                  <LabelList
+                    dataKey="pctDisplay"
+                    position="right"
+                    formatter={(v) => `${Number(v ?? 0).toFixed(1)}%`}
+                    style={{ fontSize: 10, fontWeight: 700, fill: LABEL_COLOR }}
                   />
-                  <YAxis
-                    type="category"
-                    dataKey="plantName"
-                    tick={{ fill: TICK_COLOR, fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={130}
-                    tickFormatter={(name: string) =>
-                      name.length > 22 ? `${name.slice(0, 22)}…` : name
-                    }
-                  />
-                  <Tooltip
-                    contentStyle={tooltipContentStyle}
-                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                    formatter={(value, _name, props) => {
-                      const pct = Number(value ?? 0)
-                      const pzas = (props.payload as { totalInspeccionadas?: number })?.totalInspeccionadas ?? 0
-                      return [`${pct.toFixed(2)}%  (${pzas.toLocaleString('es-MX')} pzas)`, '% NG']
-                    }}
-                  />
-                  <Bar dataKey="pctDisplay" name="% NG" radius={[0, 4, 4, 0]}>
-                    {ngPlantaData.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.barColor} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           )}
         </SectionCard>
 
@@ -428,51 +467,48 @@ export function GerenteDashboard({ data }: GerenteDashboardProps) {
           {topClientesData.length === 0 ? (
             <EmptyState label="Sin datos" />
           ) : (
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topClientesData}
-                  layout="vertical"
-                  margin={{ top: 4, right: 40, left: 4, bottom: 4 }}
-                  barCategoryGap="25%"
+            <ResponsiveContainer width="100%" height={190}>
+              <BarChart
+                data={topClientesData}
+                layout="vertical"
+                margin={{ top: 4, right: 44, left: 4, bottom: 4 }}
+                barCategoryGap="25%"
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} horizontal={false} />
+                <XAxis type="number" hide />
+                <YAxis
+                  type="category"
+                  dataKey="clientName"
+                  tick={{ fill: TICK_COLOR, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={90}
+                  tickFormatter={(name: string) => truncateLabel(name, 14)}
+                />
+                <Tooltip
+                  contentStyle={tooltipContentStyle}
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  formatter={(value, _name, props) => {
+                    const pzas = Number(value ?? 0)
+                    const reps = (props.payload as { reportes?: number })?.reportes ?? 0
+                    return [`${pzas.toLocaleString('es-MX')} pzas  (${reps} reportes)`, 'Piezas']
+                  }}
+                />
+                <Bar
+                  dataKey="piezas"
+                  name="Piezas"
+                  fill={PALETTE.clientes}
+                  radius={[0, 4, 4, 0]}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tick={{ fill: TICK_COLOR, fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: number) => v.toLocaleString('es-MX')}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="clientName"
-                    tick={{ fill: TICK_COLOR, fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={130}
-                    tickFormatter={(name: string) =>
-                      name.length > 22 ? `${name.slice(0, 22)}…` : name
-                    }
-                  />
-                  <Tooltip
-                    contentStyle={tooltipContentStyle}
-                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                    formatter={(value, _name, props) => {
-                      const pzas = Number(value ?? 0)
-                      const reps = (props.payload as { reportes?: number })?.reportes ?? 0
-                      return [`${pzas.toLocaleString('es-MX')} pzas  (${reps} reportes)`, 'Piezas']
-                    }}
-                  />
-                  <Bar
+                  <LabelList
                     dataKey="piezas"
-                    name="Piezas"
-                    fill={PALETTE.ordenes}
-                    radius={[0, 4, 4, 0]}
+                    position="right"
+                    formatter={(v) => Number(v ?? 0).toLocaleString('es-MX')}
+                    style={{ fontSize: 10, fontWeight: 700, fill: LABEL_COLOR }}
                   />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           )}
         </SectionCard>
 

@@ -1,4 +1,4 @@
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { ClientesPage } from '@/front/components/admin/ClientesPage'
 import { getAllClientes } from '@/back/services/clientService'
 import { getSession } from '@/back/services/session'
@@ -9,7 +9,7 @@ export default async function Page() {
 
   return (
     <>
-      <TopBar crumb="Clientes" />
+      <TopBar crumb="Clientes" homeHref="/superusuario" />
       <ClientesPage initialClientes={clientes} />
     </>
   )

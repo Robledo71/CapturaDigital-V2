@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { canAny } from '@/front/lib/permisos'
 import { getSignatureStatus } from '@/back/services/signatureService'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { MiFirmaConfig } from '@/front/components/configuracion/MiFirmaConfig'
 import { AccesoRestringido } from '@/front/components/ui/AccesoRestringido'
 
@@ -17,7 +17,7 @@ export default async function AdminConfiguracionPage() {
   if (!canAny(session, ['reportes.firmar', 'reportes_informales.firmar'])) {
     return (
       <div className="flex flex-col flex-1 overflow-hidden">
-        <TopBar crumb="Configuración" />
+        <TopBar crumb="Configuración" homeHref="/admin" />
         <AccesoRestringido mensaje="No tienes permiso para acceder a la configuración." />
       </div>
     )
@@ -27,7 +27,7 @@ export default async function AdminConfiguracionPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
-      <TopBar crumb="Configuración" />
+      <TopBar crumb="Configuración" homeHref="/admin" />
       <div className="flex-1 overflow-y-auto">
         <MiFirmaConfig hasSignatureInicial={hasSignature} />
       </div>

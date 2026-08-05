@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { can } from '@/front/lib/permisos'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { ReportesPublicadosClient } from '@/front/components/capturacion/ReportesPublicadosClient'
 import { getPublishedReportes } from '@/back/services/publishedReportesService'
 
@@ -11,5 +12,10 @@ export default async function CapturacionPage() {
   if (!session) redirect('/')
 
   const data = await getPublishedReportes(session.accessToken)
-  return <ReportesPublicadosClient stats={data.stats} rows={data.rows} canDescargar={can(session, 'ordenes.descargar')} />
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <TopBar homeHref="/capturacion" />
+      <ReportesPublicadosClient stats={data.stats} rows={data.rows} canDescargar={can(session, 'ordenes.descargar')} />
+    </div>
+  )
 }

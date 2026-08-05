@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/back/services/session'
 import { getInformalReportes } from '@/back/services/informalReportesService'
-import { TopBar } from '@/front/components/admin/TopBar'
+import { TopBar } from '@/front/components/supervisor/TopBar'
 import { ReportesInformalesPage } from '@/front/components/supervisor/ReportesInformalesPage'
 
 export const metadata = {
@@ -16,7 +16,7 @@ export default async function ReportesInformalesRoute() {
 
   return (
     <>
-      <TopBar crumb="Reportes informales" />
+      <TopBar crumb="Reportes informales" homeHref="/superusuario" />
       <ReportesInformalesPage reportes={reportes} detailHrefBase="/superusuario/reportes-informales" />
     </>
   )
