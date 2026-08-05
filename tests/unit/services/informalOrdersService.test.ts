@@ -60,6 +60,7 @@ describe('informalOrdersService', () => {
         nombreParte: 'MAT SET FLOOR',
         incidentes: null,
         solicitanteNombre: 'Juan Perez',
+        fechaCreado: null,
         inspectores: [{ id: 7, name: 'Ana Lopez' }],
         estadoReporte: null,
       })

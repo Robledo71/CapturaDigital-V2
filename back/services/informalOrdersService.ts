@@ -20,6 +20,7 @@ type ExternalInformalOrder = {
   planta_id: number | null
   planta_nombre: string | null
   solicitante_nombre: string | null
+  fecha_creado: string | null
   inspectores: ExternalInspector[] | null
   estado_reporte: 'ENVIADO' | 'FIRMADO' | null
 }
@@ -37,6 +38,7 @@ function mapExternalInformalOrder(raw: ExternalInformalOrder): InformalOrderRow 
     nombreParte: raw.nombre_parte ?? null,
     incidentes: raw.incidentes ?? null,
     solicitanteNombre: raw.solicitante_nombre ?? null,
+    fechaCreado: raw.fecha_creado ?? null,
     inspectores: Array.isArray(raw.inspectores) ? raw.inspectores.map((i) => ({ id: i.id, name: i.name })) : [],
     estadoReporte: raw.estado_reporte ?? null,
   }

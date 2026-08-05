@@ -8,6 +8,7 @@ import { logoutUser } from '@/app/actions/logout'
 import {
   LayoutDashboard,
   Lock,
+  Briefcase,
   ClipboardList,
   ClipboardCheck,
   ChevronDown,
@@ -40,6 +41,12 @@ const NAV_SECTIONS: { heading: string; items: NavItem[] }[] = [
         href: '/servicio-cliente/desbloquear',
         icon: <Lock size={16} />,
         permiso: 'cotizaciones.desbloquear',
+      },
+      {
+        label: 'Carga de trabajo',
+        href: '/servicio-cliente/carga-trabajo',
+        icon: <Briefcase size={16} />,
+        permiso: 'ordenes.ver',
       },
       {
         label: 'Órdenes informales',

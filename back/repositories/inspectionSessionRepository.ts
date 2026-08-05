@@ -116,6 +116,42 @@ export async function createItemWithSession(
 }
 
 /**
+ * Upsert the full Order → Quotation → OrderItem tree WITHOUT creating an
+ * inspection session — used by "Descargar orden" to persist an order (e.g.
+ * one that came from a QB search and has `id === 0`) without assigning it to
+ * any inspector yet.
+ *
+ * TODO CONTRATO ASUMIDO: hoy `POST /qb_sync/order-items` exige `inspectionSession`
+ * en el body (ver `createItemWithSession` arriba). Este flujo depende de que el
+ * backend haga ese campo OPCIONAL — cuando falte, debe upsertear el árbol sin
+ * crear ninguna sesión de inspección. Confirmar con el usuario antes de wirear
+ * el backend real.
+ */
+export async function upsertOrderTree(
+  tree: OrderItemTree,
+  accessToken: string,
+): Promise<SessionApiResult> {
+  try {
+    const payload: Record<string, unknown> = {
+      order: tree.order,
+      quotation: tree.quotation,
+      orderItem: tree.orderItem,
+    }
+    if (tree.otherItems && tree.otherItems.length > 0) {
+      payload.otherItems = tree.otherItems
+    }
+    const res = await fetch(`${baseUrl()}/qb_sync/order-items`, {
+      method: 'POST',
+      headers: apiHeaders(accessToken),
+      body: JSON.stringify(payload),
+    })
+    return interpret(res)
+  } catch {
+    return { ok: false, status: 0 }
+  }
+}
+
+/**
  * Close ONE inspector's session on an order-item, leaving any other assigned
  * inspectors' sessions untouched. Idempotent on the backend (200 with
  * `closed: 0` if there was nothing to close for that empleado_id).

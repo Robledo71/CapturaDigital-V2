@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileCheck, FileSearch, Loader2, Search, UserCheck, UserPlus, Upload, X } from 'lucide-react'
+import { AlertTriangle, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileCheck, FileSearch, Loader2, Rocket, Search, UserCheck, UserPlus, Upload, X } from 'lucide-react'
 import { getOrderInventory, isIndefiniteInventoryPlant } from '@/front/lib/inventory'
 import type {
   OrderWorkload,
@@ -19,7 +19,10 @@ import {
   type DesasignarInspectorState,
 } from '@/app/actions/desasignar-inspector'
 import { uploadOrderDocumentAction } from '@/app/actions/upload-order-document'
+import { descargarOrdenAction } from '@/app/actions/descargar-orden'
+import { promoverOrdenInformalAction } from '@/app/actions/promover-orden'
 import { SearchCotizacionModal } from './SearchCotizacionModal'
+import { PromoverModal } from '@/front/components/carga-trabajo/PromoverModal'
 import { can, type SessionLike } from '@/front/lib/permisos'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -31,6 +34,9 @@ const PAGE_SIZE = 10
 interface CargaDeTrabajoPageProps {
   orders: OrderWorkload[]
   inspectors: InspectorOption[]
+  /** empleado_id de inspectores con sesión activa en ÓRDENES INFORMALES — se
+      marcan "ocupado" en el checklist igual que los de órdenes formales. */
+  informalBusyInspectorIds?: number[]
   rol: string
   permisos?: string[] | null
 }
@@ -116,16 +122,47 @@ function ItemStatusBadge({ status }: { status: string }) {
   )
 }
 
-function AssignSubmitButton({ disabled = false }: { disabled?: boolean }) {
-  const { pending } = useFormStatus()
+function AssignSubmitButton({
+  disabled = false,
+  descargarAction,
+}: {
+  disabled?: boolean
+  /** Acción del botón "Descargar sin asignar" del mismo form — para no mostrar
+      "Asignando…" cuando el envío en curso es en realidad una descarga. */
+  descargarAction?: (formData: FormData) => void
+}) {
+  const { pending, action } = useFormStatus()
+  const isAssigning = pending && action !== descargarAction
   return (
     <button
       type="submit"
       disabled={pending || disabled}
       className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
-      {pending ? 'Asignando...' : 'Asignar'}
+      {isAssigning && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
+      {isAssigning ? 'Asignando...' : 'Asignar'}
+    </button>
+  )
+}
+
+// Botón "Descargar sin asignar" dentro del form de asignar — sobreescribe la
+// acción del form vía `formAction` para persistir la orden SIN crear sesión.
+function DescargarSinAsignarButton({ action }: { action: (formData: FormData) => void }) {
+  const { pending, action: current } = useFormStatus()
+  const isDescargando = pending && current === action
+  return (
+    <button
+      type="submit"
+      formAction={action}
+      disabled={pending}
+      className="mr-auto inline-flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-500 dark:text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {isDescargando ? (
+        <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+      ) : (
+        <Download size={14} aria-hidden="true" />
+      )}
+      {isDescargando ? 'Descargando…' : 'Descargar sin asignar'}
     </button>
   )
 }
@@ -368,6 +405,175 @@ function DocViewerModal({ href, title, onClose }: DocViewerModalProps) {
   )
 }
 
+// ─── QB tree helpers (shared between Assign, Descargar y otros forms) ────────
+// Ambos flujos (asignar y descargar) embeben el mismo árbol Order → Quotation
+// → OrderItem como campos ocultos `qb_*`; se factoriza aquí para no duplicar
+// la lista de <input type="hidden"> en dos modales.
+
+/**
+ * Serializa los items de `order.items` DISTINTOS a `mainItem` en el formato
+ * `otherItems` que espera `buildTree` (`app/actions/_orderTree.ts`), para que
+ * qb_sync pueda upsertear/persistir el árbol completo de la orden en una sola
+ * llamada (asignar un item, o descargar la orden entera).
+ */
+function buildOtherItemsJson(order: OrderWorkload, mainItem: OrderItemWorkload): string | null {
+  const others = order.items
+    .filter((i) => i !== mainItem)
+    .map((i) => {
+      const q = order.quotations.find((q) => q.consecutiveNumber === i.quotationConsecutive)
+      return {
+        quotation: {
+          consecutive_number: i.quotationConsecutive ?? '',
+          client_email: q?.clientEmail ?? null,
+          status: q?.status ?? null,
+          purchase_order_number: q?.purchaseOrderNumber ?? null,
+          contact_emails: q?.contactEmails ?? null,
+          order_user_name: q?.orderUserName ?? null,
+        },
+        orderItem: {
+          part_number: i.partNumber === '—' ? null : i.partNumber,
+          part_name: i.partName === '—' ? '' : i.partName,
+          inventory: i.inventario,
+          inventory_done: i.inventarioTerminado,
+          plant_name: order.plantName ?? '',
+        },
+      }
+    })
+  return others.length > 0 ? JSON.stringify(others) : null
+}
+
+interface QbHiddenFieldsProps {
+  order: OrderWorkload
+  /** El item "principal" del árbol (el que se asigna, o el primero al descargar). */
+  item: OrderItemWorkload
+  /** Serializado con `buildOtherItemsJson`; `null` para no incluir el campo. */
+  otherItemsJson: string | null
+}
+
+/** Campos ocultos `qb_*` (order/quotation/orderItem) que el backend upsertea verbatim. */
+function QbHiddenFields({ order, item, otherItemsJson }: QbHiddenFieldsProps) {
+  const parentQuotation = order.quotations.find(
+    (q) => q.consecutiveNumber === item.quotationConsecutive
+  ) ?? order.quotations[0]
+
+  return (
+    <>
+      {otherItemsJson !== null && (
+        <input type="hidden" name="otherItems" value={otherItemsJson} />
+      )}
+
+      {/* Order fields */}
+      <input type="hidden" name="qb_order_consecutive" value={order.consecutiveNumber ?? ''} />
+      <input type="hidden" name="qb_order_state" value={order.orderStatus ?? ''} />
+      <input type="hidden" name="qb_order_client_name" value={order.clientName ?? ''} />
+      <input type="hidden" name="qb_order_client_contact_name" value={order.clientContactName ?? ''} />
+      <input type="hidden" name="qb_order_client_contact_email" value={order.clientContactEmail ?? ''} />
+      <input type="hidden" name="qb_order_service_type_name" value={order.serviceType ?? ''} />
+      <input type="hidden" name="qb_order_region_name" value={order.regionName ?? ''} />
+      <input type="hidden" name="qb_order_service_type_detail" value={order.serviceTypeDetail ?? ''} />
+      <input type="hidden" name="qb_order_pieces_per_hour" value={order.piecesPerHour !== null && order.piecesPerHour !== undefined ? String(order.piecesPerHour) : ''} />
+      <input type="hidden" name="qb_order_authorized_hours" value={order.authorizedHours !== null && order.authorizedHours !== undefined ? String(order.authorizedHours) : ''} />
+      <input type="hidden" name="qb_order_price_per_hour" value={order.pricePerHour !== null && order.pricePerHour !== undefined ? String(order.pricePerHour) : ''} />
+      <input type="hidden" name="qb_order_language" value={order.language ?? ''} />
+      <input type="hidden" name="qb_order_user_name" value={order.userName ?? ''} />
+      <input type="hidden" name="qb_order_plant_name" value={order.plantName ?? ''} />
+      {/* Quotation fields */}
+      <input type="hidden" name="qb_quotation_consecutive" value={item.quotationConsecutive ?? ''} />
+      <input type="hidden" name="qb_quotation_client_email" value={parentQuotation?.clientEmail ?? ''} />
+      <input type="hidden" name="qb_quotation_purchase_order_number" value={parentQuotation?.purchaseOrderNumber ?? ''} />
+      <input type="hidden" name="qb_quotation_contact_emails" value={parentQuotation?.contactEmails ?? ''} />
+      <input type="hidden" name="qb_quotation_order_user_name" value={parentQuotation?.orderUserName ?? ''} />
+      <input type="hidden" name="qb_quotation_status" value={parentQuotation?.status ?? ''} />
+      {/* OrderItem fields */}
+      <input type="hidden" name="qb_item_part_number" value={item.partNumber === '—' ? '' : item.partNumber} />
+      <input type="hidden" name="qb_item_part_name" value={item.partName === '—' ? '' : item.partName} />
+      <input type="hidden" name="qb_item_inventory" value={String(item.inventario)} />
+      <input type="hidden" name="qb_item_inventory_done" value={String(item.inventarioTerminado)} />
+      <input type="hidden" name="qb_item_plant_name" value={order.plantName ?? ''} />
+      <input type="hidden" name="qb_item_incidents" value="" />
+    </>
+  )
+}
+
+// ─── Descargar Orden (persistir sin asignar) ──────────────────────────────────
+// Botón + form ligero embebido en el header del modal de detalle — sin
+// confirmación intermedia, como el flujo de asignar cuando se envía el form.
+
+function DescargarSubmitButton() {
+  const { pending } = useFormStatus()
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-400 transition-colors hover:border-blue-400 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending ? <Loader2 size={13} className="animate-spin" aria-hidden="true" /> : <Download size={13} aria-hidden="true" />}
+      {pending ? 'Descargando…' : 'Descargar orden'}
+    </button>
+  )
+}
+
+interface DescargarOrdenFormProps {
+  order: OrderWorkload
+  action: (formData: FormData) => void
+}
+
+/** Persiste TODA la orden (item principal + `otherItems`) sin crear ninguna sesión de inspección. */
+function DescargarOrdenForm({ order, action }: DescargarOrdenFormProps) {
+  const mainItem = order.items[0]
+  if (!mainItem) return null
+  const otherItemsJson = buildOtherItemsJson(order, mainItem)
+
+  return (
+    <form action={action} className="flex flex-shrink-0 items-center">
+      <QbHiddenFields order={order} item={mainItem} otherItemsJson={otherItemsJson} />
+      <DescargarSubmitButton />
+    </form>
+  )
+}
+
+// ─── Toast (notificación ligera; no hay librería de toasts en el codebase) ───
+
+interface ActionToastProps {
+  message: string
+  variant: 'success' | 'error'
+  onDismiss: () => void
+}
+
+function ActionToast({ message, variant, onDismiss }: ActionToastProps) {
+  useEffect(() => {
+    const timer = setTimeout(onDismiss, 4500)
+    return () => clearTimeout(timer)
+  }, [onDismiss])
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`fixed bottom-5 right-5 z-[80] flex max-w-xs items-center gap-2 rounded-lg border bg-white px-4 py-3 text-sm font-medium shadow-2xl animate-fade-in dark:bg-[#111a30] ${
+        variant === 'success'
+          ? 'border-green-500/30 text-green-600 dark:text-green-300'
+          : 'border-red-500/30 text-red-600 dark:text-red-300'
+      }`}
+    >
+      {variant === 'success' ? (
+        <CheckCircle2 size={16} className="flex-shrink-0" aria-hidden="true" />
+      ) : (
+        <AlertTriangle size={16} className="flex-shrink-0" aria-hidden="true" />
+      )}
+      <span className="flex-1">{message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Cerrar notificación"
+        className="flex-shrink-0 rounded-full p-0.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"
+      >
+        <X size={12} aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
 // ─── Assign Item Modal ────────────────────────────────────────────────────────
 
 interface AssignItemModalProps {
@@ -383,46 +589,21 @@ interface AssignItemModalProps {
   busyInspectorIds: Set<number>
   state: AssignOrderItemState
   action: (formData: FormData) => void
+  /** Acción para "Descargar sin asignar" (persistir el árbol sin sesión). */
+  descargarAction: (formData: FormData) => void
+  /** Permiso de importar cotizaciones — gatea el botón "Descargar sin asignar". */
+  canImportar: boolean
   onClose: () => void
 }
 
-function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorIds, state, action, onClose }: AssignItemModalProps) {
+function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorIds, state, action, descargarAction, canImportar, onClose }: AssignItemModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-
-  // Which quotation this item belongs to, from the parent order's quotation list.
-  const parentQuotation = order.quotations.find(
-    (q) => q.consecutiveNumber === item.quotationConsecutive
-  ) ?? order.quotations[0]
 
   // Build the list of OTHER items (all items in the order except the one being assigned)
   // so qb_sync can persist/keep the full order tree on every upsert.
   // Identity is determined by reference — `item` is the exact object from `order.items`.
-  const otherItemsJson: string | null = (() => {
-    const others = order.items
-      .filter((i) => i !== item)
-      .map((i) => {
-        const q = order.quotations.find((q) => q.consecutiveNumber === i.quotationConsecutive)
-        return {
-          quotation: {
-            consecutive_number: i.quotationConsecutive ?? '',
-            client_email: q?.clientEmail ?? null,
-            status: q?.status ?? null,
-            purchase_order_number: q?.purchaseOrderNumber ?? null,
-            contact_emails: q?.contactEmails ?? null,
-            order_user_name: q?.orderUserName ?? null,
-          },
-          orderItem: {
-            part_number: i.partNumber === '—' ? null : i.partNumber,
-            part_name: i.partName === '—' ? '' : i.partName,
-            inventory: i.inventario,
-            inventory_done: i.inventarioTerminado,
-            plant_name: order.plantName ?? '',
-          },
-        }
-      })
-    return others.length > 0 ? JSON.stringify(others) : null
-  })()
+  const otherItemsJson = buildOtherItemsJson(order, item)
 
   // Only inspectors assigned to the item's plant (an inspector may have several
   // plants) — fall back to showing all when the order has no known plantId
@@ -470,39 +651,7 @@ function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorId
 
         {/* Every assignment upserts the full Order → Quotation → OrderItem tree,
             whether the item is new (id===0) or already persisted. */}
-        {otherItemsJson !== null && (
-          <input type="hidden" name="otherItems" value={otherItemsJson} />
-        )}
-
-        {/* Order fields */}
-        <input type="hidden" name="qb_order_consecutive" value={order.consecutiveNumber ?? ''} />
-        <input type="hidden" name="qb_order_state" value={order.orderStatus ?? ''} />
-        <input type="hidden" name="qb_order_client_name" value={order.clientName ?? ''} />
-        <input type="hidden" name="qb_order_client_contact_name" value={order.clientContactName ?? ''} />
-        <input type="hidden" name="qb_order_client_contact_email" value={order.clientContactEmail ?? ''} />
-        <input type="hidden" name="qb_order_service_type_name" value={order.serviceType ?? ''} />
-        <input type="hidden" name="qb_order_region_name" value={order.regionName ?? ''} />
-        <input type="hidden" name="qb_order_service_type_detail" value={order.serviceTypeDetail ?? ''} />
-        <input type="hidden" name="qb_order_pieces_per_hour" value={order.piecesPerHour !== null && order.piecesPerHour !== undefined ? String(order.piecesPerHour) : ''} />
-        <input type="hidden" name="qb_order_authorized_hours" value={order.authorizedHours !== null && order.authorizedHours !== undefined ? String(order.authorizedHours) : ''} />
-        <input type="hidden" name="qb_order_price_per_hour" value={order.pricePerHour !== null && order.pricePerHour !== undefined ? String(order.pricePerHour) : ''} />
-        <input type="hidden" name="qb_order_language" value={order.language ?? ''} />
-        <input type="hidden" name="qb_order_user_name" value={order.userName ?? ''} />
-        <input type="hidden" name="qb_order_plant_name" value={order.plantName ?? ''} />
-        {/* Quotation fields */}
-        <input type="hidden" name="qb_quotation_consecutive" value={item.quotationConsecutive ?? ''} />
-        <input type="hidden" name="qb_quotation_client_email" value={parentQuotation?.clientEmail ?? ''} />
-        <input type="hidden" name="qb_quotation_purchase_order_number" value={parentQuotation?.purchaseOrderNumber ?? ''} />
-        <input type="hidden" name="qb_quotation_contact_emails" value={parentQuotation?.contactEmails ?? ''} />
-        <input type="hidden" name="qb_quotation_order_user_name" value={parentQuotation?.orderUserName ?? ''} />
-        <input type="hidden" name="qb_quotation_status" value={parentQuotation?.status ?? ''} />
-        {/* OrderItem fields */}
-        <input type="hidden" name="qb_item_part_number" value={item.partNumber === '—' ? '' : item.partNumber} />
-        <input type="hidden" name="qb_item_part_name" value={item.partName === '—' ? '' : item.partName} />
-        <input type="hidden" name="qb_item_inventory" value={String(item.inventario)} />
-        <input type="hidden" name="qb_item_inventory_done" value={String(item.inventarioTerminado)} />
-        <input type="hidden" name="qb_item_plant_name" value={order.plantName ?? ''} />
-        <input type="hidden" name="qb_item_incidents" value="" />
+        <QbHiddenFields order={order} item={item} otherItemsJson={otherItemsJson} />
 
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#25395f] px-5 py-4">
           <h3 id="sub-modal-titulo" className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -571,7 +720,13 @@ function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorId
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
+          {/* "Descargar sin asignar" — persiste el árbol completo de la orden sin
+              crear sesión, para poder promover órdenes informales sin asignar
+              inspectores. Aplica cuando este item aún no está persistido (id === 0). */}
+          {canImportar && item.id === 0 && (
+            <DescargarSinAsignarButton action={descargarAction} />
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -579,7 +734,7 @@ function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorId
           >
             Cancelar
           </button>
-          <AssignSubmitButton disabled={selectedIds.size === 0} />
+          <AssignSubmitButton disabled={selectedIds.size === 0} descargarAction={descargarAction} />
         </div>
       </form>
     </div>
@@ -599,6 +754,10 @@ interface OrderItemCardProps {
   indefinite?: boolean
   canAsignar: boolean
   canDocumentos: boolean
+  /** Permiso de promover reportes informales al item formal. */
+  canPromover: boolean
+  /** Abre el modal de promover con este item como destino (item_orden_id). */
+  onPromover: (item: OrderItemWorkload) => void
   uploadingTarget: UploadTarget | null
   onUploadDoc: (item: OrderItemWorkload, docType: 'hoe' | 'arranque-seguro') => void
   onViewDoc: (item: OrderItemWorkload, docType: 'hoe' | 'arranque-seguro') => void
@@ -610,6 +769,8 @@ function OrderItemCard({
   onAssign,
   onDesasignar,
   canAsignar,
+  canPromover,
+  onPromover,
   indefinite = false,
   canDocumentos,
   uploadingTarget,
@@ -726,6 +887,22 @@ function OrderItemCard({
         </p>
       )}
 
+      {/* Row 3d — Promover: mueve los reportes informales a ESTE item formal.
+          Solo items persistidos (id !== 0) tienen un item_orden_id real que pueda
+          recibir la promoción. */}
+      {canPromover && item.id !== 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => onPromover(item)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-400 transition-colors hover:border-violet-400 hover:bg-violet-500/20"
+          >
+            <Rocket size={12} className="flex-shrink-0" aria-hidden="true" />
+            Promover
+          </button>
+        </div>
+      )}
+
       {/* Row 4 — document chips only */}
       {showDocs && (
         <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 dark:border-[#1a2d4d]">
@@ -767,11 +944,31 @@ interface OrderDetailModalProps {
   onClose: () => void
   canAsignar: boolean
   canDocumentos: boolean
+  /** `cotizaciones.importar` — gatea el botón "Descargar orden" (persistir sin asignar). */
+  canImportar: boolean
+  /** `reportes_informales.promover` — gatea el botón "Promover" (órdenes informales → esta orden formal). */
+  canPromover: boolean
 }
 
-function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsignar, canDocumentos }: OrderDetailModalProps) {
+function OrderDetailModal({
+  order,
+  inspectors,
+  busyInspectorIds,
+  onClose,
+  canAsignar,
+  canDocumentos,
+  canImportar,
+  canPromover,
+}: OrderDetailModalProps) {
   const router = useRouter()
   const overlayRef = useRef<HTMLDivElement>(null)
+
+  // OJO: `order.id` es el id de SysQB (importCotizacion lo copia tal cual) y por
+  // tanto NUNCA es 0 — no sirve para saber si la orden está persistida. El
+  // señalizador real es el id de los ITEMS: los traídos de QB sin persistir vienen
+  // con id === 0; los persistidos en la DB tienen id real (> 0).
+  const hasUnpersistedItems = order.items.some((i) => i.id === 0)
+
   // Store the full item object so AssignItemModal can embed QB hidden fields when item.id === 0
   const [assignItem, setAssignItem] = useState<OrderItemWorkload | null>(null)
   const [assignState, assignAction] = useActionState(assignOrderItemAction, undefined)
@@ -783,6 +980,18 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
     inspector: { id: number; name: string }
   } | null>(null)
   const [desasignarState, desasignarAction] = useActionState(desasignarInspectorAction, undefined)
+
+  // "Descargar orden" — persiste el árbol completo sin crear sesión de inspección.
+  const [descargarState, descargarAction] = useActionState(descargarOrdenAction, undefined)
+
+  // "Promover" — modal con las órdenes informales disponibles + su action state.
+  // Item formal destino de la promoción (item_orden_id). El botón "Promover" vive
+  // en cada item, así el destino queda determinado por el item elegido.
+  const [promoverItem, setPromoverItem] = useState<OrderItemWorkload | null>(null)
+  const [promoverState, promoverAction] = useActionState(promoverOrdenInformalAction, undefined)
+
+  // Notificación ligera de éxito/error para descargar y promover.
+  const [toast, setToast] = useState<{ variant: 'success' | 'error'; message: string } | null>(null)
 
   // Single hidden file input; the pending target tells us which item+doc it's for.
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -857,6 +1066,33 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
     }
   }, [desasignarState, router])
 
+  // React to "Descargar orden" result — no confirm modal, so the toast is the
+  // only feedback the user gets besides the button's own pending state.
+  useEffect(() => {
+    if (descargarState === undefined) return
+    if (descargarState.ok) {
+      // La descarga puede dispararse desde el header o desde el modal de asignar;
+      // cerramos este último si estaba abierto.
+      setAssignItem(null)
+      setToast({ variant: 'success', message: 'Orden descargada correctamente.' })
+      router.refresh()
+    } else {
+      setToast({ variant: 'error', message: descargarState.error })
+    }
+  }, [descargarState, router])
+
+  // React to "Promover" result — closes the PromoverModal and refreshes on success.
+  useEffect(() => {
+    if (promoverState === undefined) return
+    if (promoverState.ok) {
+      setPromoverItem(null)
+      setToast({ variant: 'success', message: 'Reportes informales promovidos correctamente.' })
+      router.refresh()
+    }
+    // En error, el mensaje ya se muestra dentro de PromoverModal (state.error);
+    // el modal permanece abierto para que el usuario intente con otra orden.
+  }, [promoverState, router])
+
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => {
@@ -866,14 +1102,20 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && assignItem === null && viewDoc === null && desasignarTarget === null) onClose()
+      if (
+        e.key === 'Escape' &&
+        assignItem === null && viewDoc === null && desasignarTarget === null && promoverItem === null
+      ) onClose()
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [onClose, assignItem, viewDoc, desasignarTarget])
+  }, [onClose, assignItem, viewDoc, desasignarTarget, promoverItem])
 
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === overlayRef.current && assignItem === null && viewDoc === null && desasignarTarget === null) onClose()
+    if (
+      e.target === overlayRef.current &&
+      assignItem === null && viewDoc === null && desasignarTarget === null && promoverItem === null
+    ) onClose()
   }
 
   return (
@@ -889,7 +1131,7 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
         <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-[#25395f] dark:bg-[#0c1829] shadow-2xl animate-scale-in sm:max-h-[90vh]">
 
           {/* Header */}
-          <div className="flex shrink-0 items-start justify-between border-b border-slate-200 dark:border-[#1a2d4d] px-4 py-3.5 sm:px-6 sm:py-5">
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-200 dark:border-[#1a2d4d] px-4 py-3.5 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-1">
               <h2 id="order-modal-titulo" className="font-mono text-lg font-bold text-slate-900 dark:text-white">
                 {order.consecutiveNumber}
@@ -900,14 +1142,27 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
                 {order.plantName}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="ml-4 flex-shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
-              aria-label="Cerrar modal"
-            >
-              <X size={17} />
-            </button>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              {/* "Descargar orden" — persistir el árbol completo sin asignar; aplica
+                  cuando la orden tiene items aún NO persistidos (traídos de la
+                  búsqueda QB, id === 0) y con permiso de importar cotizaciones. */}
+              {canImportar && hasUnpersistedItems && (
+                <DescargarOrdenForm order={order} action={descargarAction} />
+              )}
+
+              {/* "Promover" ahora vive por-item (ver OrderItemCard): cada item
+                  formal persistido tiene su propio botón, así los reportes
+                  informales se promueven al item_orden_id correspondiente. */}
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-shrink-0 rounded-md p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white"
+                aria-label="Cerrar modal"
+              >
+                <X size={17} />
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-1 flex-col gap-0 divide-y divide-slate-200 overflow-y-auto scrollbar-thin dark:divide-[#1a2d4d]">
@@ -980,6 +1235,8 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
                       onAssign={setAssignItem}
                       onDesasignar={(target, inspector) => setDesasignarTarget({ item: target, inspector })}
                       canAsignar={canAsignar}
+                      canPromover={canPromover}
+                      onPromover={setPromoverItem}
                       canDocumentos={canDocumentos}
                       indefinite={isIndefiniteInventoryPlant(order.plantName)}
                       uploadingTarget={uploadingTarget}
@@ -1015,6 +1272,8 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
           busyInspectorIds={busyInspectorIds}
           state={assignState}
           action={assignAction}
+          descargarAction={descargarAction}
+          canImportar={canImportar}
           onClose={() => setAssignItem(null)}
         />
       )}
@@ -1034,6 +1293,23 @@ function OrderDetailModal({ order, inspectors, busyInspectorIds, onClose, canAsi
           state={desasignarState}
           action={desasignarAction}
           onClose={() => setDesasignarTarget(null)}
+        />
+      )}
+
+      {promoverItem !== null && (
+        <PromoverModal
+          targetItem={{ id: promoverItem.id, partNumber: promoverItem.partNumber }}
+          state={promoverState}
+          action={promoverAction}
+          onClose={() => setPromoverItem(null)}
+        />
+      )}
+
+      {toast && (
+        <ActionToast
+          message={toast.message}
+          variant={toast.variant}
+          onDismiss={() => setToast(null)}
         />
       )}
     </>
@@ -1205,12 +1481,13 @@ function OrdersTable({ orders, onRowClick }: OrdersTableProps) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export function CargaDeTrabajoPage({ orders, inspectors, rol, permisos }: CargaDeTrabajoPageProps) {
+export function CargaDeTrabajoPage({ orders, inspectors, informalBusyInspectorIds, rol, permisos }: CargaDeTrabajoPageProps) {
   const router = useRouter()
   const session: SessionLike = { rol, permisos }
   const canImportar = can(session, 'cotizaciones.importar')
   const canAsignar = can(session, 'ordenes.asignar')
   const canDocumentos = can(session, 'ordenes.documentos')
+  const canPromover = can(session, 'reportes_informales.promover')
   const [selectedOrder, setSelectedOrder] = useState<OrderWorkload | null>(null)
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -1228,8 +1505,10 @@ export function CargaDeTrabajoPage({ orders, inspectors, rol, permisos }: CargaD
 
   // Inspectors already assigned to ANY item across the whole workload — disabled
   // in the assign modal's checklist ("ocupado") so a supervisor can't double-assign.
+  // Incluye también los que tienen sesión activa en órdenes INFORMALES, para que
+  // el front refleje el mismo bloqueo que aplica el backend (findActiveSessionByInspector).
   const busyInspectorIds = useMemo(() => {
-    const busy = new Set<number>()
+    const busy = new Set<number>(informalBusyInspectorIds ?? [])
     for (const order of orders) {
       for (const item of order.items) {
         for (const inspector of item.assignedInspectors) {
@@ -1238,7 +1517,7 @@ export function CargaDeTrabajoPage({ orders, inspectors, rol, permisos }: CargaD
       }
     }
     return busy
-  }, [orders])
+  }, [orders, informalBusyInspectorIds])
 
   // Sync selectedOrder when server data refreshes after assign/release/upload
   useEffect(() => {
@@ -1319,6 +1598,8 @@ export function CargaDeTrabajoPage({ orders, inspectors, rol, permisos }: CargaD
           onClose={() => setSelectedOrder(null)}
           canAsignar={canAsignar}
           canDocumentos={canDocumentos}
+          canImportar={canImportar}
+          canPromover={canPromover}
         />
       )}
 
