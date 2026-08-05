@@ -8,11 +8,12 @@ import { can } from '@/front/lib/permisos'
 import { orderExists } from '@/back/services/qb_sync-api'
 import { getAllPlantas } from '@/back/services/plantService'
 
-// Roles cross-planta (ven órdenes de cualquier planta) — se alinea con
-// CROSS_PLANT_ROLES del backend (src/shared/access/plantAccess.js). El resto
-// (supervisor, lider) queda acotado a sus plantas asignadas.
+// Roles cross-planta al IMPORTAR (pueden traer órdenes de cualquier planta).
+// OJO: supervisor_regional NO está aquí a propósito — aunque es cross-planta para
+// LEER la carga de trabajo, al importar solo puede traer órdenes de las plantas que
+// tiene configuradas (session.plantaIds), igual que supervisor/lider.
 const GLOBAL_PLANT_ROLES = new Set([
-  'admin', 'superusuario', 'supervisor_regional', 'capturacion', 'servicio_cliente', 'gerente',
+  'admin', 'superusuario', 'capturacion', 'servicio_cliente', 'gerente',
 ])
 
 // Normaliza un nombre de planta para comparar SysQB (may/min, con acentos) contra
