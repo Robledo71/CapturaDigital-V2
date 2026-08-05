@@ -591,12 +591,13 @@ interface AssignItemModalProps {
   action: (formData: FormData) => void
   /** Acción para "Descargar sin asignar" (persistir el árbol sin sesión). */
   descargarAction: (formData: FormData) => void
-  /** Permiso de importar cotizaciones — gatea el botón "Descargar sin asignar". */
-  canImportar: boolean
+  /** Permiso de promover — gatea el botón "Descargar sin asignar" (solo quien
+      promueve descarga sin asignar; el supervisor normal importa + asigna). */
+  canPromover: boolean
   onClose: () => void
 }
 
-function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorIds, state, action, descargarAction, canImportar, onClose }: AssignItemModalProps) {
+function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorIds, state, action, descargarAction, canPromover, onClose }: AssignItemModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
@@ -723,8 +724,9 @@ function AssignItemModal({ orderItemId, item, order, inspectors, busyInspectorId
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 dark:border-[#25395f] px-5 py-4">
           {/* "Descargar sin asignar" — persiste el árbol completo de la orden sin
               crear sesión, para poder promover órdenes informales sin asignar
-              inspectores. Aplica cuando este item aún no está persistido (id === 0). */}
-          {canImportar && item.id === 0 && (
+              inspectores. Solo para quien promueve (supervisor_regional) y cuando
+              este item aún no está persistido (id === 0). */}
+          {canPromover && item.id === 0 && (
             <DescargarSinAsignarButton action={descargarAction} />
           )}
           <button
@@ -944,9 +946,8 @@ interface OrderDetailModalProps {
   onClose: () => void
   canAsignar: boolean
   canDocumentos: boolean
-  /** `cotizaciones.importar` — gatea el botón "Descargar orden" (persistir sin asignar). */
-  canImportar: boolean
-  /** `reportes_informales.promover` — gatea el botón "Promover" (órdenes informales → esta orden formal). */
+  /** `reportes_informales.promover` — gatea "Promover" y también "Descargar orden"
+      (persistir sin asignar): solo quien promueve descarga sin asignar. */
   canPromover: boolean
 }
 
@@ -957,7 +958,6 @@ function OrderDetailModal({
   onClose,
   canAsignar,
   canDocumentos,
-  canImportar,
   canPromover,
 }: OrderDetailModalProps) {
   const router = useRouter()
@@ -1143,10 +1143,11 @@ function OrderDetailModal({
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2">
-              {/* "Descargar orden" — persistir el árbol completo sin asignar; aplica
-                  cuando la orden tiene items aún NO persistidos (traídos de la
-                  búsqueda QB, id === 0) y con permiso de importar cotizaciones. */}
-              {canImportar && hasUnpersistedItems && (
+              {/* "Descargar orden" — persistir el árbol completo sin asignar. Solo
+                  para quien PROMUEVE (supervisor_regional): descarga la orden sin
+                  asignarla para luego promover reportes informales. El supervisor
+                  normal no descarga; importa + asigna. */}
+              {canPromover && hasUnpersistedItems && (
                 <DescargarOrdenForm order={order} action={descargarAction} />
               )}
 
@@ -1273,7 +1274,7 @@ function OrderDetailModal({
           state={assignState}
           action={assignAction}
           descargarAction={descargarAction}
-          canImportar={canImportar}
+          canPromover={canPromover}
           onClose={() => setAssignItem(null)}
         />
       )}
@@ -1598,7 +1599,6 @@ export function CargaDeTrabajoPage({ orders, inspectors, informalBusyInspectorId
           onClose={() => setSelectedOrder(null)}
           canAsignar={canAsignar}
           canDocumentos={canDocumentos}
-          canImportar={canImportar}
           canPromover={canPromover}
         />
       )}

@@ -171,6 +171,46 @@ describe('crearOrdenInformalAction', () => {
     expect(payload.item.incidentes).toBe('a, b, c')
   })
 
+  it('un solo numero_parte → se envía tal cual (retro-compatible)', async () => {
+    vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)
+    vi.mocked(createInformalOrder).mockResolvedValue({ ok: true, data: {} })
+
+    await crearOrdenInformalAction(undefined, validFormData({ numero_parte: '83600-3BH' }))
+
+    const payload = vi.mocked(createInformalOrder).mock.calls[0][0]
+    expect(payload.item.numeroParte).toBe('83600-3BH')
+  })
+
+  it('múltiples numero_parte → une con " / " filtrando vacíos', async () => {
+    vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)
+    vi.mocked(createInformalOrder).mockResolvedValue({ ok: true, data: {} })
+
+    const fd = validFormData()
+    fd.delete('numero_parte')
+    fd.append('numero_parte', '  NP-1  ')
+    fd.append('numero_parte', 'NP-2')
+    fd.append('numero_parte', '')
+    fd.append('numero_parte', 'NP-3')
+
+    await crearOrdenInformalAction(undefined, fd)
+
+    const payload = vi.mocked(createInformalOrder).mock.calls[0][0]
+    expect(payload.item.numeroParte).toBe('NP-1 / NP-2 / NP-3')
+  })
+
+  it('todos los numero_parte vacíos → error de validación', async () => {
+    vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)
+
+    const fd = validFormData()
+    fd.delete('numero_parte')
+    fd.append('numero_parte', '')
+    fd.append('numero_parte', '   ')
+
+    const result = await crearOrdenInformalAction(undefined, fd)
+    expect(result).toMatchObject({ ok: false })
+    expect(createInformalOrder).not.toHaveBeenCalled()
+  })
+
   it('sin incidencias → item.incidentes es undefined', async () => {
     vi.mocked(getSession).mockResolvedValue(baseSession('supervisor') as never)
     vi.mocked(createInformalOrder).mockResolvedValue({ ok: true, data: {} })

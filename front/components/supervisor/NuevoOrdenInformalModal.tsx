@@ -44,7 +44,7 @@ export function NuevoOrdenInformalModal({ clientes, plantas, inspectors, onClose
   const [state, dispatch] = useActionState<CreateInformalOrderState, FormData>(crearOrdenInformalAction, undefined)
   const [tipoOrden, setTipoOrden] = useState<'OV' | 'OA'>('OV')
   const [clienteId, setClienteId] = useState('')
-  const [numeroParte, setNumeroParte] = useState('')
+  const [numerosParte, setNumerosParte] = useState<string[]>([''])
   const [nombreParte, setNombreParte] = useState('')
   const [plantaId, setPlantaId] = useState('')
   const [inspectorIds, setInspectorIds] = useState<string[]>([])
@@ -63,6 +63,21 @@ export function NuevoOrdenInformalModal({ clientes, plantas, inspectors, onClose
 
   function toggleInspector(id: string) {
     setInspectorIds((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
+  }
+
+  function updateNumeroParte(index: number, value: string) {
+    setNumerosParte((prev) => prev.map((v, i) => (i === index ? value : v)))
+  }
+
+  function addNumeroParte() {
+    setNumerosParte((prev) => [...prev, ''])
+  }
+
+  function removeNumeroParte(index: number) {
+    setNumerosParte((prev) => {
+      const next = prev.filter((_, i) => i !== index)
+      return next.length > 0 ? next : ['']
+    })
   }
 
   function updateIncidencia(index: number, value: string) {
@@ -161,26 +176,51 @@ export function NuevoOrdenInformalModal({ clientes, plantas, inspectors, onClose
                 </select>
               </div>
 
-              {/* Número de parte */}
-              <div className="flex flex-col gap-1">
-                <label htmlFor="numero_parte" className="text-xs font-medium text-black dark:text-slate-400">
-                  Número de parte
-                </label>
-                <input
-                  id="numero_parte"
-                  name="numero_parte"
-                  type="text"
-                  autoComplete="off"
-                  required
-                  placeholder="Ej. 83600-3BH"
-                  value={numeroParte}
-                  onChange={(e) => setNumeroParte(e.target.value)}
-                  className={inputCls}
-                />
+              {/* Números de parte — lista dinámica; al menos uno requerido. Se envían
+                  al backend unidos con '/' ("np1 / np2 / np3"). */}
+              <div className="col-span-2 flex flex-col gap-1">
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="text-xs font-medium text-black dark:text-slate-400">
+                    Números de parte
+                  </legend>
+                  <div className="flex flex-col gap-2">
+                    {numerosParte.map((np, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <input
+                          name="numero_parte"
+                          type="text"
+                          autoComplete="off"
+                          required={index === 0}
+                          placeholder="Ej. 83600-3BH"
+                          aria-label={`Número de parte ${index + 1}`}
+                          value={np}
+                          onChange={(e) => updateNumeroParte(index, e.target.value)}
+                          className={inputCls}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeNumeroParte(index)}
+                          aria-label="Eliminar número de parte"
+                          className="p-1.5 rounded text-blue-600 dark:text-slate-400 hover:text-red-500 hover:bg-blue-50 dark:hover:bg-[#1a2d4d] transition-colors flex-shrink-0"
+                        >
+                          <X size={16} aria-hidden="true" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addNumeroParte}
+                    className="flex items-center gap-1.5 self-start text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                  >
+                    <Plus size={14} aria-hidden="true" />
+                    Agregar número de parte
+                  </button>
+                </fieldset>
               </div>
 
               {/* Nombre de parte (opcional) */}
-              <div className="flex flex-col gap-1">
+              <div className="col-span-2 flex flex-col gap-1">
                 <label htmlFor="nombre_parte" className="text-xs font-medium text-black dark:text-slate-400">
                   Nombre de parte <span className="text-slate-400 font-normal">(opcional)</span>
                 </label>

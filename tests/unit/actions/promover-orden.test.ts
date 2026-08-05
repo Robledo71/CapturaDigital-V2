@@ -18,12 +18,15 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeSession(overrides: Partial<{ rol: 'supervisor' | 'capturacion' | 'admin' }> = {}) {
+function makeSession(
+  overrides: Partial<{ rol: 'supervisor' | 'supervisor_regional' | 'capturacion' | 'admin' }> = {},
+) {
   return {
     userId: 1,
-    rol: 'supervisor' as const,
+    // supervisor_regional es el único rol operativo que promueve (además de super/admin)
+    rol: 'supervisor_regional' as const,
     codigoEmpleado: 'SUP001',
-    nombreCompleto: 'Supervisor Test',
+    nombreCompleto: 'Supervisor Regional Test',
     empleadoId: 9,
     accessToken: 'access-token-123',
     refreshToken: 'refresh-token',
@@ -86,7 +89,14 @@ describe('promover-orden actions', () => {
       expect(fetch).not.toHaveBeenCalled()
     })
 
-    it('rol supervisor (con permiso) → devuelve las órdenes informales mapeadas', async () => {
+    it('rol supervisor (ya NO promueve) → []', async () => {
+      vi.mocked(getSession).mockResolvedValue(makeSession({ rol: 'supervisor' }) as never)
+      const result = await getOrdenesInformalesParaPromoverAction()
+      expect(result).toEqual([])
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it('rol supervisor_regional (con permiso) → devuelve las órdenes informales mapeadas', async () => {
       vi.mocked(getSession).mockResolvedValue(makeSession() as never)
       vi.mocked(fetch).mockResolvedValueOnce(
         new Response(JSON.stringify({ success: true, data: [makeExternalOrder()] }), { status: 200 }),
@@ -123,6 +133,16 @@ describe('promover-orden actions', () => {
 
     it('rol capturacion (sin permiso) → no autorizado', async () => {
       vi.mocked(getSession).mockResolvedValue(makeSession({ rol: 'capturacion' }) as never)
+      const result = await promoverOrdenInformalAction(
+        undefined,
+        makeFormData({ itemOrdenInformalId: '10', itemOrdenId: '55' }),
+      )
+      expect(result).toEqual({ ok: false, error: 'No autorizado.' })
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it('rol supervisor (ya NO promueve) → no autorizado', async () => {
+      vi.mocked(getSession).mockResolvedValue(makeSession({ rol: 'supervisor' }) as never)
       const result = await promoverOrdenInformalAction(
         undefined,
         makeFormData({ itemOrdenInformalId: '10', itemOrdenId: '55' }),

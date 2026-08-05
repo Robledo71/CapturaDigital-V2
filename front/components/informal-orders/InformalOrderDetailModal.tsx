@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import type { InformalOrderRow } from '@/shared/types/informalOrder'
-import { EstadoReporteBadge, InspectoresCell, TipoOrdenBadge } from './InformalOrdersTable'
+import { EstadoReporteBadge, InspectoresCell, PartNumberChips, TipoOrdenBadge } from './InformalOrdersTable'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,11 +111,11 @@ export function InformalOrderDetailModal({ orden, onClose }: InformalOrderDetail
             </h3>
             <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 dark:border-[#1a2d4d] dark:bg-[#0a1628] px-3 py-3">
               <div>
-                <dt className="text-xs text-slate-500">No. de parte</dt>
-                {/* Se muestra tal cual fue capturado — puede contener varios números
-                    de parte separados por espacios; no se separa/parsea aquí. */}
-                <dd className="whitespace-pre-wrap break-words font-mono text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {orden.numeroParte}
+                <dt className="mb-1 text-xs text-slate-500">No. de parte</dt>
+                {/* Puede contener varios números de parte separados por '/'; se
+                    muestran como chips individuales. */}
+                <dd>
+                  <PartNumberChips numeroParte={orden.numeroParte} />
                 </dd>
               </div>
               <div>

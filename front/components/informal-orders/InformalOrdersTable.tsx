@@ -15,6 +15,39 @@ interface InformalOrdersTableProps {
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
+// Los números de parte se guardan como una sola cadena separada por '/'
+// ("np1 / np2 / np3"); se parsean para mostrarlos como chips individuales.
+// Se coacciona a string por si el backend manda el número de parte como number.
+export function parsePartNumbers(numeroParte: string | number | null | undefined): string[] {
+  return String(numeroParte ?? '')
+    .split('/')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+export function PartNumberChips({
+  numeroParte,
+  className,
+}: {
+  numeroParte: string | number | null | undefined
+  className?: string
+}) {
+  const parts = parsePartNumbers(numeroParte)
+  if (parts.length === 0) return <span className="text-slate-400">—</span>
+  return (
+    <div className={`flex flex-wrap gap-1 ${className ?? ''}`}>
+      {parts.map((p, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 font-mono text-xs text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
+        >
+          {p}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function TipoOrdenBadge({ tipo }: { tipo: 'OV' | 'OA' }) {
   if (tipo === 'OV') {
     return (
@@ -178,8 +211,8 @@ export function InformalOrdersTable({ orders, onAssign }: InformalOrdersTablePro
                       {order.plantaNombre ?? '—'}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <span className="font-mono text-xs text-slate-800 dark:text-slate-200">{order.numeroParte}</span>
+                      <div className="flex flex-col gap-1">
+                        <PartNumberChips numeroParte={order.numeroParte} />
                         {order.nombreParte && (
                           <span className="text-xs text-slate-500 dark:text-slate-400">{order.nombreParte}</span>
                         )}

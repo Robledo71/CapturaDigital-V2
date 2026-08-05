@@ -42,10 +42,15 @@ export async function crearOrdenInformalAction(
   const plantaIdRaw = Number(formData.get('planta_id'))
   const nombreParteRaw = String(formData.get('nombre_parte') ?? '').trim()
 
+  // Números de parte: lista dinámica (uno o varios). Se unen con ' / ' →
+  // "np1 / np2 / np3"; el backend divide por '/' cuando corresponde.
+  const numerosParte = formData.getAll('numero_parte').map((v) => String(v).trim()).filter(Boolean)
+  const numeroParteJoined = numerosParte.join(' / ')
+
   const raw = {
     tipo_orden: String(formData.get('tipo_orden') ?? ''),
     cliente_id: Number.isFinite(clienteIdRaw) ? clienteIdRaw : NaN,
-    numero_parte: String(formData.get('numero_parte') ?? '').trim(),
+    numero_parte: numeroParteJoined,
     nombre_parte: nombreParteRaw || undefined,
     planta_id: Number.isFinite(plantaIdRaw) ? plantaIdRaw : NaN,
   }

@@ -113,7 +113,8 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'reportes_informales.muestreo',
     'reportes_informales.editar',
     'reportes_informales.firmar',
-    'reportes_informales.promover',
+    // NOTA: 'reportes_informales.promover' es exclusivo de supervisor_regional
+    // (y superusuario/admin). El supervisor normal importa + asigna; no promueve.
   ],
 
   // Supervisor regional: mismo alcance operativo que el supervisor, pero cross-planta
@@ -158,7 +159,8 @@ export const ROLE_PERMISOS: Record<Rol, Permiso[]> = {
     'reportes_informales.muestreo',
     'reportes_informales.editar',
     'reportes_informales.firmar',
-    'reportes_informales.promover',
+    // NOTA: el líder tampoco promueve — 'reportes_informales.promover' es
+    // exclusivo de supervisor_regional (y superusuario/admin).
   ],
 
   // Capturación (PIERDE el desbloqueo de cotizaciones)
